@@ -1,0 +1,30 @@
+[features]
+seeds = false
+debug = false
+
+[provider]
+cluster = "mainnet-beta"
+wallet = "env:ANCHOR_WALLET"
+
+[programs.mainnet]
+yesno_bets = "env:PROGRAM_ID"
+
+[programs.devnet]
+yesno_bets = "env:PROGRAM_ID_DEVNET"
+
+[programs.localnet]
+yesno_bets = "env:PROGRAM_ID_LOCALNET"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+build = "anchor build"
+deploy = "anchor deploy"
+upgrade = "anchor upgrade"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[secrets]
+rpc_url = "env:RPC_URL"
+program_id = "env:PROGRAM_ID"
+wallet = "env:ANCHOR_WALLET"

@@ -1,0 +1,82 @@
+/* styles/html2canvas-fix.css */
+/* This will be injected during html2canvas rendering to avoid unsupported color functions */
+
+/* Reset all color functions to supported formats */
+* {
+  color: inherit !important;
+  background-color: inherit !important;
+  border-color: inherit !important;
+}
+
+/* Force Windows 95 specific colors for screenshot */
+.frame {
+  background: white !important;
+  border: 2px solid #000000 !important;
+}
+
+.titlebar {
+  background: #c0c0c0 !important;
+  background: linear-gradient(45deg, #c0c0c0, #e0e0e0) !important;
+  color: #000000 !important;
+  border-bottom: 2px solid #000000 !important;
+}
+
+.btn95 {
+  background: #c0c0c0 !important;
+  border: 2px solid #ffffff !important;
+  border-bottom-color: #808080 !important;
+  border-right-color: #808080 !important;
+  color: #000000 !important;
+}
+
+.btn95-ghost {
+  background: transparent !important;
+  border: 1px dashed #808080 !important;
+  color: #000000 !important;
+}
+
+.sunken95 {
+  background: #ffffff !important;
+  border: 2px inset #c0c0c0 !important;
+}
+
+.input95 {
+  background: #ffffff !important;
+  border: 2px inset #c0c0c0 !important;
+  color: #000000 !important;
+}
+
+.chip95 {
+  background: #c0c0c0 !important;
+  border: 1px solid #808080 !important;
+  color: #000000 !important;
+}
+
+.chip95-active {
+  background: #000080 !important;
+  color: #ffffff !important;
+  border-color: #000080 !important;
+}
+
+.status-pill95 {
+  background: #ffffff !important;
+  border: 1px solid #808080 !important;
+  color: #000000 !important;
+}
+
+.toolbar95 {
+  background: #c0c0c0 !important;
+  border: 1px solid #808080 !important;
+}
+
+/* Ensure text is readable */
+body {
+  background: white !important;
+  color: black !important;
+}
+
+/* Remove any modern color functions */
+* {
+  color-scheme: normal !important;
+  accent-color: auto !important;
+}

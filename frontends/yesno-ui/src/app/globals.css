@@ -1,0 +1,301 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==== BRAND TOKENS ==== */
+:root {
+  /* greys on slightly-warm dark bg */
+  --surface: 18 18 18;        /* bg-surface */
+  --stroke:  255 255 255;     /* border alpha handled by utilities */
+
+  /* sillymarket brand */
+  --brand:      32 189 141;   /* #20BD8D */
+  --brand-600:  24 168 124;
+  --brand-700:  19 150 110;
+
+  --text:       240 240 240;
+  --muted:      180 180 180;
+
+  --radius:     14px;
+
+  /* Win95 palette */
+  --win95-bg: #c0c0c0;
+  --win95-blue: #000080;
+  --win95-dark: #808080;
+  --win95-light: #dfdfdf;
+  
+  /* Font */
+  --font-brand: "Outfit";
+}
+
+/* ====== WINDOWS 95 DESKTOP STYLES ====== */
+.desktop {
+  min-height: 100vh;
+  background: #008080 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjMDA4MDgwIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDBMNCA0Wk00IDBMMCA0WiIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2U9IiMwMDZmNmYiPjwvcGF0aD4KPC9zdmc+');
+  background-size: 4px 4px;
+  padding: 20px;
+  font-family: 'MS Sans Serif', 'Microsoft Sans Serif', sans-serif;
+}
+
+.window {
+  background: #c0c0c0;
+  border: 2px solid;
+  border-top-color: #dfdfdf;
+  border-left-color: #dfdfdf;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+  box-shadow: 1px 1px 0px #000;
+  margin-bottom: 20px;
+}
+
+.title-bar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: white;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 18px;
+}
+
+.title-bar-text {
+  flex: 1;
+}
+
+.title-bar-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.title-bar-controls button {
+  width: 16px;
+  height: 14px;
+  border: 1px solid;
+  border-top-color: #dfdfdf;
+  border-left-color: #dfdfdf;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+  background: #c0c0c0;
+  font-size: 9px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.title-bar-controls button:active {
+  border-top-color: #808080;
+  border-left-color: #808080;
+  border-right-color: #dfdfdf;
+  border-bottom-color: #dfdfdf;
+}
+
+.window-body {
+  padding: 8px;
+  background: #c0c0c0;
+}
+
+/* Status bar styles */
+.status-bar {
+  display: flex;
+  padding: 2px 4px;
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
+  font-size: 11px;
+}
+
+.status-bar-field {
+  flex: 1;
+  padding: 2px 4px;
+}
+
+/* ====== WINDOWS 95 STYLES FOR SILLYMARKET ====== */
+@layer components {
+  /* Frame container */
+  .frame {
+    @apply border-2 border-t-white border-l-white border-b-gray-700 border-r-gray-700 bg-gray-300;
+  }
+
+  /* Title bar */
+  .titlebar {
+    @apply bg-[#c0c0c0] border-b-2 border-gray-700 px-2 py-1 flex items-center justify-between;
+    background: linear-gradient(45deg, #c0c0c0, #e0e0e0);
+  }
+
+  .title {
+    @apply font-bold text-black text-sm;
+    font-family: "MS Sans Serif", "Segoe UI", sans-serif;
+  }
+
+  .controls {
+    @apply flex items-center gap-1;
+  }
+
+  /* Buttons */
+  .btn95 {
+    @apply bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-gray-700 border-r-gray-700 
+           px-3 py-1 text-black text-sm font-bold cursor-pointer active:border-gray-700 active:border-t-gray-700 
+           active:border-l-gray-700 active:border-b-white active:border-r-white;
+    font-family: "MS Sans Serif", "Segoe UI", sans-serif;
+  }
+
+  .btn95:hover {
+    @apply bg-[#d4d4d4];
+  }
+
+  .btn95:active {
+    @apply border-gray-700 border-t-gray-700 border-l-gray-700 border-b-white border-r-white;
+  }
+
+  .btn95:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .btn95-ghost {
+    @apply bg-transparent border border-dashed border-gray-500 px-2 py-1 text-black text-sm cursor-pointer
+           hover:bg-gray-400 active:bg-gray-500;
+    font-family: "MS Sans Serif", "Segoe UI", sans-serif;
+  }
+
+  /* Frame body */
+  .frame-body {
+    @apply bg-gray-300 p-3 space-y-2;
+  }
+
+  /* Sunken panel effect */
+  .sunken95 {
+    @apply border-2 border-t-gray-700 border-l-gray-700 border-b-white border-r-white bg-white;
+  }
+
+  /* Input fields */
+  .input95 {
+    @apply bg-white border-2 border-t-gray-700 border-l-gray-700 border-b-white border-r-white 
+           px-2 py-1 text-black outline-none focus:border-2 focus:border-t-[#000080] focus:border-l-[#000080] 
+           focus:border-b-[#c0c0c0] focus:border-r-[#c0c0c0];
+    font-family: "MS Sans Serif", "Segoe UI", sans-serif;
+  }
+
+  /* Chips for filters */
+  .chip95 {
+    @apply bg-[#c0c0c0] border border-gray-700 px-2 py-1 text-black text-sm cursor-pointer
+           hover:bg-[#d4d4d4] active:bg-[#a8a8a8];
+    font-family: "MS Sans Serif", "Segoe UI", sans-serif;
+  }
+
+  .chip95-active {
+    @apply bg-[#000080] text-white border-[#000080];
+  }
+
+  /* Status pills */
+  .status-pill95 {
+    @apply bg-white border border-gray-700 px-2 py-0.5 text-black text-xs font-bold;
+    font-family: "MS Sans Serif", "Segoe UI", sans-serif;
+  }
+
+  /* Toolbar */
+  .toolbar95 {
+    @apply flex gap-2 p-2 bg-[#c0c0c0] border border-gray-700;
+  }
+
+  /* Header Windows 95 buttons */
+  .win95-btn {
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #dfdfdf #808080 #808080 #dfdfdf;
+    color: black;
+    font-family: "MS Sans Serif", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: normal;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    padding: 4px 12px;
+  }
+
+  .win95-btn:hover {
+    background: #d0d0d0;
+  }
+
+  .win95-btn:active {
+    border-color: #808080 #dfdfdf #dfdfdf #808080;
+  }
+
+  .win95-btn-ghost {
+    background: transparent;
+    border: 1px solid transparent;
+    color: black;
+    font-family: "MS Sans Serif", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: normal;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    padding: 4px 12px;
+  }
+
+  .win95-btn-ghost:hover {
+    text-decoration: underline;
+    background: #00000010;
+  }
+}
+
+/* ====== MODERN STYLES ====== */
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-white/5;
+  }
+
+  .panel {
+    @apply rounded-lg border border-white/10;
+  }
+
+  .input {
+    @apply w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 outline-none focus:border-brand/50;
+  }
+
+  .text-muted { 
+    @apply text-sm text-gray-400;
+  }
+  
+  .mono { 
+    @apply font-mono;
+  }
+}
+
+/* ====== SCROLLBAR STYLING ====== */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: #c0c0c0;
+  border: 1px inset #c0c0c0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border: 1px inset #c0c0c0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d4d4d4;
+}
+
+/* ====== SELECTION STYLING ====== */
+::selection {
+  background: #000080;
+  color: white;
+}
+
+/* ====== FOCUS STYLING ====== */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px dotted #000080;
+  outline-offset: 2px;
+}
