@@ -1,0 +1,36 @@
+{
+  "version": "0.1.0",
+  "name": "yesno_bets",
+  "instructions": [
+    {
+      "name": "initializeMarket",
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "placeBet",
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "resolveMarket",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "market",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    }
+  ],
+  "types": [],
+  "events": [],
+  "errors": [],
+  "metadata": {
+    "address": "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+  }
+}

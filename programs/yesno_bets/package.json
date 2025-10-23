@@ -1,0 +1,17 @@
+{
+  "name": "yesno_bets",
+  "version": "0.1.0",
+  "description": "Solana Yes/No betting program",
+  "main": "index.js",
+  "scripts": {
+    "test": "anchor test",
+    "build": "anchor build",
+    "deploy": "anchor deploy",
+    "localnet": "anchor localnet"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
