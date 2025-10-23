@@ -1,21 +1,20 @@
 [package]
 name = "yesno_bets"
 version = "0.1.0"
+description = "Solana Yes/No Betting Program"
 edition = "2021"
 
-[lib]
-name = "yesno_bets"
-crate-type = ["cdylib"]
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
 
 [dependencies]
-anchor-lang = { version = "=0.31.1", features = ["init-if-needed"] }
-anchor-spl  = { version = "=0.31.1", features = ["token", "associated_token"] }
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
 
-[profile.release]
-opt-level = "s"
-lto = true
-codegen-units = 1
-panic = "abort"
-
-[features]
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "yesno_bets"
