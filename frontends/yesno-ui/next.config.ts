@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    allowedDevOrigins: true,
+  },
 }
 
 export default nextConfig
