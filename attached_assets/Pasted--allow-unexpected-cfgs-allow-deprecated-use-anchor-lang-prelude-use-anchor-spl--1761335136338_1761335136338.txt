@@ -1,0 +1,793 @@
+#![allow(unexpected_cfgs)]
+#![allow(deprecated)]
+
+use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{self, Mint, Token, TokenAccount, Transfer},
+};
+use std::str::FromStr;
+
+declare_id!("D1M35W2QNQ6fDMUkYe1ZBp79oxHmQS7YXiHmctqKfefq");
+
+// --------- Owner & constants ---------
+pub const OWNER: &str = "9sjC1DmEhMXHwmSNaq3jQrfAFzfSrPBooDjDDjukuyoR";
+// HARDCODE YOUR FEE WALLET HERE:
+pub const FEE_WALLET: &str = "9sjC1DmEhMXHwmSNaq3jQrfAFzfSrPBooDjDDjukuyoR"; // Change this to your fee wallet
+pub const VAULT_AUTH_SEED: &[u8] = b"vault-auth";
+pub const POSITION_SEED: &[u8] = b"position";
+pub const FEE_BPS: u64 = 250;       // 2.5%
+pub const BPS_DENOM: u64 = 10_000;  // 100%
+pub const MAX_BET_LIMIT: u64 = 100; // Maximum tokens per position (INCLUDING FEES)
+pub const MIN_BET_AMOUNT: u64 = 1_000; // Minimum bet amount
+pub const MAX_MARKET_DURATION: i64 = 30 * 24 * 3600; // 30 days max
+
+#[program]
+pub mod yesno_bets {
+    use super::*;
+
+    pub fn initialize_program(ctx: Context<InitializeProgram>) -> Result<()> {
+        require_keys_eq!(ctx.accounts.owner.key(), owner_pubkey(), ErrorCode::Unauthorized);
+        
+        let stats = &mut ctx.accounts.program_stats;
+        stats.authority = ctx.accounts.owner.key();
+        stats.total_markets = 0;
+        stats.total_volume = 0;
+        stats.total_fees = 0;
+        stats.total_bettors = 0;
+        stats.is_initialized = true;
+        
+        emit!(ProgramInitialized {
+            authority: stats.authority,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+        
+        Ok(())
+    }
+
+    pub fn create_market(
+        ctx: Context<CreateMarket>, 
+        cutoff_ts: i64,
+        question: String,
+        category: String,
+    ) -> Result<()> {
+        require_keys_eq!(ctx.accounts.owner.key(), owner_pubkey(), ErrorCode::Unauthorized);
+        
+        let now = Clock::get()?.unix_timestamp;
+        require!(cutoff_ts > now, ErrorCode::InvalidCutoff);
+        require!(cutoff_ts <= now + MAX_MARKET_DURATION, ErrorCode::MarketDurationTooLong);
+        require!(question.len() <= 280, ErrorCode::MetadataTooLong);
+        require!(category.len() <= 50, ErrorCode::MetadataTooLong);
+
+        let stats = &mut ctx.accounts.program_stats;
+        stats.total_markets = stats.total_markets.checked_add(1).ok_or(ErrorCode::Overflow)?;
+
+        let m = &mut ctx.accounts.market;
+        m.creator = ctx.accounts.owner.key();
+        m.bet_mint = ctx.accounts.bet_mint.key();
+        m.vault = ctx.accounts.vault.key();
+        m.vault_authority = ctx.accounts.vault_authority.key();
+        m.cutoff_ts = cutoff_ts;
+        m.resolved = false;
+        m.winning_outcome = Outcome::Unset as u8;
+        m.total_yes = 0;
+        m.total_no = 0;
+        m.fees_accrued = 0;
+        m.emergency_paused = false;
+        m.fee_receiver = fee_wallet_pubkey(); // Uses hardcoded fee wallet
+        m.created_at = now;
+        m.resolution_reason = ResolutionReason::Unset as u8;
+        
+        let metadata = &mut ctx.accounts.market_metadata;
+        metadata.market = m.key();
+        metadata.question = question;
+        metadata.category = category;
+        metadata.created_at = now;
+        
+        emit!(MarketCreated {
+            market: m.key(),
+            creator: m.creator,
+            cutoff_ts: m.cutoff_ts,
+            bet_mint: m.bet_mint,
+            question: metadata.question.clone(),
+            category: metadata.category.clone(),
+        });
+        
+        Ok(())
+    }
+
+    pub fn update_cutoff(ctx: Context<UpdateCutoff>, new_cutoff_ts: i64) -> Result<()> {
+        require_keys_eq!(ctx.accounts.owner.key(), owner_pubkey(), ErrorCode::Unauthorized);
+        let m = &mut ctx.accounts.market;
+        
+        validate_market_active(m)?;
+
+        let now = Clock::get()?.unix_timestamp;
+        require!(new_cutoff_ts > now, ErrorCode::InvalidCutoff);
+        require!(new_cutoff_ts <= now + MAX_MARKET_DURATION, ErrorCode::MarketDurationTooLong);
+
+        m.cutoff_ts = new_cutoff_ts;
+        
+        emit!(CutoffUpdated {
+            market: m.key(),
+            new_cutoff_ts,
+        });
+        
+        Ok(())
+    }
+
+    pub fn place_bet(ctx: Context<PlaceBet>, outcome: Outcome, amount: u64) -> Result<()> {
+        require!(amount >= MIN_BET_AMOUNT, ErrorCode::BetTooSmall);
+
+        let now = Clock::get()?.unix_timestamp;
+        let m = &mut ctx.accounts.market;
+
+        validate_market_active(m)?;
+        require!(!m.emergency_paused, ErrorCode::EmergencyPaused);
+        require!(now < m.cutoff_ts, ErrorCode::BettingClosed);
+        require_keys_eq!(m.bet_mint, ctx.accounts.bet_mint.key(), ErrorCode::WrongMint);
+
+        let fee = calculate_fee(amount)?;
+        let net = amount.checked_sub(fee).ok_or(ErrorCode::Overflow)?;
+
+        validate_bet_limit(&ctx.accounts.bet_mint, &ctx.accounts.position, amount)?;
+
+        if fee > 0 {
+            token::transfer(
+                CpiContext::new(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.bettor_ata.to_account_info(),
+                        to: ctx.accounts.fee_receiver_ata.to_account_info(),
+                        authority: ctx.accounts.bettor.to_account_info(),
+                    },
+                ),
+                fee,
+            )?;
+        }
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.bettor_ata.to_account_info(),
+                    to: ctx.accounts.vault.to_account_info(),
+                    authority: ctx.accounts.bettor.to_account_info(),
+                },
+            ),
+            net,
+        )?;
+
+        let stats = &mut ctx.accounts.program_stats;
+        stats.total_volume = stats.total_volume.checked_add(amount).ok_or(ErrorCode::Overflow)?;
+        stats.total_fees = stats.total_fees.checked_add(fee).ok_or(ErrorCode::Overflow)?;
+        if ctx.accounts.position.amount == 0 {
+            stats.total_bettors = stats.total_bettors.checked_add(1).ok_or(ErrorCode::Overflow)?;
+        }
+
+        let p = &mut ctx.accounts.position;
+        if p.amount == 0 {
+            p.owner = ctx.accounts.bettor.key();
+            p.market = m.key();
+            p.outcome = outcome as u8;
+            p.claimed = false;
+            p.amount = net;
+        } else {
+            require!(p.outcome == outcome as u8, ErrorCode::CannotSwitchSide);
+            p.amount = p.amount.checked_add(net).ok_or(ErrorCode::Overflow)?;
+        }
+
+        match outcome {
+            Outcome::Yes => m.total_yes = m.total_yes.checked_add(net).ok_or(ErrorCode::Overflow)?,
+            Outcome::No => m.total_no = m.total_no.checked_add(net).ok_or(ErrorCode::Overflow)?,
+            _ => return err!(ErrorCode::InvalidOutcomeArg),
+        }
+
+        emit!(BetPlaced {
+            market: m.key(),
+            bettor: ctx.accounts.bettor.key(),
+            outcome,
+            amount,
+            fee,
+            net_amount: net,
+        });
+        
+        Ok(())
+    }
+
+    pub fn resolve_market(
+        ctx: Context<ResolveMarket>, 
+        winning_outcome: Outcome,
+        resolution_reason: ResolutionReason
+    ) -> Result<()> {
+        require_keys_eq!(ctx.accounts.owner.key(), owner_pubkey(), ErrorCode::Unauthorized);
+
+        let m = &mut ctx.accounts.market;
+        require!(!m.resolved, ErrorCode::AlreadyResolved);
+
+        let now = Clock::get()?.unix_timestamp;
+        require!(now >= m.cutoff_ts, ErrorCode::TooEarly);
+
+        let auto_void = m.total_yes == 0 || m.total_no == 0;
+
+        m.resolved = true;
+        m.winning_outcome = if auto_void {
+            Outcome::Void as u8
+        } else {
+            match winning_outcome {
+                Outcome::Yes | Outcome::No => winning_outcome as u8,
+                _ => return err!(ErrorCode::InvalidOutcomeArg),
+            }
+        };
+        m.resolution_reason = if auto_void {
+            ResolutionReason::AutoVoid as u8
+        } else {
+            resolution_reason as u8
+        };
+
+        emit!(MarketResolved {
+            market: m.key(),
+            winning_outcome: m.winning_outcome,
+            auto_void,
+            total_yes: m.total_yes,
+            total_no: m.total_no,
+            fees_accrued: 0,
+            resolution_reason: m.resolution_reason,
+        });
+        
+        Ok(())
+    }
+
+    pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
+        let m = &mut ctx.accounts.market;
+        let p = &mut ctx.accounts.position;
+
+        require!(m.resolved, ErrorCode::NotResolved);
+        require!(!p.claimed, ErrorCode::AlreadyClaimed);
+        require_keys_eq!(p.market, m.key(), ErrorCode::WrongMarket);
+        require_keys_eq!(ctx.accounts.bet_mint.key(), m.bet_mint, ErrorCode::WrongMint);
+
+        let payout = calculate_payout(m, p)?;
+
+        let market_key = m.key();
+        let bump: u8 = ctx.bumps.vault_authority;
+        let seeds: &[&[u8]] = &[VAULT_AUTH_SEED, market_key.as_ref(), &[bump]];
+        let signer: &[&[&[u8]]] = &[seeds];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.vault.to_account_info(),
+                    to: ctx.accounts.bettor_ata.to_account_info(),
+                    authority: ctx.accounts.vault_authority.to_account_info(),
+                },
+                signer,
+            ),
+            payout,
+        )?;
+
+        p.claimed = true;
+
+        emit!(WinningsClaimed {
+            market: m.key(),
+            bettor: ctx.accounts.bettor.key(),
+            payout,
+            position_amount: p.amount,
+            outcome: p.outcome,
+            winning_outcome: m.winning_outcome,
+        });
+        
+        Ok(())
+    }
+
+    pub fn emergency_pause(ctx: Context<EmergencyPause>, pause: bool) -> Result<()> {
+        require_keys_eq!(ctx.accounts.owner.key(), owner_pubkey(), ErrorCode::Unauthorized);
+        let m = &mut ctx.accounts.market;
+        m.emergency_paused = pause;
+
+        emit!(MarketPaused {
+            market: m.key(),
+            paused: pause,
+        });
+        
+        Ok(())
+    }
+
+    pub fn update_fee_receiver(ctx: Context<UpdateFeeReceiver>, new_receiver: Pubkey) -> Result<()> {
+        require_keys_eq!(ctx.accounts.owner.key(), owner_pubkey(), ErrorCode::Unauthorized);
+        let m = &mut ctx.accounts.market;
+        
+        require!(new_receiver != Pubkey::default(), ErrorCode::InvalidFeeReceiver);
+        m.fee_receiver = new_receiver;
+
+        emit!(FeeReceiverUpdated {
+            market: m.key(),
+            new_receiver,
+        });
+        
+        Ok(())
+    }
+
+    pub fn get_potential_payout(ctx: Context<GetPotentialPayout>, outcome: Outcome) -> Result<u64> {
+        let market = &ctx.accounts.market;
+        let position = &ctx.accounts.position;
+        
+        require_keys_eq!(position.market, market.key(), ErrorCode::WrongMarket);
+        require!(!market.resolved, ErrorCode::MarketResolved);
+
+        if outcome as u8 != position.outcome {
+            return Ok(0);
+        }
+
+        let total_yes = market.total_yes as u128;
+        let total_no = market.total_no as u128;
+        let total_pool = total_yes.checked_add(total_no).ok_or(ErrorCode::Overflow)?;
+        
+        let outcome_pool = match outcome {
+            Outcome::Yes => total_yes,
+            Outcome::No => total_no,
+            _ => return Ok(0),
+        };
+
+        if outcome_pool == 0 {
+            return Ok(0);
+        }
+
+        let user_amt = position.amount as u128;
+        let payout_u128 = total_pool
+            .checked_mul(user_amt)
+            .ok_or(ErrorCode::Overflow)?
+            .checked_div(outcome_pool)
+            .ok_or(ErrorCode::Overflow)?;
+            
+        u64::try_from(payout_u128).map_err(|_| ErrorCode::Overflow)
+    }
+}
+
+#[account]
+pub struct Market {
+    pub creator: Pubkey,
+    pub bet_mint: Pubkey,
+    pub vault: Pubkey,
+    pub vault_authority: Pubkey,
+    pub cutoff_ts: i64,
+    pub resolved: bool,
+    pub winning_outcome: u8,
+    pub total_yes: u64,
+    pub total_no: u64,
+    pub fees_accrued: u64,
+    pub emergency_paused: bool,
+    pub fee_receiver: Pubkey,
+    pub created_at: i64,
+    pub resolution_reason: u8,
+}
+impl Market {
+    pub const LEN: usize = 8
+        + 32 + 32 + 32 + 32
+        + 8 + 1 + 1 + 8 + 8 + 8
+        + 1 + 32 + 8 + 1;
+}
+
+#[account]
+pub struct Position {
+    pub owner: Pubkey,
+    pub market: Pubkey,
+    pub outcome: u8,
+    pub claimed: bool,
+    pub amount: u64,
+}
+impl Position {
+    pub const LEN: usize = 8 + 32 + 32 + 1 + 1 + 8;
+}
+
+#[account]
+pub struct MarketMetadata {
+    pub market: Pubkey,
+    pub question: String,
+    pub category: String,
+    pub created_at: i64,
+}
+impl MarketMetadata {
+    pub const LEN: usize = 8 + 32 + (4 + 280) + (4 + 50) + 8;
+}
+
+#[account]
+pub struct ProgramStats {
+    pub authority: Pubkey,
+    pub total_markets: u64,
+    pub total_volume: u64,
+    pub total_fees: u64,
+    pub total_bettors: u64,
+    pub is_initialized: bool,
+}
+impl ProgramStats {
+    pub const LEN: usize = 8 + 32 + 8 + 8 + 8 + 8 + 1;
+}
+
+#[repr(u8)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    Unset = 0,
+    Yes   = 1,
+    No    = 2,
+    Void  = 3,
+}
+
+#[repr(u8)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+pub enum ResolutionReason {
+    Unset = 0,
+    Manual = 1,
+    Oracle = 2,
+    AutoVoid = 3,
+    Consensus = 4,
+}
+
+#[event]
+pub struct ProgramInitialized {
+    pub authority: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct MarketCreated {
+    pub market: Pubkey,
+    pub creator: Pubkey,
+    pub cutoff_ts: i64,
+    pub bet_mint: Pubkey,
+    pub question: String,
+    pub category: String,
+}
+
+#[event]
+pub struct CutoffUpdated {
+    pub market: Pubkey,
+    pub new_cutoff_ts: i64,
+}
+
+#[event]
+pub struct BetPlaced {
+    pub market: Pubkey,
+    pub bettor: Pubkey,
+    pub outcome: Outcome,
+    pub amount: u64,
+    pub fee: u64,
+    pub net_amount: u64,
+}
+
+#[event]
+pub struct MarketResolved {
+    pub market: Pubkey,
+    pub winning_outcome: u8,
+    pub auto_void: bool,
+    pub total_yes: u64,
+    pub total_no: u64,
+    pub fees_accrued: u64,
+    pub resolution_reason: u8,
+}
+
+#[event]
+pub struct WinningsClaimed {
+    pub market: Pubkey,
+    pub bettor: Pubkey,
+    pub payout: u64,
+    pub position_amount: u64,
+    pub outcome: u8,
+    pub winning_outcome: u8,
+}
+
+#[event]
+pub struct FeesCollected {
+    pub market: Pubkey,
+    pub amount: u64,
+    pub recipient: Pubkey,
+}
+
+#[event]
+pub struct MarketPaused {
+    pub market: Pubkey,
+    pub paused: bool,
+}
+
+#[event]
+pub struct FeeReceiverUpdated {
+    pub market: Pubkey,
+    pub new_receiver: Pubkey,
+}
+
+#[derive(Accounts)]
+pub struct InitializeProgram<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        init,
+        payer = owner,
+        space = ProgramStats::LEN,
+        seeds = [b"program-stats"],
+        bump
+    )]
+    pub program_stats: Account<'info, ProgramStats>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CreateMarket<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(init, payer = owner, space = Market::LEN)]
+    pub market: Account<'info, Market>,
+
+    #[account(init, payer = owner, space = MarketMetadata::LEN)]
+    pub market_metadata: Account<'info, MarketMetadata>,
+
+    #[account(mut, seeds = [b"program-stats"], bump)]
+    pub program_stats: Account<'info, ProgramStats>,
+
+    pub bet_mint: Account<'info, Mint>,
+
+    #[account(seeds = [VAULT_AUTH_SEED, market.key().as_ref()], bump)]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        init,
+        payer = owner,
+        associated_token::mint = bet_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateCutoff<'info> {
+    pub owner: Signer<'info>,
+    #[account(mut)]
+    pub market: Account<'info, Market>,
+}
+
+#[derive(Accounts)]
+pub struct PlaceBet<'info> {
+    #[account(mut)]
+    pub bettor: Signer<'info>,
+
+    #[account(mut, has_one = bet_mint)]
+    pub market: Account<'info, Market>,
+
+    #[account(mut, seeds = [b"program-stats"], bump)]
+    pub program_stats: Account<'info, ProgramStats>,
+
+    pub bet_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::mint = bet_mint,
+        associated_token::authority = bettor
+    )]
+    pub bettor_ata: Account<'info, TokenAccount>,
+
+    #[account(seeds = [VAULT_AUTH_SEED, market.key().as_ref()], bump)]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = bet_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = bettor,
+        associated_token::mint = bet_mint,
+        associated_token::authority = fee_wallet
+    )]
+    pub fee_receiver_ata: Account<'info, TokenAccount>,
+
+    #[account(address = fee_wallet_pubkey())]
+    pub fee_wallet: UncheckedAccount<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = bettor,
+        space = Position::LEN,
+        seeds = [POSITION_SEED, market.key().as_ref(), bettor.key().as_ref()],
+        bump
+    )]
+    pub position: Account<'info, Position>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct ResolveMarket<'info> {
+    pub owner: Signer<'info>,
+    #[account(mut)]
+    pub market: Account<'info, Market>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimWinnings<'info> {
+    #[account(mut)]
+    pub bettor: Signer<'info>,
+
+    #[account(mut, has_one = bet_mint)]
+    pub market: Account<'info, Market>,
+
+    pub bet_mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::mint = bet_mint,
+        associated_token::authority = bettor
+    )]
+    pub bettor_ata: Account<'info, TokenAccount>,
+
+    #[account(seeds = [VAULT_AUTH_SEED, market.key().as_ref()], bump)]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = bet_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        close = bettor,
+        seeds = [POSITION_SEED, market.key().as_ref(), bettor.key().as_ref()],
+        bump,
+        constraint = position.owner == bettor.key() @ ErrorCode::Unauthorized
+    )]
+    pub position: Account<'info, Position>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencyPause<'info> {
+    pub owner: Signer<'info>,
+    #[account(mut)]
+    pub market: Account<'info, Market>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateFeeReceiver<'info> {
+    pub owner: Signer<'info>,
+    #[account(mut)]
+    pub market: Account<'info, Market>,
+}
+
+#[derive(Accounts)]
+pub struct GetPotentialPayout<'info> {
+    pub market: Account<'info, Market>,
+    pub position: Account<'info, Position>,
+}
+
+fn owner_pubkey() -> Pubkey {
+    Pubkey::from_str(OWNER).unwrap()
+}
+
+fn fee_wallet_pubkey() -> Pubkey {
+    Pubkey::from_str(FEE_WALLET).unwrap()
+}
+
+fn calculate_fee(amount: u64) -> Result<u64> {
+    amount
+        .checked_mul(FEE_BPS)
+        .ok_or(ErrorCode::Overflow)?
+        .checked_div(BPS_DENOM)
+        .ok_or(ErrorCode::Overflow)
+}
+
+fn validate_bet_limit(mint: &Mint, position: &Position, total_amount: u64) -> Result<()> {
+    let decimals = mint.decimals as u32;
+    let max_total: u128 = (MAX_BET_LIMIT as u128)
+        .checked_mul(10u128.pow(decimals))
+        .ok_or(ErrorCode::Overflow)?;
+    
+    let current_net = position.amount as u128;
+    let fee_rate = FEE_BPS as f64 / BPS_DENOM as f64;
+    let current_total_estimate = (current_net as f64 / (1.0 - fee_rate)) as u128;
+    
+    let new_total = current_total_estimate
+        .checked_add(total_amount as u128)
+        .ok_or(ErrorCode::Overflow)?;
+    
+    require!(new_total <= max_total, ErrorCode::BetExceedsLimit);
+    Ok(())
+}
+
+fn validate_market_active(market: &Market) -> Result<()> {
+    require!(!market.resolved, ErrorCode::MarketResolved);
+    Ok(())
+}
+
+fn calculate_payout(market: &Market, position: &Position) -> Result<u64> {
+    if market.winning_outcome == Outcome::Void as u8 {
+        require!(position.amount > 0, ErrorCode::NoPayout);
+        Ok(position.amount)
+    } else {
+        require!(position.outcome == market.winning_outcome, ErrorCode::NoPayout);
+
+        let total_yes = market.total_yes as u128;
+        let total_no = market.total_no as u128;
+        let total_pool = total_yes.checked_add(total_no).ok_or(ErrorCode::Overflow)?;
+        
+        let winning_pool = if market.winning_outcome == Outcome::Yes as u8 {
+            total_yes
+        } else {
+            total_no
+        };
+        
+        require!(winning_pool > 0, ErrorCode::NoPayout);
+
+        let user_amt = position.amount as u128;
+        let payout_u128 = total_pool
+            .checked_mul(user_amt)
+            .ok_or(ErrorCode::Overflow)?
+            .checked_div(winning_pool)
+            .ok_or(ErrorCode::Overflow)?;
+            
+        u64::try_from(payout_u128).map_err(|_| ErrorCode::Overflow)
+    }
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Only the owner can perform this action.")]
+    Unauthorized,
+    #[msg("Betting period is closed.")]
+    BettingClosed,
+    #[msg("Market already resolved.")]
+    AlreadyResolved,
+    #[msg("This market is resolved.")]
+    MarketResolved,
+    #[msg("Wrong bet mint for this market.")]
+    WrongMint,
+    #[msg("Bet exceeds the 100-token limit.")]
+    BetExceedsLimit,
+    #[msg("Arithmetic overflow.")]
+    Overflow,
+    #[msg("Market not resolved.")]
+    NotResolved,
+    #[msg("No payout for this position.")]
+    NoPayout,
+    #[msg("Position already claimed.")]
+    AlreadyClaimed,
+    #[msg("Wrong market for position.")]
+    WrongMarket,
+    #[msg("Cannot switch sides after placing a bet.")]
+    CannotSwitchSide,
+    #[msg("Invalid amount.")]
+    InvalidAmount,
+    #[msg("No fees available to sweep.")]
+    NoFees,
+    #[msg("New cutoff must be in the future.")]
+    InvalidCutoff,
+    #[msg("Too early to resolve.")]
+    TooEarly,
+    #[msg("Invalid outcome argument.")]
+    InvalidOutcomeArg,
+    #[msg("Market is emergency paused")]
+    EmergencyPaused,
+    #[msg("Market duration too long")]
+    MarketDurationTooLong,
+    #[msg("Bet amount too small")]
+    BetTooSmall,
+    #[msg("Invalid fee receiver")]
+    InvalidFeeReceiver,
+    #[msg("Market metadata too long")]
+    MetadataTooLong,
+}
