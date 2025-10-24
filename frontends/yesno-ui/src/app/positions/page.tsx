@@ -583,71 +583,64 @@ export default function PositionsPage() {
     const showClaim = r.canClaim === true;
 
     return (
-      <div key={r.pubkey.toBase58()} className="rounded-xl border border-stroke bg-surface p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <div key={r.pubkey.toBase58()} className="frame">
+        <div className="titlebar">
+          <div className="title truncate">
+            {r.market ? title : 'Position'}
+          </div>
+          <div className="flex items-center gap-2">
+            {r.market && <CopyChip value={r.market.toBase58()} />}
             {r.market && (
               <Link
                 href={`/market/${r.market.toBase58()}?title=${encodeURIComponent(title)}`}
-                className="text-zinc-100 hover:underline font-medium"
-                title={title}
+                className="win95-btn text-[10px]"
+                target="_blank"
               >
-                {title}
+                Open
               </Link>
             )}
-            {r.market && <CopyChip value={r.market.toBase58()} />}
           </div>
-
-          {r.market && (
-            <Link
-              href={`/market/${r.market.toBase58()}?title=${encodeURIComponent(title)}`}
-              className="px-3 py-1.5 rounded-lg border border-stroke text-zinc-200 hover:border-white/20"
-              target="_blank"
-            >
-              Open
-            </Link>
-          )}
         </div>
 
-        {/* Odds mini-bar */}
-        <div className="mt-3">
-          <div className="h-3 w-full rounded bg-zinc-800 overflow-hidden flex">
+        <div className="frame-body">
+          {/* Odds bar */}
+          <div className="sunken95 h-4 w-full overflow-hidden flex mb-2">
             <div style={{ width: `${yesPct}%` }} className="bg-emerald-500" />
             <div style={{ width: `${noPct}%` }} className="bg-rose-500" />
           </div>
-          <div className="mt-1 text-[11px] text-zinc-400 flex items-center gap-3">
-            <span>YES {yesPct.toFixed(1)}%</span>
-            <span>NO {noPct.toFixed(1)}%</span>
-            {r.status && <span>• {r.status}</span>}
+          <div className="text-[10px] text-black flex items-center gap-2 mb-3">
+            <span>✅ YES {yesPct.toFixed(1)}%</span>
+            <span>❌ NO {noPct.toFixed(1)}%</span>
+            {r.status && <span className="status-pill95">{r.status}</span>}
             {r.status === 'Resolved' && r.winner && <span>• Winner: {r.winner.toUpperCase()}</span>}
           </div>
-        </div>
 
-        <div className="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
-          <div className="panel p-3">
-            <div className="text-xs text-zinc-400 mb-1">Side</div>
-            <div className="text-zinc-100">{r.side ? r.side.toUpperCase() : '—'}</div>
-          </div>
-          <div className="panel p-3">
-            <div className="text-xs text-zinc-400 mb-1">Stake</div>
-            <div className="text-zinc-100">
-              {r.amount !== null && r.amount !== undefined ? fmtAtoms(r.amount!, DECIMALS) : '—'}
-              {r.status !== 'Open' && r.multiplier ? (
-                <span className="ml-2 text-xs text-zinc-400">({r.multiplier.toFixed(2)}x)</span>
-              ) : null}
+          <div className="grid sm:grid-cols-3 gap-2 text-xs">
+            <div className="sunken95 bg-white p-2">
+              <div className="text-black font-bold mb-1">Side:</div>
+              <div className="text-black">{r.side ? r.side.toUpperCase() : '—'}</div>
             </div>
-          </div>
-          <div className="panel p-3 flex items-center justify-between">
-            <div className="text-xs text-zinc-400">Actions</div>
-            <div className="flex items-center gap-2">
-              {showClaim && (
-                <button
-                  onClick={() => onClaim(r)}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  Claim
-                </button>
-              )}
+            <div className="sunken95 bg-white p-2">
+              <div className="text-black font-bold mb-1">Stake:</div>
+              <div className="text-black">
+                {r.amount !== null && r.amount !== undefined ? fmtAtoms(r.amount!, DECIMALS) : '—'}
+                {r.status !== 'Open' && r.multiplier ? (
+                  <span className="ml-1 text-[10px]">({r.multiplier.toFixed(2)}x)</span>
+                ) : null}
+              </div>
+            </div>
+            <div className="sunken95 bg-white p-2 flex items-center justify-between">
+              <div className="text-black font-bold">Actions:</div>
+              <div className="flex items-center gap-2">
+                {showClaim && (
+                  <button
+                    onClick={() => onClaim(r)}
+                    className="btn95 text-xs"
+                  >
+                    💰 Claim
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -657,59 +650,60 @@ export default function PositionsPage() {
 
   /* UI */
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">My Positions</h1>
-        <MintBadge mint={MINT} symbol={MINT_SYMBOL} decimals={DECIMALS} />
-      </div>
-
-      <ConnectGate bannerText="Connect your wallet to list and claim your positions.">
-        <div className="flex items-center justify-between mb-4">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-4">
+      <div className="frame">
+        <div className="titlebar">
+          <div className="title">My Positions</div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={scan}
-              disabled={!connected || loading}
-              title="Refresh"
-              aria-label="Refresh"
-              className="p-2 rounded-full border border-stroke bg-black/30 hover:bg-white/10 btn-disabled"
-            >
-              <RefreshIcon className={`h-5 w-5 text-white/85 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            {err && <span className="ml-2 text-xs text-rose-400">{err}</span>}
+            <MintBadge mint={MINT} symbol={MINT_SYMBOL} decimals={DECIMALS} />
           </div>
         </div>
+        <div className="frame-body">
+          <ConnectGate bannerText="Connect your wallet to list and claim your positions.">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={scan}
+                  disabled={!connected || loading}
+                  title="Refresh"
+                  aria-label="Refresh"
+                  className="btn95 text-xs"
+                >
+                  {loading ? '⏳ Loading...' : '🔄 Refresh'}
+                </button>
+                {err && <span className="ml-2 text-xs text-red-600">{err}</span>}
+              </div>
+            </div>
 
-        {/* Tabs */}
-        <div className="mb-6 flex items-center gap-2">
-          <button
-            onClick={() => setTab('active')}
-            className={`px-3 py-1.5 rounded-lg border ${
-              tab === 'active' ? 'border-white/30 bg-white/10' : 'border-stroke bg-black/30 hover:bg-white/10'
-            }`}
-          >
-            Active <span className="opacity-70 text-xs">({activeRows.length})</span>
-          </button>
-          <button
-            onClick={() => setTab('lost')}
-            className={`px-3 py-1.5 rounded-lg border ${
-              tab === 'lost' ? 'border-white/30 bg-white/10' : 'border-stroke bg-black/30 hover:bg-white/10'
-            }`}
-          >
-            Lost <span className="opacity-70 text-xs">({lostRows.length})</span>
-          </button>
+            {/* Tabs */}
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                onClick={() => setTab('active')}
+                className={`chip95 ${tab === 'active' ? 'chip95-active' : ''}`}
+              >
+                ✅ Active <span className="opacity-70">({activeRows.length})</span>
+              </button>
+              <button
+                onClick={() => setTab('lost')}
+                className={`chip95 ${tab === 'lost' ? 'chip95-active' : ''}`}
+              >
+                ❌ Lost <span className="opacity-70">({lostRows.length})</span>
+              </button>
+            </div>
+
+            {!loading && tab === 'active' && activeRows.length === 0 && (
+              <div className="sunken95 bg-white p-3 text-sm text-black">No active positions.</div>
+            )}
+            {!loading && tab === 'lost' && lostRows.length === 0 && (
+              <div className="sunken95 bg-white p-3 text-sm text-black">No lost positions.</div>
+            )}
+          </ConnectGate>
         </div>
+      </div>
 
-        {!loading && tab === 'active' && activeRows.length === 0 && (
-          <div className="rounded-lg border border-stroke p-4 text-sm text-zinc-300">No active positions.</div>
-        )}
-        {!loading && tab === 'lost' && lostRows.length === 0 && (
-          <div className="rounded-lg border border-stroke p-4 text-sm text-zinc-300">No lost positions.</div>
-        )}
-
-        <div className="space-y-4">
-          {(tab === 'active' ? activeRows : lostRows).map(renderRow)}
-        </div>
-      </ConnectGate>
+      <div className="space-y-3">
+        {(tab === 'active' ? activeRows : lostRows).map(renderRow)}
+      </div>
     </div>
   );
 }

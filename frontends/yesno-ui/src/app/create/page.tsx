@@ -233,85 +233,80 @@ export default function CreateMarketPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-semibold mb-6">
-        Create Market <span className="text-sm opacity-60">(owner only)</span>
-      </h1>
-
-      <div className="rounded-lg border border-stroke bg-surface p-5 space-y-4">
-        {/* Header info with MintBadge */}
-        <div className="text-sm opacity-75 space-y-1">
-          <div>
-            Program: <span className="font-mono">{PROGRAM_ID.toBase58()}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>Mint:</span>
-            <MintBadge mint={MINT} symbol={MINT_SYMBOL} decimals={DECIMALS} />
-          </div>
-          {/* Intentionally do NOT render the RPC endpoint to avoid leaking keys/URLs */}
-          <div>
-            Connection: <span className="font-mono">OK</span> ✅
-          </div>
+      <div className="frame mb-4">
+        <div className="titlebar">
+          <div className="title">Create New Market</div>
         </div>
-
-        {/* Gate the form when wallet isn't connected */}
-        <ConnectGate bannerText="Connect the owner wallet to create markets.">
-          {!connected ? (
-            <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 p-3">
-              Connect your wallet to continue.
+        <div className="frame-body">
+          <div className="text-xs text-black opacity-75 space-y-1 mb-4">
+            <div>
+              <strong>Program:</strong> <span className="font-mono text-[10px] break-all">{PROGRAM_ID.toBase58()}</span>
             </div>
-          ) : !isOwner ? (
-            <div className="rounded-md bg-red-500/10 border border-red-500/30 text-red-200 p-3">
-              Only the owner wallet can create markets.
+            <div className="flex items-center gap-2">
+              <strong>Mint:</strong>
+              <MintBadge mint={MINT} symbol={MINT_SYMBOL} decimals={DECIMALS} />
             </div>
-          ) : null}
-
-          <label className="block mt-2">
-            <div className="mb-1 text-sm opacity-80">Name</div>
-            <input
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Market title (UI only)"
-              maxLength={120}
-            />
-          </label>
-
-          <label className="block">
-            <div className="mb-1 text-sm opacity-80">Cutoff (minutes from now)</div>
-            <input
-              className="input"
-              value={cutoffMins}
-              onChange={(e) => setCutoffMins(e.target.value)}
-              inputMode="numeric"
-              placeholder="10"
-            />
-          </label>
-
-          <button
-            onClick={onCreate}
-            disabled={!connected || !isOwner || busy}
-            className={`mt-2 px-4 py-2 rounded-md text-white ${
-              !connected || !isOwner || busy
-                ? 'bg-purple-800/50 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-700'
-            }`}
-          >
-            {busy ? 'Creating…' : 'Create Market'}
-          </button>
-
-          {error && (
-            <div className="mt-3 rounded-md bg-red-600/10 border border-red-600/30 text-red-200 px-3 py-2 whitespace-pre-wrap">
-              {error}
+            <div>
+              <strong>Connection:</strong> <span className="font-mono">OK</span> ✅
             </div>
-          )}
+          </div>
 
-          {shareUrl && (
-            <div className="mt-3 rounded-md bg-green-600/10 border border-green-600/30 text-green-200 px-3 py-2">
-              <div className="font-medium">Shareable link</div>
-              <div className="font-mono break-all text-xs mt-1">{shareUrl}</div>
+          <ConnectGate bannerText="Connect the owner wallet to create markets.">
+            {!connected ? (
+              <div className="sunken95 p-3 mb-3 bg-yellow-100">
+                <div className="text-black text-sm">⚠️ Connect your wallet to continue.</div>
+              </div>
+            ) : !isOwner ? (
+              <div className="sunken95 p-3 mb-3 bg-red-100">
+                <div className="text-black text-sm">❌ Only the owner wallet can create markets.</div>
+              </div>
+            ) : null}
+
+            <div className="mb-3">
+              <label className="block mb-1 text-black text-sm font-bold">Market Name:</label>
+              <input
+                className="input95 w-full"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Market title (UI only)"
+                maxLength={120}
+              />
             </div>
-          )}
-        </ConnectGate>
+
+            <div className="mb-3">
+              <label className="block mb-1 text-black text-sm font-bold">Cutoff (minutes from now):</label>
+              <input
+                className="input95 w-full"
+                value={cutoffMins}
+                onChange={(e) => setCutoffMins(e.target.value)}
+                inputMode="numeric"
+                placeholder="10"
+              />
+            </div>
+
+            <button
+              onClick={onCreate}
+              disabled={!connected || !isOwner || busy}
+              className="btn95"
+            >
+              {busy ? '⏳ Creating…' : '✅ Create Market'}
+            </button>
+
+            {error && (
+              <div className="mt-3 sunken95 bg-red-100 px-3 py-2">
+                <div className="text-black text-xs font-bold mb-1">❌ Error</div>
+                <div className="text-black text-xs whitespace-pre-wrap">{error}</div>
+              </div>
+            )}
+
+            {shareUrl && (
+              <div className="mt-3 sunken95 bg-green-100 px-3 py-2">
+                <div className="text-black text-xs font-bold mb-1">✅ Shareable Link</div>
+                <div className="text-black font-mono break-all text-[10px] mt-1">{shareUrl}</div>
+              </div>
+            )}
+          </ConnectGate>
+        </div>
       </div>
     </div>
   );
