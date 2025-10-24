@@ -1,12 +1,320 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "yesno_bets",
-  "instructions": [],
-  "accounts": [],
-  "types": [],
-  "events": [],
-  "errors": [],
+  "instructions": [
+    {
+      "name": "initializeProgram",
+      "accounts": [
+        { "name": "owner", "isMut": true, "isSigner": true },
+        { "name": "programStats", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "createMarket",
+      "accounts": [
+        { "name": "owner", "isMut": true, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": true },
+        { "name": "marketMetadata", "isMut": true, "isSigner": true },
+        { "name": "programStats", "isMut": true, "isSigner": false },
+        { "name": "betMint", "isMut": false, "isSigner": false },
+        { "name": "vaultAuthority", "isMut": false, "isSigner": false },
+        { "name": "vault", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false },
+        { "name": "associatedTokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "cutoffTs", "type": "i64" },
+        { "name": "question", "type": "string" },
+        { "name": "category", "type": "string" }
+      ]
+    },
+    {
+      "name": "updateCutoff",
+      "accounts": [
+        { "name": "owner", "isMut": false, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": false }
+      ],
+      "args": [
+        { "name": "newCutoffTs", "type": "i64" }
+      ]
+    },
+    {
+      "name": "placeBet",
+      "accounts": [
+        { "name": "bettor", "isMut": true, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": false },
+        { "name": "programStats", "isMut": true, "isSigner": false },
+        { "name": "betMint", "isMut": false, "isSigner": false },
+        { "name": "bettorAta", "isMut": true, "isSigner": false },
+        { "name": "feeReceiverAta", "isMut": true, "isSigner": false },
+        { "name": "vault", "isMut": true, "isSigner": false },
+        { "name": "position", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "outcome", "type": { "defined": "Outcome" } },
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "resolveMarket",
+      "accounts": [
+        { "name": "owner", "isMut": false, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": false }
+      ],
+      "args": [
+        { "name": "winningOutcome", "type": { "defined": "Outcome" } },
+        { "name": "resolutionReason", "type": { "defined": "ResolutionReason" } }
+      ]
+    },
+    {
+      "name": "claimWinnings",
+      "accounts": [
+        { "name": "bettor", "isMut": true, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": false },
+        { "name": "position", "isMut": true, "isSigner": false },
+        { "name": "betMint", "isMut": false, "isSigner": false },
+        { "name": "bettorAta", "isMut": true, "isSigner": false },
+        { "name": "vault", "isMut": true, "isSigner": false },
+        { "name": "vaultAuthority", "isMut": false, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "emergencyPause",
+      "accounts": [
+        { "name": "owner", "isMut": false, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": false }
+      ],
+      "args": [
+        { "name": "pause", "type": "bool" }
+      ]
+    },
+    {
+      "name": "updateFeeReceiver",
+      "accounts": [
+        { "name": "owner", "isMut": false, "isSigner": true },
+        { "name": "market", "isMut": true, "isSigner": false }
+      ],
+      "args": [
+        { "name": "newReceiver", "type": "publicKey" }
+      ]
+    },
+    {
+      "name": "getPotentialPayout",
+      "accounts": [
+        { "name": "market", "isMut": false, "isSigner": false },
+        { "name": "position", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "outcome", "type": { "defined": "Outcome" } }
+      ],
+      "returns": "u64"
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Market",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "creator", "type": "publicKey" },
+          { "name": "betMint", "type": "publicKey" },
+          { "name": "vault", "type": "publicKey" },
+          { "name": "vaultAuthority", "type": "publicKey" },
+          { "name": "cutoffTs", "type": "i64" },
+          { "name": "resolved", "type": "bool" },
+          { "name": "winningOutcome", "type": "u8" },
+          { "name": "totalYes", "type": "u64" },
+          { "name": "totalNo", "type": "u64" },
+          { "name": "feesAccrued", "type": "u64" },
+          { "name": "emergencyPaused", "type": "bool" },
+          { "name": "feeReceiver", "type": "publicKey" },
+          { "name": "createdAt", "type": "i64" },
+          { "name": "resolutionReason", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "Position",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "publicKey" },
+          { "name": "market", "type": "publicKey" },
+          { "name": "outcome", "type": "u8" },
+          { "name": "claimed", "type": "bool" },
+          { "name": "amount", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "MarketMetadata",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "market", "type": "publicKey" },
+          { "name": "question", "type": "string" },
+          { "name": "category", "type": "string" },
+          { "name": "createdAt", "type": "i64" }
+        ]
+      }
+    },
+    {
+      "name": "ProgramStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "publicKey" },
+          { "name": "totalMarkets", "type": "u64" },
+          { "name": "totalVolume", "type": "u64" },
+          { "name": "totalFees", "type": "u64" },
+          { "name": "totalBettors", "type": "u64" },
+          { "name": "isInitialized", "type": "bool" }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "Outcome",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Unset" },
+          { "name": "Yes" },
+          { "name": "No" },
+          { "name": "Void" }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionReason",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Unset" },
+          { "name": "Manual" },
+          { "name": "Oracle" },
+          { "name": "AutoVoid" },
+          { "name": "Consensus" }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "ProgramInitialized",
+      "fields": [
+        { "name": "authority", "type": "publicKey", "index": false },
+        { "name": "timestamp", "type": "i64", "index": false }
+      ]
+    },
+    {
+      "name": "MarketCreated",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "creator", "type": "publicKey", "index": false },
+        { "name": "cutoffTs", "type": "i64", "index": false },
+        { "name": "betMint", "type": "publicKey", "index": false },
+        { "name": "question", "type": "string", "index": false },
+        { "name": "category", "type": "string", "index": false }
+      ]
+    },
+    {
+      "name": "CutoffUpdated",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "newCutoffTs", "type": "i64", "index": false }
+      ]
+    },
+    {
+      "name": "BetPlaced",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "bettor", "type": "publicKey", "index": false },
+        { "name": "outcome", "type": { "defined": "Outcome" }, "index": false },
+        { "name": "amount", "type": "u64", "index": false },
+        { "name": "fee", "type": "u64", "index": false },
+        { "name": "netAmount", "type": "u64", "index": false }
+      ]
+    },
+    {
+      "name": "MarketResolved",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "winningOutcome", "type": "u8", "index": false },
+        { "name": "autoVoid", "type": "bool", "index": false },
+        { "name": "totalYes", "type": "u64", "index": false },
+        { "name": "totalNo", "type": "u64", "index": false },
+        { "name": "feesAccrued", "type": "u64", "index": false },
+        { "name": "resolutionReason", "type": "u8", "index": false }
+      ]
+    },
+    {
+      "name": "WinningsClaimed",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "bettor", "type": "publicKey", "index": false },
+        { "name": "payout", "type": "u64", "index": false },
+        { "name": "positionAmount", "type": "u64", "index": false },
+        { "name": "outcome", "type": "u8", "index": false },
+        { "name": "winningOutcome", "type": "u8", "index": false }
+      ]
+    },
+    {
+      "name": "FeesCollected",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "amount", "type": "u64", "index": false },
+        { "name": "recipient", "type": "publicKey", "index": false }
+      ]
+    },
+    {
+      "name": "MarketPaused",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "paused", "type": "bool", "index": false }
+      ]
+    },
+    {
+      "name": "FeeReceiverUpdated",
+      "fields": [
+        { "name": "market", "type": "publicKey", "index": false },
+        { "name": "newReceiver", "type": "publicKey", "index": false }
+      ]
+    }
+  ],
+  "errors": [
+    { "code": 6000, "name": "Unauthorized", "msg": "Only the owner can perform this action." },
+    { "code": 6001, "name": "BettingClosed", "msg": "Betting period is closed." },
+    { "code": 6002, "name": "AlreadyResolved", "msg": "Market already resolved." },
+    { "code": 6003, "name": "MarketResolved", "msg": "This market is resolved." },
+    { "code": 6004, "name": "WrongMint", "msg": "Wrong bet mint for this market." },
+    { "code": 6005, "name": "BetExceedsLimit", "msg": "Bet exceeds the 100-token limit." },
+    { "code": 6006, "name": "Overflow", "msg": "Arithmetic overflow." },
+    { "code": 6007, "name": "NotResolved", "msg": "Market not resolved." },
+    { "code": 6008, "name": "NoPayout", "msg": "No payout for this position." },
+    { "code": 6009, "name": "AlreadyClaimed", "msg": "Position already claimed." },
+    { "code": 6010, "name": "WrongMarket", "msg": "Wrong market for position." },
+    { "code": 6011, "name": "CannotSwitchSide", "msg": "Cannot switch sides after placing a bet." },
+    { "code": 6012, "name": "InvalidAmount", "msg": "Invalid amount." },
+    { "code": 6013, "name": "NoFees", "msg": "No fees available to sweep." },
+    { "code": 6014, "name": "InvalidCutoff", "msg": "New cutoff must be in the future." },
+    { "code": 6015, "name": "TooEarly", "msg": "Too early to resolve." },
+    { "code": 6016, "name": "InvalidOutcomeArg", "msg": "Invalid outcome argument." },
+    { "code": 6017, "name": "EmergencyPaused", "msg": "Market is emergency paused" },
+    { "code": 6018, "name": "MarketDurationTooLong", "msg": "Market duration too long" },
+    { "code": 6019, "name": "BetTooSmall", "msg": "Bet amount too small" },
+    { "code": 6020, "name": "InvalidFeeReceiver", "msg": "Invalid fee receiver" },
+    { "code": 6021, "name": "MetadataTooLong", "msg": "Market metadata too long" }
+  ],
   "metadata": {
-    "address": "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+    "address": "D1M35W2QNQ6fDMUkYe1ZBp79oxHmQS7YXiHmctqKfefq"
   }
 }
