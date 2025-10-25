@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "rust-stable", "web", "bash", "python-3.11"]
+modules = ["nodejs-20", "rust-stable", "web", "bash"]
 [agent]
 expertMode = true
 
@@ -33,6 +33,10 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 41501
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
