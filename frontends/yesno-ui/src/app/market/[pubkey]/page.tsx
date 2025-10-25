@@ -27,6 +27,7 @@ import { PROGRAM_ID, MINT, OWNER, DECIMALS, MINT_SYMBOL } from '@/lib/constants'
 import { CopyChip } from '@/components/ui/CopyChip';
 import { MintBadge } from '@/components/ui/MintBadge';
 import { ConnectGate } from '@/components/ui/ConnectGate';
+import { AdminPanel } from '@/components/AdminPanel';
 
 type ActivityRow =
   | { type: 'place'; sig: string; ts: number | null; wallet: string; side: 'YES' | 'NO' | '?'; amount?: string }
@@ -1506,6 +1507,19 @@ export default function MarketPage() {
               )}
             </div>
           </ConnectGate>
+
+          {/* Admin Panel - Owner Only */}
+          {strict && wallet.publicKey && wallet.publicKey.equals(OWNER) && (
+            <AdminPanel
+              marketPubkey={marketPk}
+              currentCutoff={strict.cutoffTs.toNumber()}
+              isPaused={false}
+              onSuccess={() => {
+                // Refresh market data after admin action
+                fetchMarket();
+              }}
+            />
+          )}
         </div>
 
         {/* Right Column - User Info & Activity */}
