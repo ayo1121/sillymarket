@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["pkg-config", "libusb1"]
+packages = ["pkg-config", "libusb1", "solana-cli", "openssl", "libudev-zero"]
 
 [workflows]
 runButton = "Project"
@@ -33,10 +33,6 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 41501
-externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
