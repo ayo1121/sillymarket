@@ -85,6 +85,8 @@ pub const BET_MINT: Pubkey = solana_program::pubkey!("4zMMC9srt5Ri5X14GAgXhaHii3
 
 ## 🏗️ Step 4: Build and Deploy Contract
 
+**IMPORTANT:** The contract has been updated to use a PDA for market metadata instead of a random keypair. This makes metadata deterministically fetchable from the blockchain. Make sure you're using the latest version before building.
+
 ```bash
 # Navigate to the Anchor project directory
 cd programs/yesno_bets

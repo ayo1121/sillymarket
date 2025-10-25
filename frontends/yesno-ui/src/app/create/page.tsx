@@ -154,8 +154,6 @@ export default function CreateMarketPage() {
 
     // Program-owned market account
     const marketKp = Keypair.generate();
-    // Market metadata account (separate from market)
-    const marketMetadataKp = Keypair.generate();
 
     // PDAs your program expects
     const [vaultAuthority] = PublicKey.findProgramAddressSync(
@@ -164,6 +162,11 @@ export default function CreateMarketPage() {
     );
     const [programStats] = PublicKey.findProgramAddressSync(
       [new TextEncoder().encode('program-stats')],
+      PROGRAM_ID
+    );
+    // Market metadata PDA (derived from market address)
+    const [marketMetadata] = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('market-metadata'), marketKp.publicKey.toBuffer()],
       PROGRAM_ID
     );
     // Program expects the ATA (vault) for the vaultAuthority PDA
@@ -201,7 +204,7 @@ export default function CreateMarketPage() {
       const keys = [
         { pubkey: publicKey, isSigner: true, isWritable: true }, // owner (payer)
         { pubkey: marketKp.publicKey, isSigner: true, isWritable: true }, // market (init)
-        { pubkey: marketMetadataKp.publicKey, isSigner: true, isWritable: true }, // market_metadata (init)
+        { pubkey: marketMetadata, isSigner: false, isWritable: true }, // market_metadata (PDA)
         { pubkey: programStats, isSigner: false, isWritable: true }, // program_stats (PDA)
         { pubkey: MINT, isSigner: false, isWritable: false }, // bet_mint
         { pubkey: vaultAuthority, isSigner: false, isWritable: false }, // vault_authority (PDA)
@@ -219,7 +222,7 @@ export default function CreateMarketPage() {
       tx.recentBlockhash = blockhash;
       tx.add(memoIx(`CreateMarket:${trimmedName.slice(0, 40)}`, publicKey));
       tx.add(ixProgram);
-      tx.partialSign(marketKp, marketMetadataKp);
+      tx.partialSign(marketKp);
 
       if (!wallet.signTransaction)
         throw new Error('Wallet does not support transaction signing.');

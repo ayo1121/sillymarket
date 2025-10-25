@@ -521,7 +521,13 @@ pub struct CreateMarket<'info> {
     #[account(init, payer = owner, space = Market::LEN)]
     pub market: Account<'info, Market>,
 
-    #[account(init, payer = owner, space = MarketMetadata::LEN)]
+    #[account(
+        init,
+        payer = owner,
+        space = MarketMetadata::LEN,
+        seeds = [b"market-metadata", market.key().as_ref()],
+        bump
+    )]
     pub market_metadata: Account<'info, MarketMetadata>,
 
     #[account(mut, seeds = [b"program-stats"], bump)]
