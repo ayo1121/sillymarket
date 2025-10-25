@@ -100,6 +100,7 @@ export default function CreateMarketPage() {
   const { push } = useToast();
 
   const [name, setName] = useState('New Market');
+  const [category, setCategory] = useState('General');
   const [cutoffMins, setCutoffMins] = useState('10');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +132,20 @@ export default function CreateMarketPage() {
     }
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError('Please enter a market name.');
+      setError('Please enter a market name/question.');
+      return;
+    }
+    if (trimmedName.length > 280) {
+      setError('Question must be 280 characters or less.');
+      return;
+    }
+    const trimmedCategory = category.trim();
+    if (!trimmedCategory) {
+      setError('Please enter a category.');
+      return;
+    }
+    if (trimmedCategory.length > 50) {
+      setError('Category must be 50 characters or less.');
       return;
     }
 
@@ -140,10 +154,16 @@ export default function CreateMarketPage() {
 
     // Program-owned market account
     const marketKp = Keypair.generate();
+    // Market metadata account (separate from market)
+    const marketMetadataKp = Keypair.generate();
 
     // PDAs your program expects
     const [vaultAuthority] = PublicKey.findProgramAddressSync(
       [new TextEncoder().encode('vault-auth'), marketKp.publicKey.toBuffer()],
+      PROGRAM_ID
+    );
+    const [programStats] = PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('program-stats')],
       PROGRAM_ID
     );
     // Program expects the ATA (vault) for the vaultAuthority PDA
@@ -152,21 +172,43 @@ export default function CreateMarketPage() {
     try {
       setBusy(true);
 
-      // Anchor global ix data
+      // Anchor instruction data with question and category
       const disc = await anchorDiscriminator('create_market');
-      const data = concatBytes(disc, u64le(cutoffTs));
+      
+      // Encode cutoff_ts (i64)
+      const cutoffBytes = u64le(cutoffTs);
+      
+      // Encode question string (4-byte length prefix + UTF-8 bytes)
+      const questionBytes = te.encode(trimmedName);
+      const questionLen = new Uint8Array(4);
+      new DataView(questionLen.buffer).setUint32(0, questionBytes.length, true);
+      
+      // Encode category string (4-byte length prefix + UTF-8 bytes)
+      const categoryBytes = te.encode(trimmedCategory);
+      const categoryLen = new Uint8Array(4);
+      new DataView(categoryLen.buffer).setUint32(0, categoryBytes.length, true);
+      
+      const data = concatBytes(
+        disc,
+        cutoffBytes,
+        questionLen,
+        questionBytes,
+        categoryLen,
+        categoryBytes
+      );
 
       // Account order MUST match program definition (IDL)
       const keys = [
         { pubkey: publicKey, isSigner: true, isWritable: true }, // owner (payer)
         { pubkey: marketKp.publicKey, isSigner: true, isWritable: true }, // market (init)
+        { pubkey: marketMetadataKp.publicKey, isSigner: true, isWritable: true }, // market_metadata (init)
+        { pubkey: programStats, isSigner: false, isWritable: true }, // program_stats (PDA)
         { pubkey: MINT, isSigner: false, isWritable: false }, // bet_mint
         { pubkey: vaultAuthority, isSigner: false, isWritable: false }, // vault_authority (PDA)
         { pubkey: vaultAta, isSigner: false, isWritable: true }, // vault (ATA)
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
         { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
       ];
 
       const ixProgram = new TransactionInstruction({ programId: PROGRAM_ID, keys, data });
@@ -177,7 +219,7 @@ export default function CreateMarketPage() {
       tx.recentBlockhash = blockhash;
       tx.add(memoIx(`CreateMarket:${trimmedName.slice(0, 40)}`, publicKey));
       tx.add(ixProgram);
-      tx.partialSign(marketKp);
+      tx.partialSign(marketKp, marketMetadataKp);
 
       if (!wallet.signTransaction)
         throw new Error('Wallet does not support transaction signing.');
@@ -229,7 +271,7 @@ export default function CreateMarketPage() {
     } finally {
       setBusy(false);
     }
-  }, [busy, connected, publicKey, isOwner, cutoffMins, name, connection, wallet, router, push]);
+  }, [busy, connected, publicKey, isOwner, cutoffMins, name, category, connection, wallet, router, push]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -263,14 +305,35 @@ export default function CreateMarketPage() {
             ) : null}
 
             <div className="mb-3">
-              <label className="block mb-1 text-black text-sm font-bold">Market Name:</label>
+              <label className="block mb-1 text-black text-sm font-bold">Market Question:</label>
               <input
                 className="input95 w-full"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Market title (UI only)"
-                maxLength={120}
+                placeholder="e.g., Will Bitcoin reach $100k by end of 2025?"
+                maxLength={280}
               />
+              <div className="text-xs text-black opacity-50 mt-1">{name.length}/280 characters</div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block mb-1 text-black text-sm font-bold">Category:</label>
+              <select
+                className="input95 w-full"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="General">General</option>
+                <option value="Crypto">Crypto</option>
+                <option value="Sports">Sports</option>
+                <option value="Politics">Politics</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Technology">Technology</option>
+                <option value="Science">Science</option>
+                <option value="Finance">Finance</option>
+                <option value="Other">Other</option>
+              </select>
+              <div className="text-xs text-black opacity-50 mt-1">{category.length}/50 characters</div>
             </div>
 
             <div className="mb-3">

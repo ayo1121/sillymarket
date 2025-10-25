@@ -16,7 +16,7 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
 } from "@solana/spl-token";
 
-import { BorshCoder, type Idl, utils as anchorUtils } from "@coral-xyz/anchor";
+import { BorshCoder, type Idl, BN } from "@coral-xyz/anchor";
 import programIdl from "@/idl/yesno_bets.json";
 
 /** ------------------------------------------------------------------------
@@ -241,7 +241,7 @@ export async function buildPlaceBetIx(
 
   const ix = await buildIx(
     "placeBet",
-    { side: params.side, amount: new anchorUtils.BN(params.amountBaseUnits) },
+    { side: params.side, amount: new BN(params.amountBaseUnits) },
     accounts
   );
 
@@ -400,6 +400,131 @@ export async function buildSweepFeesIx(
   ixs.push(ix);
   return ixs;
 }
+
+/** ------------------------------------------------------------------------
+ *  Admin / Owner-only builders
+ *  --------------------------------------------------------------------- */
+
+// Initialize Program (run once after deployment)
+export async function buildInitializeProgramIx(
+  _connection: Connection,
+  params: {
+    owner: PublicKey;
+    priorityFeeMicroLamports?: number;
+  }
+): Promise<TransactionInstruction[]> {
+  const ixs: TransactionInstruction[] = [];
+  if (params.priorityFeeMicroLamports && params.priorityFeeMicroLamports > 0) {
+    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Math.floor(params.priorityFeeMicroLamports) }));
+  }
+
+  const [programStats] = PK.findProgramAddressSync([Buffer.from("program-stats")], PROGRAM_ID);
+
+  const accounts: Partial<AccountDict> = {
+    systemProgram: SystemProgram.programId,
+    owner: params.owner,
+    programStats,
+  };
+
+  const ix = await buildIx("initializeProgram", {}, accounts);
+  ixs.push(ix);
+  return ixs;
+}
+
+// Update market cutoff (owner only)
+export async function buildUpdateCutoffIx(
+  _connection: Connection,
+  params: {
+    owner: PublicKey;
+    market: PublicKey;
+    newCutoffTs: number;
+    priorityFeeMicroLamports?: number;
+  }
+): Promise<TransactionInstruction[]> {
+  const ixs: TransactionInstruction[] = [];
+  if (params.priorityFeeMicroLamports && params.priorityFeeMicroLamports > 0) {
+    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Math.floor(params.priorityFeeMicroLamports) }));
+  }
+
+  const accounts: Partial<AccountDict> = {
+    systemProgram: SystemProgram.programId,
+    owner: params.owner,
+    market: params.market,
+  };
+
+  const ix = await buildIx("updateCutoff", { newCutoffTs: new BN(params.newCutoffTs) }, accounts);
+  ixs.push(ix);
+  return ixs;
+}
+
+// Emergency pause market (owner only)
+export async function buildEmergencyPauseIx(
+  _connection: Connection,
+  params: {
+    owner: PublicKey;
+    market: PublicKey;
+    pause: boolean;
+    priorityFeeMicroLamports?: number;
+  }
+): Promise<TransactionInstruction[]> {
+  const ixs: TransactionInstruction[] = [];
+  if (params.priorityFeeMicroLamports && params.priorityFeeMicroLamports > 0) {
+    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Math.floor(params.priorityFeeMicroLamports) }));
+  }
+
+  const accounts: Partial<AccountDict> = {
+    systemProgram: SystemProgram.programId,
+    owner: params.owner,
+    market: params.market,
+  };
+
+  const ix = await buildIx("emergencyPause", { pause: params.pause }, accounts);
+  ixs.push(ix);
+  return ixs;
+}
+
+// Update fee receiver (owner only)
+export async function buildUpdateFeeReceiverIx(
+  _connection: Connection,
+  params: {
+    owner: PublicKey;
+    market: PublicKey;
+    newReceiver: PublicKey;
+    priorityFeeMicroLamports?: number;
+  }
+): Promise<TransactionInstruction[]> {
+  const ixs: TransactionInstruction[] = [];
+  if (params.priorityFeeMicroLamports && params.priorityFeeMicroLamports > 0) {
+    ixs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Math.floor(params.priorityFeeMicroLamports) }));
+  }
+
+  const accounts: Partial<AccountDict> = {
+    systemProgram: SystemProgram.programId,
+    owner: params.owner,
+    market: params.market,
+  };
+
+  const ix = await buildIx("updateFeeReceiver", { newReceiver: params.newReceiver }, accounts);
+  ixs.push(ix);
+  return ixs;
+}
+
+/** ------------------------------------------------------------------------
+ *  Helpers for fetching program data
+ *  --------------------------------------------------------------------- */
+
+// Helper to find program stats PDA
+export function findProgramStatsPda(): [PK, number] {
+  return PK.findProgramAddressSync([Buffer.from("program-stats")], PROGRAM_ID);
+}
+
+// Helper to find market metadata PDA (if using PDA for metadata)
+export function findMarketMetadataPda(market: PublicKey): [PK, number] {
+  return PK.findProgramAddressSync([Buffer.from("market-metadata"), market.toBuffer()], PROGRAM_ID);
+}
+
+// Export constants for use in components
+export { PROGRAM_ID, BET_MINT, OWNER };
 
 /** ------------------------------------------------------------------------
  *  EOF helpers/notes
