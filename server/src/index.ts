@@ -23,6 +23,26 @@ const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 // =====================================================================
+// ENVIRONMENT VALIDATION
+// =====================================================================
+
+/**
+ * Validate required environment variables are set
+ * Fails fast on startup if configuration is broken
+ */
+function validateEnv() {
+  const required = ["DATABASE_URL", "SESSION_SECRET", "APP_ORIGIN"];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`
+    );
+  }
+}
+
+validateEnv();
+
+// =====================================================================
 // SECURITY HELPERS
 // =====================================================================
 

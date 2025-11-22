@@ -191,17 +191,7 @@ pub mod yesno_markets {
         max_bet_lamports: u64,
         admin_pre_cutoff: bool,
     ) -> Result<()> {
-        // Debug: Print CONFIG_SEED
-        msg!("[DEBUG] CONFIG_SEED: {:?}", CONFIG_SEED);
-        
-        // Debug: Print the config account key passed from client
-        msg!("[DEBUG] ctx.accounts.config.key(): {}", ctx.accounts.config.key());
-        
-        // Debug: Derive the expected PDA and compare
-        let (expected_pda, expected_bump) = Pubkey::find_program_address(&[CONFIG_SEED], ctx.program_id);
-        msg!("[DEBUG] Expected PDA from Pubkey::find_program_address: {}", expected_pda);
-        msg!("[DEBUG] Expected bump: {}", expected_bump);
-        msg!("[DEBUG] Program ID: {}", ctx.program_id);
+        let (expected_pda, _expected_bump) = Pubkey::find_program_address(&[CONFIG_SEED], ctx.program_id);
         
         // Verify the config account matches the expected PDA
         require_keys_eq!(

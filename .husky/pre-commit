@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# SECURITY: Prevent accidental commits of .env files
+if git diff --cached --name-only | grep -E '\.env$|\.env\.local$' > /dev/null; then
+  echo "❌ ERROR: .env files must not be committed."
+  echo "   Found .env files in staged changes."
+  echo "   Please unstage them with: git reset HEAD <file>"
+  exit 1
+fi

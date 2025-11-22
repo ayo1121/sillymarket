@@ -1,0 +1,177 @@
+name: Security CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  frontend-security:
+    name: Frontend Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/web/package-lock.json
+      
+      - name: Install frontend dependencies
+        working-directory: client/web
+        run: npm ci
+      
+      - name: Run frontend security audit
+        working-directory: client/web
+        run: npm audit --audit-level=high || true
+      
+      - name: Build frontend
+        working-directory: client/web
+        run: npm run build
+      
+      - name: Verify production build strips console
+        working-directory: client/web
+        run: |
+          echo "Checking for console.log in production build..."
+          if grep -r "console\.log" dist/ 2>/dev/null; then
+            echo "❌ ERROR: console.log found in production build!"
+            exit 1
+          else
+            echo "✓ No console.log found in production build"
+          fi
+
+  backend-security:
+    name: Backend Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+      
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+      
+      - name: Run backend security audit
+        working-directory: server
+        run: npm audit --audit-level=high || true
+      
+      - name: Build backend
+        working-directory: server
+        run: npm run build
+      
+      - name: Verify environment validation exists
+        working-directory: server
+        run: |
+          echo "Checking for validateEnv function..."
+          if grep -q "validateEnv" src/index.ts; then
+            echo "✓ Environment validation found"
+          else
+            echo "❌ ERROR: validateEnv function not found!"
+            exit 1
+          fi
+
+  dependency-security:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Check frontend critical dependencies
+        working-directory: client/web
+        run: |
+          echo "Verifying @solana/spl-token version..."
+          SPL_VERSION=$(node -p "require('./package.json').dependencies['@solana/spl-token']")
+          if [ "$SPL_VERSION" != "0.1.8" ]; then
+            echo "❌ ERROR: @solana/spl-token should be pinned to 0.1.8 (found: $SPL_VERSION)"
+            exit 1
+          fi
+          echo "✓ @solana/spl-token correctly pinned to 0.1.8"
+      
+      - name: Check backend critical dependencies
+        working-directory: server
+        run: |
+          echo "Verifying security-critical packages are pinned..."
+          EXPRESS_VERSION=$(node -p "require('./package.json').dependencies['express']")
+          HELMET_VERSION=$(node -p "require('./package.json').dependencies['helmet']")
+          JWT_VERSION=$(node -p "require('./package.json').dependencies['jsonwebtoken']")
+          
+          if [[ "$EXPRESS_VERSION" == *"^"* ]] || [[ "$EXPRESS_VERSION" == *"~"* ]]; then
+            echo "❌ ERROR: express should be pinned (found: $EXPRESS_VERSION)"
+            exit 1
+          fi
+          
+          if [[ "$HELMET_VERSION" == *"^"* ]] || [[ "$HELMET_VERSION" == *"~"* ]]; then
+            echo "❌ ERROR: helmet should be pinned (found: $HELMET_VERSION)"
+            exit 1
+          fi
+          
+          if [[ "$JWT_VERSION" == *"^"* ]] || [[ "$JWT_VERSION" == *"~"* ]]; then
+            echo "❌ ERROR: jsonwebtoken should be pinned (found: $JWT_VERSION)"
+            exit 1
+          fi
+          
+          echo "✓ All security-critical packages are pinned"
+
+  configuration-security:
+    name: Configuration Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for committed .env files
+        run: |
+          echo "Checking for committed .env files..."
+          if git ls-files | grep -E '\.env$|\.env\.local$'; then
+            echo "❌ ERROR: .env files should not be committed!"
+            exit 1
+          else
+            echo "✓ No .env files committed"
+          fi
+      
+      - name: Verify .env.example files exist
+        run: |
+          echo "Checking for .env.example files..."
+          if [ ! -f "client/web/.env.example" ]; then
+            echo "❌ ERROR: client/web/.env.example not found!"
+            exit 1
+          fi
+          if [ ! -f "server/.env.example" ]; then
+            echo "❌ ERROR: server/.env.example not found!"
+            exit 1
+          fi
+          echo "✓ .env.example files present"
+      
+      - name: Verify Husky pre-commit hook
+        run: |
+          echo "Checking for Husky pre-commit hook..."
+          if [ ! -f ".husky/pre-commit" ]; then
+            echo "❌ ERROR: .husky/pre-commit not found!"
+            exit 1
+          fi
+          if ! grep -q "\.env" .husky/pre-commit; then
+            echo "❌ ERROR: pre-commit hook doesn't check for .env files!"
+            exit 1
+          fi
+          echo "✓ Husky pre-commit hook configured correctly"

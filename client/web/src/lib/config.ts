@@ -69,9 +69,10 @@ export const REQUIRE_WALLET = import.meta.env.VITE_REQUIRE_WALLET === "1";
 
 /**
  * Whether to show debug wallet dock (development only)
- * Set to "1" to show, "0" to hide
+ * SECURITY: Debug UI is forced off in production even if VITE_DEBUG_DOCK is mis-set.
  */
-export const DEBUG_DOCK = import.meta.env.VITE_DEBUG_DOCK === "1";
+const IS_DEV = import.meta.env.DEV;
+export const DEBUG_DOCK = IS_DEV && import.meta.env.VITE_DEBUG_DOCK === "1";
 
 // ============================================================================
 // Validation
