@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
+import { API_URL } from "@/lib/config";
 
 type Comment = {
   id: string;
@@ -33,16 +34,16 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
     setError(null);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8787"}/comments?marketId=${encodeURIComponent(marketId)}`,
+        `${API_URL}/comments?marketId=${encodeURIComponent(marketId)}`,
         {
           credentials: "include",
         }
       );
-      
+
       if (!res.ok) {
         throw new Error(`Failed to fetch comments: ${res.statusText}`);
       }
-      
+
       const data = await res.json();
       setComments(data.comments || []);
     } catch (err: any) {
@@ -62,7 +63,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isAuthenticated) {
       toast({
         title: "Wallet connection required",
@@ -75,7 +76,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
     // Rate limiting check
     const MIN_COMMENT_INTERVAL = 5000; // 5 seconds
     const timeSinceLastComment = Date.now() - lastCommentTime;
-    
+
     if (timeSinceLastComment < MIN_COMMENT_INTERVAL) {
       const waitTime = Math.ceil((MIN_COMMENT_INTERVAL - timeSinceLastComment) / 1000);
       toast({
@@ -114,7 +115,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8787"}/comments`,
+        `${API_URL}/comments`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -132,12 +133,12 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
       }
 
       const data = await res.json();
-      
+
       // The API returns a single comment object, prepend it to the list
       setComments((prev) => [data, ...prev]);
       setNewComment("");
       setLastCommentTime(Date.now());
-      
+
       toast({
         title: "Comment posted!",
         description: "Your comment has been added.",
@@ -164,7 +165,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
       <div className="bg-primary text-primary-foreground px-3 py-2 mb-1">
         <span className="font-black text-sm tracking-tight">comments ({comments.length})</span>
       </div>
-      
+
       <div className="win95-sunken bg-background p-4 space-y-4">
         {isAuthenticated ? (
           <form onSubmit={handleSubmit} className="space-y-2">

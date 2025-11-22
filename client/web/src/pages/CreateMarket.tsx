@@ -211,23 +211,11 @@ const CreateMarket = () => {
       const { upsertLocalMarketMetadata } = await import("../lib/marketMetadata");
       upsertLocalMarketMetadata(metadata);
 
-      // 3) Supabase metadata – best effort only
-      try {
-        const { upsertSupabaseMarketMetadata } = await import("../integrations/supabase/markets");
-        await upsertSupabaseMarketMetadata({
-          marketPubkey,
-          question: question.trim(),
-          description: null,
-          creatorWallet: wallet.publicKey!.toBase58(),
-          creatorName: username ?? null,
-          imageUrl: finalImageUrl || null,
-          answers,
-        });
-        console.log("[CreateMarket] Supabase metadata saved");
-      } catch (metaErr) {
-        console.error("[CreateMarket] Supabase metadata failed (non-fatal)", metaErr);
-        // do NOT rethrow
-      }
+      // ⚠️ SECURITY NOTE: Frontend no longer writes to Supabase markets table
+      // Market metadata is stored locally and read from on-chain data
+      // If backend indexing is needed, it should be done via Edge Function/API
+      console.log("[CreateMarket] Market metadata stored locally");
+
 
       // 4) Existing success UI: reset form, navigate, toast, etc.
       toast.success(`Market created! Transaction: ${txSig}`);

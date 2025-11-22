@@ -86,62 +86,30 @@ type ClientBetInsertArgs = {
   amountLamports: bigint | number;
 };
 
+/**
+ * ⚠️ SECURITY: Frontend should NOT write to bets table
+ * 
+ * Bet indexing architecture:
+ * 1. User places bet on-chain via placeBet()
+ * 2. Helius webhook detects BetPlaced event
+ * 3. Edge Function (with service role key) writes to bets table
+ * 4. Frontend reads from bets table via Supabase realtime
+ * 
+ * RLS policies prevent frontend writes to bets table.
+ * This function has been disabled for security.
+ */
 async function insertBetRowClientSide(args: ClientBetInsertArgs) {
-  try {
-    const { signature, marketPubkey, bettorPubkey, outcomeIndex, amountLamports } = args;
+  // ⚠️ DISABLED: Frontend should not write to bets table
+  // Bets are indexed by Edge Function via Helius webhook
+  console.log("[bets][client] Bet indexing handled by Edge Function", {
+    signature: args.signature,
+    marketPubkey: args.marketPubkey,
+  });
 
-    const lamports =
-      typeof amountLamports === "bigint" ? Number(amountLamports) : amountLamports;
-    const amountSol = lamports / Number(LAMPORTS_PER_SOL);
-
-    const row = {
-      market_pubkey: marketPubkey,
-      bettor_pubkey: bettorPubkey,
-      username: null as string | null,
-      outcome_index: outcomeIndex,
-      outcome_label: null as string | null,
-      amount_sol: amountSol,
-      tx_sig: signature,
-      block_time: new Date().toISOString(),
-      amount_lamports: lamports,
-      pools_after: null as any,
-      probs_after: null as any,
-    };
-
-    const { error } = await supabaseClient.from("bets").insert(row);
-
-    if (error) {
-      if (error.code === "23505") {
-        console.log("[bets][client] duplicate tx_sig insert ignored", {
-          signature,
-          marketPubkey,
-          bettorPubkey,
-        });
-      } else {
-        console.error("[bets][client] insert error", {
-          signature,
-          marketPubkey,
-          bettorPubkey,
-          outcomeIndex,
-          error: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-      }
-    } else {
-      console.log("[bets][client] row inserted", {
-        signature,
-        marketPubkey,
-        bettorPubkey,
-        outcomeIndex,
-        amountSol,
-      });
-    }
-  } catch (err) {
-    console.error("[bets][client] unexpected exception during insert", { args, err });
-  }
+  // Note: The bet will appear in the UI once the Edge Function indexes it
+  // This typically takes 1-3 seconds after transaction confirmation
 }
+
 
 /**
  * Hash question and answers - matches Rust hash_question_and_answers

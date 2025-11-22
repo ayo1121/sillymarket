@@ -101,7 +101,7 @@ const AdminPanel = () => {
           const configData = await fetchConfig(program);
           const configAccount = configData.account || configData;
           setConfig(configAccount);
-          
+
           // Check if user is admin
           const authority = configAccount.authority || configAccount.authority;
           if (authority) {
@@ -152,7 +152,7 @@ const AdminPanel = () => {
       console.log("[AdminPanel] Initializing config...");
       const sig = await initializeConfig(program, publicKey);
       toast.success(`Config initialized! Transaction: ${sig}`);
-      
+
       // Reload config after initialization
       setConfigLoading(true);
       try {
@@ -278,12 +278,12 @@ const AdminPanel = () => {
         const marketPk = new PublicKey(resolveForm.marketAddress);
         const marketData = await fetchMarket(program, marketPk);
         setResolveMarketData(marketData);
-        
+
         // Auto-populate platform fee wallet and creator wallet
         if (marketData) {
           const platformFeeWallet = marketData.rawAccount?.platformFeeWallet || marketData.rawAccount?.platform_fee_wallet || marketData.platformFeeWallet;
           const creatorWallet = marketData.rawAccount?.creator || marketData.creatorPubkey || marketData.creator;
-          
+
           if (platformFeeWallet && typeof platformFeeWallet !== "string") {
             setResolveForm(prev => ({
               ...prev,
@@ -295,7 +295,7 @@ const AdminPanel = () => {
               platformFeeWallet: platformFeeWallet as string,
             }));
           }
-          
+
           if (creatorWallet && typeof creatorWallet !== "string") {
             setResolveForm(prev => ({
               ...prev,
@@ -386,7 +386,7 @@ const AdminPanel = () => {
 
       const platformFeePk = typeof platformFeeWallet === "string" ? new PublicKey(platformFeeWallet) : platformFeeWallet;
       const creatorPk = typeof creatorWallet === "string" ? new PublicKey(creatorWallet) : creatorWallet;
-      
+
       const sig = await resolveMarket(program, {
         market: marketPk,
         signer: publicKey,
@@ -395,7 +395,7 @@ const AdminPanel = () => {
         creatorWallet: creatorPk,
       });
       toast.success(`Market resolved! Tx: ${sig}`);
-      
+
       // Reload market data
       const marketData = await fetchMarket(program, marketPk);
       setResolveMarketData(marketData);
@@ -501,28 +501,15 @@ const AdminPanel = () => {
       const { upsertLocalMarketMetadata } = await import("../lib/marketMetadata");
       upsertLocalMarketMetadata(meta);
 
-      // 3) Supabase metadata – best effort only
-      try {
-        const { upsertSupabaseMarketMetadata } = await import("../integrations/supabase/markets");
-        await upsertSupabaseMarketMetadata({
-          marketPubkey,
-          question,
-          description: null,
-          creatorWallet: publicKey.toBase58(),
-          creatorName: username ?? null,
-          imageUrl,
-          answers,
-        });
-        console.log("[AdminPanel] Supabase metadata saved");
-      } catch (metaErr) {
-        console.error("[AdminPanel] Supabase metadata failed (non-fatal)", metaErr);
-        // do NOT rethrow
-      }
+      // ⚠️ SECURITY NOTE: Frontend no longer writes to Supabase markets table
+      // Market metadata is stored locally and read from on-chain data
+      console.log("[AdminPanel] Market metadata stored locally");
+
 
       // 4) Success UI
       console.log("[AdminPanel] Created market + metadata", { txSig, marketPubkey });
       toast.success(`Market created! Tx: ${txSig}`);
-      
+
       // Reset form
       setCreateMarketForm({
         question: "",
@@ -530,7 +517,7 @@ const AdminPanel = () => {
         cutoffMinutes: "60",
         imageUrl: "",
       });
-      
+
       // Reload markets
       if (program) {
         const allMarkets = await fetchAllMarkets(program);
@@ -614,7 +601,7 @@ const AdminPanel = () => {
         user: userPk,
       });
       toast.success(`Winnings claimed! Tx: ${sig}`);
-      
+
       // Reload position data
       const positions = await fetchUserPositions(program, userPk);
       const positionForMarket = positions.find((p: any) => {
@@ -882,10 +869,10 @@ const AdminPanel = () => {
                       </div>
                     );
                   })()}
-                  <Button 
-                    onClick={handleResolve} 
-                    className="w-full text-xs" 
-                    size="sm" 
+                  <Button
+                    onClick={handleResolve}
+                    className="w-full text-xs"
+                    size="sm"
                     disabled={!isAdmin || resolving || !resolveMarketData || (() => {
                       if (!publicKey || !config || !resolveMarketData) return true;
                       const configAuthority = config.authority ? (typeof config.authority === "string" ? new PublicKey(config.authority) : config.authority) : null;
@@ -990,9 +977,9 @@ const AdminPanel = () => {
                       className="text-xs"
                     />
                   </div>
-                  <Button 
-                    onClick={handleCreateMarket} 
-                    className="w-full text-xs" 
+                  <Button
+                    onClick={handleCreateMarket}
+                    className="w-full text-xs"
                     size="sm"
                     disabled={isCreating}
                   >
@@ -1066,9 +1053,9 @@ const AdminPanel = () => {
                       Position found. Claim will be validated on submit.
                     </div>
                   )}
-                  <Button 
-                    onClick={handleClaimWinnings} 
-                    className="w-full text-xs" 
+                  <Button
+                    onClick={handleClaimWinnings}
+                    className="w-full text-xs"
                     size="sm"
                     disabled={claiming || !claimForm.marketAddress || !claimForm.userAddress || !claimPositionData}
                   >

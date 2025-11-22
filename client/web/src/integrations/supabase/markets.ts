@@ -133,58 +133,15 @@ export async function fetchSingleMarketMetadata(
 }
 
 /**
- * Upsert market metadata to Supabase markets table
- * Called after creating a market on-chain
- * Best-effort: never throws, only logs errors
+ * ⚠️ SECURITY: Frontend should NOT write to markets table
+ * 
+ * Market metadata is populated by:
+ * 1. On-chain program (source of truth)
+ * 2. Backend indexer/API (if needed for additional metadata)
+ * 
+ * RLS policies prevent frontend writes to markets table.
+ * This function has been removed for security.
+ * 
+ * If you need to store market metadata, use a backend API endpoint.
  */
-export async function upsertSupabaseMarketMetadata(meta: {
-  marketPubkey: string;
-  question: string;
-  description?: string | null;
-  creatorWallet: string;
-  creatorName?: string | null;
-  imageUrl?: string | null;
-  answers?: string[] | null;
-}): Promise<void> {
-  // Map from camelCase to our snake_case DB schema
-  const payload: Partial<RemoteMarketMetadata> = {
-    market_pubkey: meta.marketPubkey,
-    question: meta.question,
-    description: meta.description ?? null,
-    creator_wallet: meta.creatorWallet,
-    creator_name: meta.creatorName ?? null,
-    image_url: meta.imageUrl ?? null,
-    // If the Supabase table does NOT yet have an `answers` column, this will
-    // still be sent but PostgREST will just ignore unknown keys on upsert.
-    answers: meta.answers ?? null,
-  };
-
-  console.log("[supabase][markets] upsert payload", payload);
-
-  try {
-    const { error } = await (supabase as any)
-      .from<RemoteMarketMetadata>(MARKETS_TABLE)
-      // IMPORTANT: remove onConflict -> do NOT send ?on_conflict=market_pubkey
-      .upsert(payload);
-
-    if (error) {
-      console.error("[supabase][markets] upsert error", {
-        message: error.message,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        code: error.code,
-      });
-      // Best-effort: do NOT throw – metadata failure must not mark Anchor tx as failed
-      return;
-    }
-
-    console.log("[supabase][markets] upsert ok for", meta.marketPubkey);
-  } catch (e: any) {
-    console.error("[supabase][markets] upsert unexpected exception", {
-      message: e?.message,
-      raw: e,
-    });
-    // Still do not throw
-  }
-}
 

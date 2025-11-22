@@ -20,46 +20,13 @@ export type BetRow = {
   probs_after?: number[] | null; // JSONB array: post-bet probabilities per outcome
 };
 
-export async function insertBetRow(params: {
-  marketPubkey: string;
-  bettorPubkey: string;
-  amountLamports: bigint | number;
-  outcomeIndex: number;
-  outcomeLabel: string;
-  txSig: string;
-  blockTime?: Date;
-}) {
-  const {
-    marketPubkey,
-    bettorPubkey,
-    amountLamports,
-    outcomeIndex,
-    outcomeLabel,
-    txSig,
-    blockTime,
-  } = params;
-
-  const amountSol =
-    typeof amountLamports === "bigint"
-      ? Number(amountLamports) / LAMPORTS_PER_SOL
-      : amountLamports / LAMPORTS_PER_SOL;
-
-  // Insert exactly the fields matching the schema
-  const { error } = await (supabase as any).from("bets").insert({
-    market_pubkey: marketPubkey,
-    bettor_pubkey: bettorPubkey,
-    username: null, // Can be populated later from users table
-    outcome_index: outcomeIndex,
-    outcome_label: outcomeLabel || null,
-    amount_sol: amountSol,
-    tx_sig: txSig,
-    block_time: (blockTime ?? new Date()).toISOString(),
-    // created_at is set by Supabase default
-  });
-
-  if (error) {
-    console.error("[bets] insertBetRow failed", error);
-    throw error;
-  }
-}
+/**
+ * ⚠️ SECURITY: Frontend should NOT write to bets table
+ * 
+ * Bet indexing is handled by:
+ * - Helius webhook → Edge Function (with service role key)
+ * 
+ * RLS policies prevent frontend writes to bets table.
+ * This file is kept for type definitions only.
+ */
 
