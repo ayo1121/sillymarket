@@ -543,7 +543,7 @@ const AdminPanel = () => {
       toast.success(`Bet placed! Tx: ${sig.txSig}`);
     } catch (err: any) {
       console.error("Place bet error:", err);
-      showErrorToast(err, "Failed to place bet");
+      showErrorToast(err, "Failed to place bet", "placeBet");
     }
   };
 
@@ -1087,4 +1087,3 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
-

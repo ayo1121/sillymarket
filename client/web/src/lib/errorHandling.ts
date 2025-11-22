@@ -34,6 +34,34 @@ const SAFE_ERROR_PATTERNS = [
 ];
 
 /**
+ * Normalize Anchor program errors into user-friendly strings
+ * so toasts don't expose internal codes or prefixes.
+ */
+export function normalizeAnchorErrorMessage(error: unknown, context?: string): string {
+    const raw = (error as any)?.message ?? String(error ?? "Unknown error");
+    const message = typeof raw === "string" ? raw : String(raw);
+
+    const anchorMatch = message.match(/Anchor error\s+([A-Za-z0-9_]+)\s*\((\d+)\):\s*(.+)$/);
+    if (!anchorMatch) {
+        return message;
+    }
+
+    const name = anchorMatch[1];
+    const code = anchorMatch[2];
+    const detail = anchorMatch[3]?.trim();
+
+    if (name === "BettingClosed" || code === "6003") {
+        return "betting closed";
+    }
+
+    if (detail) {
+        return detail.toLowerCase();
+    }
+
+    return "transaction failed";
+}
+
+/**
  * Sanitize error messages for user display
  * 
  * Removes sensitive information (stack traces, internal paths, etc.)
@@ -42,21 +70,19 @@ const SAFE_ERROR_PATTERNS = [
  * @param error - Any error object (Error, string, or unknown)
  * @returns Safe error message suitable for display to users
  */
-export function sanitizeErrorMessage(error: any): string {
+export function sanitizeErrorMessage(error: unknown, context?: string): string {
     if (!error) {
         return "An unknown error occurred";
     }
 
     // Extract raw message from various error formats
-    let rawMessage: string;
-    if (typeof error === "string") {
-        rawMessage = error;
-    } else if (error?.message) {
-        rawMessage = error.message;
-    } else if (error?.toString) {
-        rawMessage = error.toString();
-    } else {
-        rawMessage = "Unknown error";
+    const raw = (error as any)?.message ?? String(error ?? "Unknown error");
+    let rawMessage = typeof raw === "string" ? raw : String(raw);
+
+    // Anchor normalization (keep before generic fallbacks)
+    const anchorNormalized = normalizeAnchorErrorMessage({ message: rawMessage }, context);
+    if (anchorNormalized && anchorNormalized !== rawMessage) {
+        return anchorNormalized;
     }
 
     // Strip common prefixes
@@ -84,8 +110,8 @@ export function sanitizeErrorMessage(error: any): string {
  * @param error - Any error object
  * @param fallbackMessage - Optional prefix message (e.g., "Failed to create market")
  */
-export function showErrorToast(error: any, fallbackMessage?: string) {
-    const sanitized = sanitizeErrorMessage(error);
+export function showErrorToast(error: unknown, fallbackMessage?: string, context?: string) {
+    const sanitized = sanitizeErrorMessage(error, context);
     const message = fallbackMessage ? `${fallbackMessage}: ${sanitized}` : sanitized;
     toast.error(message);
 }

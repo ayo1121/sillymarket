@@ -243,7 +243,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
       setAmount("");
     } catch (error: any) {
       console.error("[BettingModal] Bet placement failed", error);
-      showErrorToast(error, "Failed to place bet");
+      showErrorToast(error, "Failed to place bet", "placeBet");
     } finally {
       setIsSubmitting(false);
     }

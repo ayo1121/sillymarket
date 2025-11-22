@@ -7,6 +7,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { placeBet, claimWinnings, resolveMarket } from "../solana/actions";
 import { toast } from "sonner";
 import BN from "bn.js";
+import { showErrorToast } from "@/lib/errorHandling";
 
 // Constants from Rust program
 const STATE_ACTIVE = 1;
@@ -165,7 +166,7 @@ export default function MarketPage() {
         outcomeIndex,
         amountLamports: lamports,
       });
-      toast.error(error?.message || "Failed to place bet");
+      showErrorToast(error, "Failed to place bet", "placeBet");
     } finally {
       setBetting(false);
     }
