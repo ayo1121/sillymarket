@@ -1,4 +1,4 @@
-import app, { migrate, cleanupExpiredNonces, DATABASE_URL } from "./app";
+import app, { migrate, cleanupExpiredNonces, DATABASE_URL } from "./app.js";
 
 const PORT = Number(process.env.PORT || 8787);
 const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:8080";
@@ -20,7 +20,7 @@ migrate().then(() => {
     setInterval(cleanupExpiredNonces, 60 * 60 * 1000);
     console.log("✅ Nonce cleanup job: started (runs hourly)");
   });
-}).catch((e) => {
+}).catch((e: any) => {
   console.error("\n❌ Migration failed:", e.message);
   console.error("\nTo fix this:");
   console.error("1. Update DATABASE_URL in server/.env with your Supabase connection string");
