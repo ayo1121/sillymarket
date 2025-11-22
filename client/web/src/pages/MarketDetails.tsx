@@ -33,6 +33,7 @@ import { useMarketProbabilityHistory } from "@/hooks/useMarketProbabilityHistory
 import { getMarketImageUrl } from "@/solana/marketImage";
 import { OutcomeCard, MarketStatsRow } from "@/components/MarketCard";
 import ProbabilityChart from "@/components/ProbabilityChart";
+import { showErrorToast } from "@/lib/errorHandling";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -182,7 +183,7 @@ const MarketDetails = () => {
           // Fetch user position if wallet is connected
           if (wallet.publicKey && program) {
             try {
-              const positions = await fetchUserPositions(program, wallet.publicKey);
+              const positions = await fetchUserPositions(program as any, wallet.publicKey);
               const positionForMarket = positions.find((p: any) => {
                 const posMarket = p.account.market;
                 const marketPubkey = posMarket?.toBase58 ? posMarket.toBase58() : posMarket?.toString();
@@ -198,7 +199,7 @@ const MarketDetails = () => {
           // Fetch config for resolve checks
           if (program) {
             try {
-              const configData = await fetchConfig(program);
+              const configData = await fetchConfig(program as any);
               setConfig(configData);
             } catch (configErr) {
               console.error("Error fetching config:", configErr);
@@ -232,7 +233,7 @@ const MarketDetails = () => {
         // Refresh user position
         if (wallet.publicKey) {
           try {
-            const positions = await fetchUserPositions(program, wallet.publicKey);
+            const positions = await fetchUserPositions(program as any, wallet.publicKey);
             const positionForMarket = positions.find((p: any) => {
               const posMarket = p.account.market;
               const marketPubkey = posMarket?.toBase58 ? posMarket.toBase58() : posMarket?.toString();
@@ -304,7 +305,6 @@ const MarketDetails = () => {
       });
 
     // Optional: extra error/close hooks if using supabase-js v2 RealtimeChannel API
-    // @ts-expect-error - depends on exact typings, safe to ignore if not present
     channel.on("broadcast", { event: "error" }, (err: any) => {
       console.error("[MarketDetails] Realtime channel error", err);
     });
@@ -484,7 +484,7 @@ const MarketDetails = () => {
                       <span className="font-bold">
                         by {market.creatorName ?? market.creatorLabel}{" "}
                         <span className="creator-wallet text-muted-foreground text-xs sm:text-sm">
-                          {shortenWallet(market.creatorPubkey ?? market.creator ?? "")}
+                          {shortenWallet(market.creatorPubkey ?? "")}
                         </span>
                       </span>
                       <span className="hidden sm:inline">•</span>
@@ -636,12 +636,7 @@ const MarketDetails = () => {
                                     await refreshMarket();
                                   } catch (error: any) {
                                     console.error("Resolve error:", error);
-                                    const errorMsg = error?.message || "Failed to resolve market";
-                                    if (errorMsg.includes("Unauthorized") || errorMsg.includes("InvalidState")) {
-                                      toast.error("Cannot resolve: " + errorMsg);
-                                    } else {
-                                      toast.error(errorMsg);
-                                    }
+                                    showErrorToast(error, "Failed to resolve market");
                                   } finally {
                                     setResolving(false);
                                   }
@@ -685,12 +680,7 @@ const MarketDetails = () => {
                                   await refreshMarket();
                                 } catch (error: any) {
                                   console.error("Void error:", error);
-                                  const errorMsg = error?.message || "Failed to void market";
-                                  if (errorMsg.includes("Unauthorized") || errorMsg.includes("InvalidState")) {
-                                    toast.error("Cannot void: " + errorMsg);
-                                  } else {
-                                    toast.error(errorMsg);
-                                  }
+                                  showErrorToast(error, "Failed to void market");
                                 } finally {
                                   setResolving(false);
                                 }
@@ -729,12 +719,7 @@ const MarketDetails = () => {
                                 await refreshMarket();
                               } catch (error: any) {
                                 console.error("Claim error:", error);
-                                const errorMsg = error?.message || "Failed to claim winnings";
-                                if (errorMsg.includes("Unauthorized") || errorMsg.includes("InvalidState") || errorMsg.includes("AlreadyClaimed")) {
-                                  toast.error("Cannot claim: " + errorMsg);
-                                } else {
-                                  toast.error(errorMsg);
-                                }
+                                showErrorToast(error, "Failed to claim winnings");
                               } finally {
                                 setClaiming(false);
                               }

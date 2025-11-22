@@ -15,6 +15,7 @@ import { createMarket } from "@/solana/actions";
 import { PublicKey } from "@solana/web3.js";
 import { uploadMarketImage } from "@/integrations/supabase/storage";
 import { useWalletIdentity } from "@/auth/walletIdentity";
+import { showErrorToast } from "@/lib/errorHandling";
 
 const CreateMarket = () => {
   const navigate = useNavigate();
@@ -229,7 +230,7 @@ const CreateMarket = () => {
         code: error?.code,
         logs: error?.logs,
       });
-      toast.error(error?.message || "Failed to create market");
+      showErrorToast(error, "Failed to create market");
     } finally {
       setSubmitting(false);
     }

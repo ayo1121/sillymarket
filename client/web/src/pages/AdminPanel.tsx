@@ -26,6 +26,7 @@ import { fetchConfig, fetchAllMarkets, fetchMarket, fetchUserPositions, canResol
 import { solToLamports } from "@/solana/utils";
 import BN from "bn.js";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
+import { showErrorToast } from "@/lib/errorHandling";
 
 const solFromLamports = (lamports: number | BN): number => {
   const num = typeof lamports === "object" ? lamports.toNumber() : lamports;
@@ -150,7 +151,7 @@ const AdminPanel = () => {
 
     try {
       console.log("[AdminPanel] Initializing config...");
-      const sig = await initializeConfig(program, publicKey);
+      const sig = await initializeConfig(program as any, publicKey);
       toast.success(`Config initialized! Transaction: ${sig}`);
 
       // Reload config after initialization
@@ -171,9 +172,8 @@ const AdminPanel = () => {
       }
     } catch (err: any) {
       console.error("[AdminPanel] Initialize config error:", err);
-      const errorMsg = err?.message || "Failed to initialize config";
-      setConfigError(errorMsg);
-      toast.error(errorMsg);
+      showErrorToast(err, "Failed to initialize config");
+      setConfigError(err?.message || "Failed to initialize config");
     } finally {
       setInitializing(false);
     }
@@ -187,7 +187,7 @@ const AdminPanel = () => {
 
     try {
       const feeWalletPk = new PublicKey(initForm.feeWallet);
-      const sig = await initialize(program, {
+      const sig = await initialize(program as any, {
         authority: publicKey,
         feeWallet: feeWalletPk,
         minBetLamports: solToLamports(parseFloat(initForm.minBetLamports)),
@@ -201,7 +201,7 @@ const AdminPanel = () => {
       setIsAdmin(true);
     } catch (err: any) {
       console.error("Initialize error:", err);
-      toast.error(err.message || "Failed to initialize");
+      showErrorToast(err, "Failed to initialize");
     }
   };
 
@@ -213,7 +213,7 @@ const AdminPanel = () => {
 
     try {
       const newAuthPk = new PublicKey(setAuthForm.newAuthority);
-      const sig = await setAuthority(program, {
+      const sig = await setAuthority(program as any, {
         authority: publicKey,
         newAuthority: newAuthPk,
       });
@@ -223,7 +223,7 @@ const AdminPanel = () => {
       setConfig(configData.account || configData);
     } catch (err: any) {
       console.error("Set authority error:", err);
-      toast.error(err.message || "Failed to set authority");
+      showErrorToast(err, "Failed to set authority");
     }
   };
 
@@ -263,6 +263,7 @@ const AdminPanel = () => {
       console.log("[AdminPanel] ✅ setFeeWallet completed");
     } catch (error) {
       console.error("[AdminPanel] ❌ Set fee wallet error:", error);
+      showErrorToast(error, "Failed to set fee wallet");
     }
   };
 
@@ -387,7 +388,7 @@ const AdminPanel = () => {
       const platformFeePk = typeof platformFeeWallet === "string" ? new PublicKey(platformFeeWallet) : platformFeeWallet;
       const creatorPk = typeof creatorWallet === "string" ? new PublicKey(creatorWallet) : creatorWallet;
 
-      const sig = await resolveMarket(program, {
+      const sig = await resolveMarket(program as any, {
         market: marketPk,
         signer: publicKey,
         winnerIndex: winnerIdx,
@@ -401,12 +402,7 @@ const AdminPanel = () => {
       setResolveMarketData(marketData);
     } catch (err: any) {
       console.error("Resolve error:", err);
-      const errorMsg = err.message || "Failed to resolve market";
-      if (errorMsg.includes("Unauthorized") || errorMsg.includes("InvalidState") || errorMsg.includes("AlreadyResolved")) {
-        toast.error("Cannot resolve: " + errorMsg);
-      } else {
-        toast.error(errorMsg);
-      }
+      showErrorToast(err, "Failed to resolve market");
     } finally {
       setResolving(false);
     }
@@ -420,11 +416,11 @@ const AdminPanel = () => {
 
     try {
       const marketPk = new PublicKey(voidForm.marketAddress);
-      const sig = await voidExpired(program, { market: marketPk });
+      const sig = await voidExpired(program as any, { market: marketPk });
       toast.success(`Market voided! Tx: ${sig}`);
     } catch (err: any) {
       console.error("Void expired error:", err);
-      toast.error(err.message || "Failed to void market");
+      showErrorToast(err, "Failed to void market");
     }
   };
 
@@ -437,14 +433,14 @@ const AdminPanel = () => {
     try {
       const marketPk = new PublicKey(closePosForm.marketAddress);
       const userPk = new PublicKey(closePosForm.userAddress);
-      const sig = await closePosition(program, {
+      const sig = await closePosition(program as any, {
         user: userPk,
         market: marketPk,
       });
       toast.success(`Position closed! Tx: ${sig}`);
     } catch (err: any) {
       console.error("Close position error:", err);
-      toast.error(err.message || "Failed to close position");
+      showErrorToast(err, "Failed to close position");
     }
   };
 
@@ -525,7 +521,7 @@ const AdminPanel = () => {
       }
     } catch (err: any) {
       console.error("[AdminPanel] create market error", err);
-      toast.error(err.message || "Failed to create market");
+      showErrorToast(err, "Failed to create market");
     } finally {
       setIsCreating(false);
     }
@@ -539,16 +535,15 @@ const AdminPanel = () => {
 
     try {
       const marketPk = new PublicKey(placeBetForm.marketAddress);
-      const sig = await placeBet(program, {
-        market: marketPk,
-        user: publicKey,
+      const sig = await placeBet(wallet, {
+        marketPubkey: placeBetForm.marketAddress,
         outcomeIndex: parseInt(placeBetForm.outcomeIndex),
-        amountLamports: solToLamports(parseFloat(placeBetForm.amount)),
+        stakeLamports: solToLamports(parseFloat(placeBetForm.amount)),
       });
-      toast.success(`Bet placed! Tx: ${sig}`);
+      toast.success(`Bet placed! Tx: ${sig.txSig}`);
     } catch (err: any) {
       console.error("Place bet error:", err);
-      toast.error(err.message || "Failed to place bet");
+      showErrorToast(err, "Failed to place bet");
     }
   };
 
@@ -596,7 +591,7 @@ const AdminPanel = () => {
     setClaiming(true);
     try {
       const marketPk = new PublicKey(claimForm.marketAddress);
-      const sig = await claimWinnings(program, {
+      const sig = await claimWinnings(program as any, {
         market: marketPk,
         user: userPk,
       });
@@ -612,12 +607,7 @@ const AdminPanel = () => {
       setClaimPositionData(positionForMarket || null);
     } catch (err: any) {
       console.error("Claim winnings error:", err);
-      const errorMsg = err.message || "Failed to claim winnings";
-      if (errorMsg.includes("Unauthorized") || errorMsg.includes("InvalidState") || errorMsg.includes("AlreadyClaimed")) {
-        toast.error("Cannot claim: " + errorMsg);
-      } else {
-        toast.error(errorMsg);
-      }
+      showErrorToast(err, "Failed to claim winnings");
     } finally {
       setClaiming(false);
     }

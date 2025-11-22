@@ -12,6 +12,7 @@ import { useAnchorProgram } from "@/solana/program";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useWalletIdentity } from "@/auth/walletIdentity";
 import { getOutcomeTheme } from "@/solana/outcomeTheme";
+import { showErrorToast } from "@/lib/errorHandling";
 
 export type BetPlacedPayload = {
   marketPubkey: string;
@@ -107,10 +108,10 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
     typeof market?.userOutcomeIndex === "number"
       ? market.userOutcomeIndex
       : typeof (market as any)?.userPosition?.outcomeIndex === "number"
-      ? (market as any).userPosition.outcomeIndex
-      : typeof (market as any)?.userPosition?.outcome_index === "number"
-      ? (market as any).userPosition.outcome_index
-      : null;
+        ? (market as any).userPosition.outcomeIndex
+        : typeof (market as any)?.userPosition?.outcome_index === "number"
+          ? (market as any).userPosition.outcome_index
+          : null;
 
   // hasExistingOutcome is true only when existingOutcomeIndex is not null (0 is valid)
   const hasExistingOutcome = existingOutcomeIndex != null;
@@ -138,7 +139,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
       const existingOutcomeLabel =
         existingOutcomeIndex != null && market?.outcomes?.[existingOutcomeIndex]
           ? market.outcomes[existingOutcomeIndex].label ??
-            `Outcome ${existingOutcomeIndex}`
+          `Outcome ${existingOutcomeIndex}`
           : null;
 
       toast.info(
@@ -179,7 +180,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
     });
 
     const parsedAmount = parseFloat(amount);
-    
+
     const validationResult = betSchema.safeParse({
       amount: parsedAmount,
     });
@@ -205,7 +206,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
 
       console.log("[BettingModal] Bet placed successfully", { txSig, marketPubkey: market.pubkey, outcomeIndex });
       console.log("[BettingModal] Bet placed on-chain; waiting for indexer (Helius -> Supabase)");
-      
+
       // Use the same helper for consistency
       const pools = market.outcomes.map(o => BigInt(o.poolLamports ?? 0));
       const newProbs = computePostBetProbs(pools, amountLamportsBigInt, outcomeIndex);
@@ -226,9 +227,9 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
           username: identity?.username ?? null,
         });
       }
-      
+
       toast.success(`Bet placed! Transaction: ${txSig.slice(0, 8)}...`);
-      
+
       // Refresh markets if program is available
       if (program) {
         try {
@@ -242,7 +243,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
       setAmount("");
     } catch (error: any) {
       console.error("[BettingModal] Bet placement failed", error);
-      toast.error(error?.message || "Failed to place bet");
+      showErrorToast(error, "Failed to place bet");
     } finally {
       setIsSubmitting(false);
     }
@@ -251,10 +252,10 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
   // Get selected outcome
   const selectedOutcome = market?.outcomes[answerIndex];
   const selectedLabel = selectedOutcome?.label ?? `Outcome ${answerIndex + 1}`;
-  
+
   // Type alias for outcome
   type Outcome = UIMarket["outcomes"][number];
-  
+
   // Calculate odds (payout multiplier)
   const calculateOdds = (outcome?: Outcome) => {
     if (!market || !outcome) return "1.00x";
@@ -277,10 +278,10 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
   const stakeLamports = amount && !isNaN(parseFloat(amount)) ? toLamports(amount) : 0;
   const simulatedProbs = market && stakeLamports > 0
     ? computePostBetProbs(
-        market.outcomes.map(o => BigInt(o.poolLamports ?? 0)),
-        BigInt(stakeLamports),
-        answerIndex
-      )
+      market.outcomes.map(o => BigInt(o.poolLamports ?? 0)),
+      BigInt(stakeLamports),
+      answerIndex
+    )
     : null;
   const simulation = market ? calculateBetImpact(market, answerIndex, stakeLamports) : null;
   const expectedPayoutSol = simulation ? (simulation.expectedPayout / 1e9).toFixed(4) : "0.0000";
@@ -294,14 +295,14 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
       <DialogContent className="win95-window bg-background p-0 max-w-md border-0">
         <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between">
           <span className="font-black text-sm tracking-tight">place bet</span>
-          <button 
+          <button
             onClick={() => onOpenChange(false)}
             className="w-4 h-4 win95-raised bg-background flex items-center justify-center text-foreground text-xs font-black hover:bg-accent"
           >
             ×
           </button>
         </div>
-        
+
         <div className="win95-sunken bg-background p-6 m-1">
           <div className="space-y-4">
             <div className="win95-sunken bg-input p-3">
@@ -369,9 +370,9 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
                 const existingOutcomeLabel =
                   existingOutcomeIndex != null && market?.outcomes?.[existingOutcomeIndex]
                     ? market.outcomes[existingOutcomeIndex].label ??
-                      `Outcome ${existingOutcomeIndex}`
+                    `Outcome ${existingOutcomeIndex}`
                     : null;
-                
+
                 return existingOutcomeLabel ? (
                   <p className="text-xs text-muted-foreground mt-1">
                     You already have a position on: <strong>{existingOutcomeLabel}</strong>.

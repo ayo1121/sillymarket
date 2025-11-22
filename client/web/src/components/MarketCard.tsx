@@ -102,7 +102,7 @@ export type OutcomeCardProps = {
   probPct: number | null;
   odds: number | null;
   color: string;
-  series?: OutcomeSeriesPoint[];
+  series?: OutcomeSeriesPoint[] | { value: number }[];
   disabled?: boolean;
   onClick?: () => void;
 };

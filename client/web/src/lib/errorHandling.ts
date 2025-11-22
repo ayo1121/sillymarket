@@ -59,6 +59,9 @@ export function sanitizeErrorMessage(error: any): string {
         rawMessage = "Unknown error";
     }
 
+    // Strip common prefixes
+    rawMessage = rawMessage.replace(/^(Anchor Error|Program Error|Error):?\s*/i, "");
+
     // Check if error matches known safe patterns
     for (const pattern of SAFE_ERROR_PATTERNS) {
         if (pattern.test(rawMessage)) {
