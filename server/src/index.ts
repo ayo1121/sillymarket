@@ -11,12 +11,13 @@ import { randomUUID } from "node:crypto";
 
 // --- env
 const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:8080";
+const ALLOWED_ORIGINS = APP_ORIGIN.split(",").map(o => o.trim());
 const PORT = Number(process.env.PORT || 8787);
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret";
 
 // --- db
-const pool = new Pool({ 
+const pool = new Pool({
   connectionString: DATABASE_URL || undefined,
   // Retry connection on failure
   connectionTimeoutMillis: 5000,
@@ -41,12 +42,12 @@ async function migrate() {
     console.warn("   Please update server/.env with your actual database credentials.");
     return; // Allow server to start without database
   }
-  
+
   const connected = await testConnection();
   if (!connected) {
     throw new Error(`Cannot connect to PostgreSQL at ${DATABASE_URL ? new URL(DATABASE_URL).host : "localhost:5432"}. Make sure PostgreSQL is running.`);
   }
-  
+
   // Create users table (for SIWS authentication)
   // Note: This is separate from Supabase's profiles table
   // We use pubkey as the unique identifier for wallet-based auth
@@ -61,7 +62,7 @@ async function migrate() {
   // case-insensitive uniqueness
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_idx ON users (lower(username));`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_pubkey_idx ON users (pubkey);`);
-  
+
   // Create SIWS nonces table for authentication flow
   await pool.query(`
     CREATE TABLE IF NOT EXISTS siws_nonces (
@@ -72,10 +73,10 @@ async function migrate() {
       expires_at timestamptz NOT NULL
     );
   `);
-  
+
   // Create index for cleanup of expired nonces
   await pool.query(`CREATE INDEX IF NOT EXISTS siws_nonces_expires_at_idx ON siws_nonces (expires_at);`);
-  
+
   // Create comments table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS comments (
@@ -86,7 +87,7 @@ async function migrate() {
       created_at  timestamptz NOT NULL DEFAULT now()
     );
   `);
-  
+
   // Create index for faster queries by market_id
   await pool.query(`CREATE INDEX IF NOT EXISTS comments_market_id_idx ON comments (market_id);`);
   // Create index for faster queries by user_id
@@ -97,27 +98,47 @@ type JwtUser = { id: string; pubkey: string };
 
 function setSession(res: express.Response, u: JwtUser) {
   const token = jwt.sign(u, SESSION_SECRET, { algorithm: "HS256", expiresIn: "14d" });
+  const isProduction = process.env.NODE_ENV === "production";
   res.cookie("sid", token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false, // set true behind HTTPS/proxy
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
     maxAge: 14 * 24 * 3600 * 1000
   });
 }
 function clearSession(res: express.Response) {
-  res.clearCookie("sid", { httpOnly: true, sameSite: "lax", secure: false });
+  const isProduction = process.env.NODE_ENV === "production";
+  res.clearCookie("sid", {
+    httpOnly: true,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction
+  });
 }
 function authMiddleware(req: express.Request, _res: express.Response, next: express.NextFunction) {
   const tok = req.cookies?.sid;
   if (tok) {
-    try { (req as any).user = jwt.verify(tok, SESSION_SECRET) as JwtUser; } catch {}
+    try { (req as any).user = jwt.verify(tok, SESSION_SECRET) as JwtUser; } catch { }
   }
   next();
 }
 
 // --- app
 const app = express();
-app.use(cors({ origin: APP_ORIGIN, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+
+      if (ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(authMiddleware);
@@ -144,7 +165,7 @@ app.get("/me", async (req, res) => {
     // No auth - return guest state, never 401
     return res.status(200).json({ ok: true, user: null });
   }
-  
+
   try {
     const row = await pool.query(`SELECT id, pubkey, username, created_at FROM users WHERE id = $1`, [u.id]);
     if (!row.rowCount) {
