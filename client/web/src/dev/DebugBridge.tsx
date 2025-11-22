@@ -46,6 +46,7 @@ export default function DebugBridge() {
           try {
             accs[k] = new PublicKey(v as string);
           } catch {
+            // Ignore PublicKey parsing errors - use value as-is
             accs[k] = v;
           }
         }
@@ -59,7 +60,7 @@ export default function DebugBridge() {
         try {
           const market = (this as any).derive.market(seed);
           accounts.market = market;
-        } catch {}
+        } catch { }
         const name = (this as any).ix().find((n: string) => /create/i.test(n)) || "createMarket";
         return (this as any).call(name, accounts, ...args);
       },

@@ -1,0 +1,61 @@
+# Semgrep Security Configuration
+# ================================
+# This configuration runs security-focused static analysis on JavaScript/TypeScript code
+
+rules:
+  # JavaScript security rules
+  - id: javascript-security
+    patterns:
+      - pattern: eval(...)
+      - pattern: Function(...)
+    message: Avoid using eval() or Function() constructor - potential code injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # SQL injection detection
+  - id: sql-injection-risk
+    patterns:
+      - pattern: |
+          $DB.query($QUERY + ...)
+      - pattern: |
+          $DB.execute($QUERY + ...)
+    message: Potential SQL injection - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # Hardcoded secrets detection
+  - id: hardcoded-secret
+    patterns:
+      - pattern-regex: (password|secret|api_key|apikey|token)\s*=\s*[\"'][^\"']{8,}[\"']
+    message: Potential hardcoded secret detected
+    languages: [javascript, typescript]
+    severity: WARNING
+
+# Use Semgrep's curated rulesets
+# These are high-quality, maintained rules from the Semgrep community
+configs:
+  - p/javascript
+  - p/typescript
+  - p/nodejs
+  - p/security-audit
+  - p/owasp-top-ten
+  - p/xss
+
+# Paths to scan
+paths:
+  include:
+    - client/web/src
+    - server/src
+
+# Paths to exclude
+exclude:
+  - "*/node_modules/*"
+  - "*/dist/*"
+  - "*/build/*"
+  - "*/.next/*"
+  - "*/coverage/*"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"

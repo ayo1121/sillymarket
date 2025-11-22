@@ -9,13 +9,15 @@ import bs58 from "bs58";
 import { Button } from "@/components/ui/button";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
 
-function shorten(pk: string) { return pk ? pk.slice(0,4) + "…" + pk.slice(-4) : ""; }
+function shorten(pk: string) { return pk ? pk.slice(0, 4) + "…" + pk.slice(-4) : ""; }
 function forgetRemembered() {
   try {
     localStorage.removeItem("yesno_wallet");
     localStorage.removeItem("walletAdapter");
     localStorage.removeItem("walletName");
-  } catch {}
+  } catch {
+    // Ignore localStorage errors (e.g., in private browsing mode)
+  }
 }
 
 export default function ConnectWalletAndUsername({ className }: { className?: string }) {
@@ -39,77 +41,77 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
       console.log("[ConnectWallet] signInIfNeeded: no publicKey");
       return null;
     }
-    
+
     const pk58 = publicKey.toBase58();
     console.log("[ConnectWallet] signInIfNeeded: checking profile...", { publicKey: pk58 });
-    
+
     try {
       // First, check if we already have a session
       const me = await api("/me");
       const user = me?.user ?? null;
-      
+
       // If we have a valid user session, we're already signed in
       if (me?.ok && user) {
-        console.log("[ConnectWallet] signInIfNeeded: already signed in", { 
+        console.log("[ConnectWallet] signInIfNeeded: already signed in", {
           hasUsername: !!user.username,
-          username: user.username 
+          username: user.username
         });
-        
+
         // If we have a session but no username, trigger refresh
         if (!user.username) {
           window.dispatchEvent(new Event("username-refresh"));
         }
         return me;
       }
-      
+
       // No valid session - need to sign in
       console.log("[ConnectWallet] signInIfNeeded: no session found, starting SIWS...");
     } catch (e) {
       // /me failed - likely no session, proceed to SIWS
       console.log("[ConnectWallet] signInIfNeeded: /me check failed, starting SIWS...", e);
     }
-    
+
     // SIWS (Sign-In With Solana) flow
     try {
       console.log("[ConnectWallet] signInIfNeeded: requesting SIWS challenge...");
-      const start = await api("/auth/siws/start", { 
-        method: "POST", 
-        body: JSON.stringify({ pubkey: pk58 }) 
+      const start = await api("/auth/siws/start", {
+        method: "POST",
+        body: JSON.stringify({ pubkey: pk58 })
       });
-      
+
       if (!start?.message) {
         console.error("[ConnectWallet] signInIfNeeded: invalid SIWS start response", start);
         return null;
       }
-      
+
       const msg = new TextEncoder().encode(start.message);
       const signFn = signMessage || wallet?.adapter?.signMessage;
-      
+
       if (typeof signFn !== "function") {
         console.error("[ConnectWallet] signInIfNeeded: wallet does not support message signing");
         alert("This wallet does not support message signing. Try another wallet.");
         return null;
       }
-      
+
       console.log("[ConnectWallet] signInIfNeeded: prompting user to sign message...");
       const sig = await signFn(msg);
       const signatureBase58 = bs58.encode(sig);
-      
+
       console.log("[ConnectWallet] signInIfNeeded: submitting signature...");
       const result = await api("/auth/siws/finish", {
         method: "POST",
-        body: JSON.stringify({ 
-          pubkey: pk58, 
-          nonce: start.nonce, 
-          signatureBase58 
+        body: JSON.stringify({
+          pubkey: pk58,
+          nonce: start.nonce,
+          signatureBase58
         })
       });
-      
-      console.log("[ConnectWallet] signInIfNeeded: ✅ SIWS complete", { 
+
+      console.log("[ConnectWallet] signInIfNeeded: ✅ SIWS complete", {
         ok: result?.ok,
-        hasUser: !!result?.user 
+        hasUser: !!result?.user
       });
-      
+
       // After SIWS, trigger username fetch
       window.dispatchEvent(new Event("username-refresh"));
       return result;
@@ -132,33 +134,33 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
     if (!connected || !publicKey || hasPrompted) {
       return;
     }
-    
-    console.log("[ConnectWallet] Wallet connected, checking profile...", { 
+
+    console.log("[ConnectWallet] Wallet connected, checking profile...", {
       publicKey: publicKey.toBase58(),
-      hasUsername: !!username 
+      hasUsername: !!username
     });
-    
+
     // Wait a moment for wallet to fully initialize
     const timer = setTimeout(async () => {
       try {
         // First, ensure SIWS is complete (this will prompt for sign-in if needed)
         console.log("[ConnectWallet] Triggering sign-in check...");
         const me = await signInIfNeeded();
-        
+
         // Wait a bit for walletIdentity to fetch the updated profile
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Check if username exists now
         const checkMe = await api("/me").catch(() => ({ ok: false, user: null }));
         const user = checkMe?.user ?? null;
         const hasUsername = user && user.username;
-        
+
         console.log("[ConnectWallet] Profile check complete", {
           hasSession: !!user,
           hasUsername,
           username: user?.username || null
         });
-        
+
         // If still no username after sign-in, prompt for username
         if (!hasUsername) {
           console.log("[ConnectWallet] No username/profile found, prompting for username...");
@@ -180,22 +182,22 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
         setHasPrompted(true);
       }
     }, 500); // Reduced delay - trigger faster after connection
-    
+
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, publicKey, hasPrompted]); // Note: intentionally not including username to avoid re-triggering
 
   const onPrimaryClick = async () => {
     if (!connected) {
-      console.log("[ConnectWallet] Opening wallet modal...", { 
-        connecting, 
-        wallets: wallets?.length, 
+      console.log("[ConnectWallet] Opening wallet modal...", {
+        connecting,
+        wallets: wallets?.length,
         availableWallets: available.length,
         setVisible: typeof setVisible,
         hasPhantom: typeof window !== "undefined" && !!(window as any).solana?.isPhantom,
         currentWallet: wallet?.adapter?.name
       });
-      
+
       // If a wallet is already selected and not connecting, try direct connect first
       if (wallet && wallet.adapter && !connecting) {
         console.log("[ConnectWallet] Wallet already selected:", wallet.adapter.name, "- attempting direct connect");
@@ -219,13 +221,13 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
           // Fall through to open modal
         }
       }
-      
+
       // If no wallet selected or connecting, just open modal
       if (!wallet || !wallet.adapter || connecting) {
         setVisible(true);
         return;
       }
-      
+
       // If Phantom is detected and no wallet is selected, try selecting it first
       if (typeof window !== "undefined" && (window as any).solana?.isPhantom && !wallet) {
         const phantomWallet = wallets.find((w: any) => w.adapter.name === "Phantom");
@@ -254,7 +256,7 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
           }
         }
       }
-      
+
       // Open the wallet selection modal
       try {
         setVisible(true);
@@ -268,15 +270,15 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
     try {
       console.log("[ConnectWallet] Button clicked while connected, ensuring sign-in...");
       const me = await signInIfNeeded();
-      
+
       // Wait a moment for profile to update
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Check current username state
       const checkMe = await api("/me").catch(() => ({ ok: false, user: null }));
       const user = checkMe?.user ?? null;
       const hasUsername = user && user.username;
-      
+
       // If no username, prompt immediately
       if (!hasUsername) {
         console.log("[ConnectWallet] No username found, prompting...");
@@ -334,7 +336,7 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
         }))
       };
       console.log("[ConnectWallet] Wallet states:", JSON.stringify(states, null, 2));
-      
+
       // Log when connection state changes
       if (connected) {
         console.log("[ConnectWallet] ✅ Wallet connected!", publicKey?.toBase58());
@@ -347,15 +349,15 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
   // Listen for wallet connection events
   useEffect(() => {
     if (!wallet?.adapter) return;
-    
+
     const handleConnect = () => {
       console.log("[ConnectWallet] 🔌 Wallet adapter connect event fired");
     };
-    
+
     const handleDisconnect = () => {
       console.log("[ConnectWallet] 🔌 Wallet adapter disconnect event fired");
     };
-    
+
     const handleError = (error: any) => {
       console.error("[ConnectWallet] ❌ Wallet adapter error:", error);
     };
@@ -386,9 +388,11 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
 
       {connected && menuOpen && (
         <div
-          style={{ position: "absolute", right: 0, top: "110%", zIndex: 60, minWidth: 240,
-                   background: "#fff", border: "1px solid #ddd", borderRadius: 8,
-                   boxShadow: "0 6px 24px rgba(0,0,0,.15)" }}
+          style={{
+            position: "absolute", right: 0, top: "110%", zIndex: 60, minWidth: 240,
+            background: "#fff", border: "1px solid #ddd", borderRadius: 8,
+            boxShadow: "0 6px 24px rgba(0,0,0,.15)"
+          }}
         >
           {!username && (
             <button
@@ -406,19 +410,19 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
           )}
 
           {available.length > 1 && (
-          <div style={{ borderBottom: "1px solid #eee", padding: "6px 12px", fontSize: 12, opacity: .7 }}>
-            switch wallet
-          </div>
+            <div style={{ borderBottom: "1px solid #eee", padding: "6px 12px", fontSize: 12, opacity: .7 }}>
+              switch wallet
+            </div>
           )}
-          {available.map((w:any) => (
+          {available.map((w: any) => (
             <button
               key={w.adapter.name}
               onClick={async () => {
                 setMenuOpen(false);
                 try { await disconnect(); } catch (e) { console.error("Error disconnecting:", e); }
                 forgetRemembered();
-                try { select(w.adapter.name); } catch {}
-                try { setVisible(true); } catch {}
+                try { select(w.adapter.name); } catch { /* Ignore selection errors */ }
+                try { setVisible(true); } catch { /* Ignore modal errors */ }
               }}
               style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px" }}
             >
@@ -445,7 +449,7 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
                 }
               }
               forgetRemembered();
-              await api("/auth/logout", { method: "POST" }).catch(()=>{});
+              await api("/auth/logout", { method: "POST" }).catch(() => { });
               setHasPrompted(false); // Reset prompt flag
             }}
             style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", color: "#b00020" }}
@@ -464,7 +468,7 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
             // Don't auto-open again immediately
           }
         }}
-        onSubmitted={(u)=>{
+        onSubmitted={(u) => {
           setUsername(u);
           setHasPrompted(true); // Mark as prompted so we don't prompt again
           // Trigger refresh to ensure it's synced

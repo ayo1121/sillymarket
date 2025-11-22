@@ -27,3 +27,6 @@ solana-sha256-hasher = "2.3.0"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
+[dev-dependencies]
+proptest = "1.0"

@@ -304,7 +304,7 @@ const MarketDetails = () => {
       });
 
     // Optional: extra error/close hooks if using supabase-js v2 RealtimeChannel API
-    // @ts-ignore - depends on exact typings, safe to ignore if not present
+    // @ts-expect-error - depends on exact typings, safe to ignore if not present
     channel.on("broadcast", { event: "error" }, (err: any) => {
       console.error("[MarketDetails] Realtime channel error", err);
     });

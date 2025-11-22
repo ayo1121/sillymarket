@@ -187,8 +187,8 @@ export async function callIx(
     );
     console.log(
       "[CreateMarket] has methods.createMarket:",
-      typeof (program as any).methods?.createMarket ||
-      typeof (program as any).methods?.create_market
+      !!(program as any).methods?.createMarket ||
+      !!(program as any).methods?.create_market
     );
   }
 
@@ -203,10 +203,6 @@ export async function callIx(
   }
 }
 
-/**
- * Create a market - matches Rust create_market
- */
-// @ts-ignore - YesnoMarkets type compatibility issue with Anchor Idl
 /**
  * Create a market on-chain
  * 

@@ -21,7 +21,7 @@ export const WalletProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Debug logging to confirm Phantom is detected
   if (typeof window !== "undefined") {
     console.log("Wallets configured:", wallets.map(w => w.name));
-    // @ts-ignore
+    // @ts-expect-error - window.solana type not in TypeScript definitions
     const solana = (window as any).solana;
     console.log("window.solana", solana, "isPhantom:", solana?.isPhantom);
   }

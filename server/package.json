@@ -11,6 +11,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "lint:security": "eslint src --ext .ts --max-warnings=0",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
@@ -50,6 +52,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
@@ -58,10 +61,16 @@
     "@types/node": "^20.11.30",
     "@types/pg": "^8.15.6",
     "@types/supertest": "^6.0.3",
+    "eslint": "^9.32.0",
+    "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-sonarjs": "^2.0.4",
+    "fast-check": "^4.3.0",
+    "globals": "^15.15.0",
     "jest": "^30.2.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
     "tsx": "^4.15.7",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.38.0"
   }
 }

@@ -354,6 +354,7 @@ pub mod yesno_markets {
         let oi = outcome_index as usize;
         require!(oi < oc, ErrorCode::BadParam);
 
+        // Placeholder - I need to check file existence first
         // Precheck balance; CPI is authoritative
         require!(ctx.accounts.user.lamports() >= amount_lamports, ErrorCode::InsufficientFunds);
 

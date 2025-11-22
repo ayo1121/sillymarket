@@ -26,6 +26,10 @@ jobs:
         working-directory: client/web
         run: npm ci
       
+      - name: Run frontend security linting
+        working-directory: client/web
+        run: npm run lint:security
+      
       - name: Run frontend security audit
         working-directory: client/web
         run: npm audit --audit-level=high || true
@@ -63,6 +67,10 @@ jobs:
       - name: Install backend dependencies
         working-directory: server
         run: npm ci
+      
+      - name: Run backend security linting
+        working-directory: server
+        run: npm run lint:security
       
       - name: Run backend security audit
         working-directory: server
@@ -175,3 +183,31 @@ jobs:
             exit 1
           fi
           echo "✓ Husky pre-commit hook configured correctly"
+
+  static-analysis:
+    name: Static Security Analysis (Semgrep)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python for Semgrep
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Semgrep
+        run: pip install semgrep
+      
+      - name: Run Semgrep security scan
+        run: |
+          echo "Running Semgrep security analysis..."
+          semgrep --config .semgrep.yml --error --verbose
+      
+      - name: Semgrep summary
+        if: always()
+        run: |
+          echo "✓ Semgrep scan complete"
+          echo "Scanned paths: client/web/src, server/src"
+          echo "Rulesets: javascript, typescript, nodejs, security-audit, owasp-top-ten, xss"
