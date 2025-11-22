@@ -1,0 +1,770 @@
+// src/solana/actions.ts
+import type { Program, Idl, Address } from "@coral-xyz/anchor";
+import { Program as AnchorProgram } from "@coral-xyz/anchor";
+import * as anchor from "@coral-xyz/anchor";
+import { web3 } from "@coral-xyz/anchor";
+import BN from "bn.js";
+import { computeBudgetIxs } from "./tx";
+import { findMarketPda, findPositionPda } from "./pdas";
+import { getConfigPda } from "./idlHelpers";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import type { YesnoMarkets } from "../idl/yesno_markets";
+import type { WalletContextState } from "@solana/wallet-adapter-react";
+import { getAnchorProgramWithProvider } from "./program";
+import { supabaseClient } from "../integrations/supabase/client";
+
+function prettyAnchorError(err: unknown, idl?: Idl, context?: string): Error {
+  const anyErr: any = err;
+  const prefix = context ? `[${context}] ` : "";
+
+  // Newer Anchor versions expose a structured error object
+  const anchorError = anyErr?.error;
+  if (anchorError?.errorCode) {
+    const codeObj = anchorError.errorCode;
+    const name = codeObj.code ?? codeObj.name ?? "Unknown";
+    const num =
+      typeof codeObj.number === "number"
+        ? codeObj.number
+        : typeof codeObj.code === "number"
+          ? codeObj.code
+          : undefined;
+    const msg =
+      anchorError.errorMessage ||
+      anyErr.message ||
+      "Anchor program error";
+
+    return new Error(
+      `${prefix}Anchor error ${name}${num !== undefined ? ` (${num})` : ""
+      }: ${msg}`
+    );
+  }
+
+  const message = String(anyErr?.message || anyErr || "Unknown error");
+  const match = /custom program error: 0x([0-9a-f]+)/i.exec(message);
+
+  if (match) {
+    const hex = match[1];
+    let code: number | undefined;
+    try {
+      code = parseInt(hex, 16);
+    } catch {
+      code = undefined;
+    }
+
+    let human = "";
+    if (idl && (idl as any).errors && typeof code === "number") {
+      const found = (idl as any).errors.find((e: any) => e.code === code);
+      if (found) {
+        human = `Anchor error ${found.name} (${code} / 0x${hex}): ${found.msg ?? found.message ?? ""
+          }`;
+      }
+    }
+
+    if (human) {
+      return new Error(`${prefix}${human}`);
+    }
+
+    if (typeof code === "number") {
+      return new Error(
+        `${prefix}Custom program error ${code} (0x${hex})`
+      );
+    }
+
+    return new Error(`${prefix}Custom program error 0x${hex}`);
+  }
+
+  return new Error(`${prefix}${message}`);
+}
+
+const LAMPORTS_PER_SOL = 1_000_000_000;
+
+type ClientBetInsertArgs = {
+  signature: string;
+  marketPubkey: string;
+  bettorPubkey: string;
+  outcomeIndex: number;
+  amountLamports: bigint | number;
+};
+
+async function insertBetRowClientSide(args: ClientBetInsertArgs) {
+  try {
+    const { signature, marketPubkey, bettorPubkey, outcomeIndex, amountLamports } = args;
+
+    const lamports =
+      typeof amountLamports === "bigint" ? Number(amountLamports) : amountLamports;
+    const amountSol = lamports / Number(LAMPORTS_PER_SOL);
+
+    const row = {
+      market_pubkey: marketPubkey,
+      bettor_pubkey: bettorPubkey,
+      username: null as string | null,
+      outcome_index: outcomeIndex,
+      outcome_label: null as string | null,
+      amount_sol: amountSol,
+      tx_sig: signature,
+      block_time: new Date().toISOString(),
+      amount_lamports: lamports,
+      pools_after: null as any,
+      probs_after: null as any,
+    };
+
+    const { error } = await supabaseClient.from("bets").insert(row);
+
+    if (error) {
+      if (error.code === "23505") {
+        console.log("[bets][client] duplicate tx_sig insert ignored", {
+          signature,
+          marketPubkey,
+          bettorPubkey,
+        });
+      } else {
+        console.error("[bets][client] insert error", {
+          signature,
+          marketPubkey,
+          bettorPubkey,
+          outcomeIndex,
+          error: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+      }
+    } else {
+      console.log("[bets][client] row inserted", {
+        signature,
+        marketPubkey,
+        bettorPubkey,
+        outcomeIndex,
+        amountSol,
+      });
+    }
+  } catch (err) {
+    console.error("[bets][client] unexpected exception during insert", { args, err });
+  }
+}
+
+/**
+ * Hash question and answers - matches Rust hash_question_and_answers
+ * Uses Web Crypto API for browser compatibility
+ */
+export async function hashQuestionAndAnswers(question: string, answers: string[]): Promise<Uint8Array> {
+  const buf: Uint8Array[] = [];
+
+  // "yesno_markets_v1"
+  buf.push(new TextEncoder().encode("yesno_markets_v1"));
+
+  // question length (u32 le)
+  const qLen = new Uint8Array(4);
+  new DataView(qLen.buffer).setUint32(0, question.length, true);
+  buf.push(qLen);
+
+  // question bytes
+  buf.push(new TextEncoder().encode(question));
+
+  // answers length (u32 le)
+  const aLen = new Uint8Array(4);
+  new DataView(aLen.buffer).setUint32(0, answers.length, true);
+  buf.push(aLen);
+
+  // each answer: length (u32 le) + bytes
+  for (const a of answers) {
+    const len = new Uint8Array(4);
+    new DataView(len.buffer).setUint32(0, a.length, true);
+    buf.push(len);
+    buf.push(new TextEncoder().encode(a));
+  }
+
+  // Concatenate all
+  const totalLen = buf.reduce((sum, b) => sum + b.length, 0);
+  const combined = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const b of buf) {
+    combined.set(b, offset);
+    offset += b.length;
+  }
+
+  // SHA256 hash
+  const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
+  return new Uint8Array(hashBuffer);
+}
+
+export async function callIx(
+  program: Program<Idl>,
+  ixName: string,
+  args: any[],
+  accounts: Record<string, Address>
+) {
+  const keys = Object.keys(program.methods);
+  const norm = (s: string) => s.toLowerCase().replace(/_/g, "");
+  const found =
+    keys.find((k) => norm(k) === norm(ixName)) ||
+    keys.find((k) => k.toLowerCase() === ixName.toLowerCase());
+  const m = found
+    ? (program.methods as any)[found]
+    : (program.methods as any)[ixName];
+  if (!m) {
+    throw new Error(
+      `Method ${ixName} not found (have: ${keys.join(", ")})`
+    );
+  }
+
+  // Debug logging before rpc() call
+  if (
+    ixName === "create_market" ||
+    ixName.toLowerCase().includes("createmarket")
+  ) {
+    console.log(
+      "[CreateMarket] available instructions in IDL:",
+      (program.idl as any)?.instructions?.map((ix: any) => ix.name)
+    );
+    console.log(
+      "[CreateMarket] has methods.createMarket:",
+      typeof (program as any).methods?.createMarket ||
+      typeof (program as any).methods?.create_market
+    );
+  }
+
+  try {
+    return await m(...args)
+      .accounts(accounts)
+      .preInstructions(computeBudgetIxs())
+      .rpc({ commitment: "confirmed" });
+  } catch (err) {
+    console.error(`[callIx] ${ixName} failed`, err);
+    throw prettyAnchorError(err, program.idl as Idl, ixName);
+  }
+}
+
+/**
+ * Create a market - matches Rust create_market
+ */
+// @ts-ignore - YesnoMarkets type compatibility issue with Anchor Idl
+/**
+ * Create a market on-chain
+ * 
+ * Backend metadata storage:
+ * - The backend (API/Supabase) should store market metadata when this transaction succeeds
+ * - Table/endpoint: markets_metadata table or /api/markets endpoint
+ * - Key: market_pubkey (the PDA returned in result.marketPubkey)
+ * - Fields: question, description, image_url, creator_name, creator_wallet, etc.
+ * - The frontend reads this metadata via fetchMarketsMetadataByPubkeys() in read.ts
+ */
+export async function createMarket(
+  wallet: WalletContextState,
+  params: {
+    cutoffTs: number; // Unix timestamp
+    question: string;
+    answers: string[];
+    imageUrl?: string | null;
+  }
+): Promise<{ txSig: string; marketPubkey: string }> {
+  // 1) Get program bound to wallet
+  const { program } = getAnchorProgramWithProvider(wallet) ?? {};
+  if (!program) {
+    throw new Error("[createMarket] Program not initialized");
+  }
+
+  if (!wallet.publicKey) {
+    throw new Error("[createMarket] Wallet not connected");
+  }
+
+  // 2) Normalize inputs (trim, validate)
+  const question = params.question.trim();
+  const answers = params.answers.map(a => a.trim());
+  const imageUrl = (params.imageUrl || "").trim();
+
+  // Validate
+  if (question.length === 0 || question.length > 1024) {
+    throw new Error("Question must be 1-1024 characters");
+  }
+  if (answers.length < 2 || answers.length > 5) {
+    throw new Error("Must have 2-5 answers");
+  }
+  for (const a of answers) {
+    if (a.length === 0 || a.length > 64) {
+      throw new Error("Each answer must be 1-64 characters");
+    }
+  }
+  if (imageUrl.length > 200) {
+    throw new Error("Image URL must be <= 200 characters");
+  }
+
+  // 3) Derive market PDA exactly the same way the on-chain program does
+  const questionHash = await hashQuestionAndAnswers(question, answers);
+  const programId = program.programId;
+  const [marketPda] = findMarketPda(programId, wallet.publicKey, params.cutoffTs, questionHash);
+
+  // 4) Get config PDA and fetch config to get the fee wallet
+  const [configPda] = getConfigPda(programId);
+  const config = await (program.account as any).config.fetch(configPda);
+  const feeWalletStr =
+    (config as any).feeWallet?.toString?.() ||
+    (config as any).fee_wallet?.toString?.();
+
+  if (!feeWalletStr) {
+    throw new Error("Config has no fee wallet set");
+  }
+
+  const platformFeeWallet = new PublicKey(feeWalletStr);
+  console.log("[createMarket] using platformFeeWallet:", platformFeeWallet.toBase58());
+
+  // 5) Build and send transaction using Anchor's IDL-driven methods()
+  const cutoffTsBn = new anchor.BN(Number(params.cutoffTs));
+
+  const builder = (program.methods as any).createMarket?.(
+    cutoffTsBn,
+    Array.from(questionHash),
+    question,
+    answers,
+    imageUrl
+  ) ?? (program.methods as any).create_market?.(
+    cutoffTsBn,
+    Array.from(questionHash),
+    question,
+    answers,
+    imageUrl
+  );
+
+  if (!builder) {
+    throw new Error("[createMarket] methods.createMarket not found on program");
+  }
+
+  let txSig: string;
+  try {
+    txSig = await builder
+      .accounts({
+        config: configPda,
+        creator: wallet.publicKey,
+        platformFeeWallet,
+        market: marketPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  } catch (err) {
+    console.error("[createMarket] tx failed", err);
+    throw prettyAnchorError(err, program.idl as Idl, "createMarket");
+  }
+
+  const marketPubkey = marketPda.toBase58();
+  console.log("[createMarket] ✅ tx", { txSig, market: marketPubkey });
+
+  return { txSig, marketPubkey };
+}
+
+/**
+ * Place a bet - matches Rust place_bet
+ * Refactored to match createMarket pattern (wallet-based)
+ */
+export async function placeBet(
+  wallet: WalletContextState,
+  params: {
+    marketPubkey: string;
+    outcomeIndex: number;
+    stakeLamports: number;
+  }
+): Promise<{ txSig: string }> {
+  // 1) Get program bound to wallet
+  const { program } = getAnchorProgramWithProvider(wallet) ?? {};
+  if (!program) {
+    throw new Error("[placeBet] Program not initialized");
+  }
+
+  if (!wallet.publicKey) {
+    throw new Error("[placeBet] Wallet not connected");
+  }
+
+  // 2) Validate inputs
+  if (params.outcomeIndex < 0 || params.outcomeIndex > 4) {
+    throw new Error("Outcome index must be 0-4");
+  }
+  if (params.stakeLamports <= 0) {
+    throw new Error("Stake must be positive");
+  }
+
+  // 3) Parse market pubkey
+  const marketPk = new PublicKey(params.marketPubkey);
+  const userPk = wallet.publicKey;
+  const programId = program.programId;
+
+  // 4) Find position PDA
+  const [positionPda] = findPositionPda(programId, marketPk, userPk);
+
+  // 5) Build and send transaction using Anchor's IDL-driven methods()
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
+    console.log("[placeBet] submitting bet", {
+      marketPubkey: params.marketPubkey,
+      outcomeIndex: params.outcomeIndex,
+      stakeLamports: params.stakeLamports,
+    });
+  }
+
+  const builder = (program.methods as any).placeBet?.(
+    params.outcomeIndex,
+    new BN(params.stakeLamports)
+  ) ?? (program.methods as any).place_bet?.(
+    params.outcomeIndex,
+    new BN(params.stakeLamports)
+  );
+
+  if (!builder) {
+    throw new Error("[placeBet] methods.placeBet not found on program");
+  }
+
+  let txSig: string;
+  try {
+    txSig = await builder
+      .accounts({
+        market: marketPk,
+        user: userPk,
+        position: positionPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  } catch (err) {
+    console.error("[placeBet] tx failed", err);
+    throw prettyAnchorError(err, program.idl as Idl, "placeBet");
+  }
+
+  if (wallet.publicKey) {
+    void insertBetRowClientSide({
+      signature: txSig,
+      marketPubkey: marketPk.toBase58(),
+      bettorPubkey: wallet.publicKey.toBase58(),
+      outcomeIndex: params.outcomeIndex,
+      amountLamports: params.stakeLamports,
+    });
+  }
+
+  console.log("[placeBet] ✅ tx", { txSig, market: params.marketPubkey, outcomeIndex: params.outcomeIndex });
+
+  return { txSig };
+}
+
+/**
+ * Resolve a market - matches Rust resolve
+ */
+export async function resolveMarket(
+  program: Program<Idl>,
+  params: {
+    market: Address;
+    signer: Address;
+    winnerIndex: number; // -2 for VOID, -1 for UNSET, 0+ for winner
+    platformFeeWallet: Address;
+    creatorWallet: Address;
+  }
+) {
+  // Use program.programId directly to ensure consistency with Anchor's internal derivation
+  const programId = program.programId;
+  const [configPda] = getConfigPda(programId);
+
+  const accounts: Record<string, Address> = {
+    config: configPda,
+    market: params.market,
+    signer: params.signer,
+    platformFeeWallet: params.platformFeeWallet,
+    creatorWallet: params.creatorWallet,
+    systemProgram: SystemProgram.programId,
+  };
+
+  return callIx(program, "resolve", [params.winnerIndex], accounts);
+}
+
+/**
+ * Void a market - matches Rust resolve with VOID index (-2)
+ */
+export async function voidMarket(
+  program: Program<Idl>,
+  params: {
+    market: Address;
+    signer: Address;
+    platformFeeWallet: Address;
+    creatorWallet: Address;
+  }
+) {
+  return resolveMarket(program, {
+    ...params,
+    winnerIndex: -2,
+  });
+}
+
+/**
+ * Claim winnings - matches Rust claim_winnings
+ */
+export async function claimWinnings(
+  program: Program<Idl>,
+  params: {
+    market: Address;
+    user: Address;
+  }
+) {
+  const marketPk = new PublicKey(params.market);
+  const userPk = new PublicKey(params.user);
+  // Use program.programId directly to ensure consistency
+  const programId = program.programId;
+
+  // Find position PDA
+  const [positionPda] = findPositionPda(programId, marketPk, userPk);
+
+  const accounts: Record<string, Address> = {
+    market: marketPk,
+    user: userPk,
+    position: positionPda,
+    systemProgram: SystemProgram.programId,
+  };
+
+  return callIx(program, "claim_winnings", [], accounts);
+}
+
+/**
+ * Void expired market - matches Rust void_expired
+ */
+export async function voidExpired(
+  program: Program<Idl>,
+  params: {
+    market: Address;
+  }
+) {
+  const accounts: Record<string, Address> = {
+    market: params.market,
+    systemProgram: SystemProgram.programId,
+  };
+
+  return callIx(program, "void_expired", [], accounts);
+}
+
+/**
+ * Initialize config - matches Rust initialize
+ */
+export async function initialize(
+  program: Program<Idl>,
+  params: {
+    authority: PublicKey;
+    feeWallet: PublicKey;
+    minBetLamports: number;
+    maxBetLamports: number;
+    adminPreCutoff: boolean;
+  }
+) {
+  // Use program.programId directly to ensure consistency with Anchor's internal derivation
+  const programId = program.programId;
+  const [configPda] = getConfigPda(programId);
+
+  // Accounts must use camelCase (Anchor converts IDL snake_case to camelCase)
+  const accounts: Record<string, Address> = {
+    config: configPda,
+    authority: params.authority,
+    feeWalletAcc: params.feeWallet,
+    systemProgram: SystemProgram.programId,
+  };
+
+  return callIx(
+    program,
+    "initialize",
+    [
+      params.feeWallet,
+      new BN(params.minBetLamports),
+      new BN(params.maxBetLamports),
+      params.adminPreCutoff,
+    ],
+    accounts
+  );
+}
+
+/**
+ * Initialize config with sensible defaults
+ * Uses the wallet as fee wallet and standard min/max bet limits
+ */
+export async function initializeConfig(
+  program: Program<Idl> | null,
+  walletPublicKey: PublicKey | null
+): Promise<string> {
+  if (!program) {
+    throw new Error("Program not ready");
+  }
+
+  if (!walletPublicKey) {
+    throw new Error("Wallet not connected");
+  }
+
+  // Use program.programId directly to ensure consistency with Anchor's internal derivation
+  // This is critical: Anchor derives PDAs using program.programId internally
+  const programId = program.programId;
+  const [configPda, bump] = getConfigPda(programId);
+
+  console.log("[initializeConfig] Config PDA:", {
+    address: configPda.toBase58(),
+    bump,
+    programId: programId.toBase58(),
+  });
+
+  // Use sensible defaults matching Rust constants:
+  // MIN_BET_LAMPORTS = 10_000_000 (0.01 SOL)
+  // MAX_BET_LAMPORTS = 100_000 * 1_000_000_000 (100k SOL)
+  const minBetLamports = 10_000_000; // 0.01 SOL
+  const maxBetLamports = 100_000 * 1_000_000_000; // 100k SOL
+  const adminPreCutoff = false; // Default to false
+
+  // Use wallet as fee wallet
+  const feeWallet = walletPublicKey;
+
+  // Accounts must use camelCase (Anchor converts IDL snake_case to camelCase)
+  // IDL has: config, authority, fee_wallet_acc, system_program
+  // Anchor expects: config, authority, feeWalletAcc, systemProgram
+  const accounts: Record<string, Address> = {
+    config: configPda,
+    authority: walletPublicKey,
+    feeWalletAcc: feeWallet,
+    systemProgram: SystemProgram.programId,
+  };
+
+  console.log("[initializeConfig] Accounts for initialize:", {
+    config: typeof accounts.config === 'string' ? accounts.config : accounts.config.toBase58(),
+    authority: typeof accounts.authority === 'string' ? accounts.authority : accounts.authority.toBase58(),
+    feeWalletAcc: typeof accounts.feeWalletAcc === 'string' ? accounts.feeWalletAcc : accounts.feeWalletAcc.toBase58(),
+    systemProgram: typeof accounts.systemProgram === 'string' ? accounts.systemProgram : accounts.systemProgram.toBase58(),
+  });
+
+  console.log("[initializeConfig] Calling initialize with args:", {
+    feeWallet: feeWallet.toBase58(),
+    minBetLamports,
+    maxBetLamports,
+    adminPreCutoff,
+  });
+
+  try {
+    const sig = await callIx(
+      program,
+      "initialize",
+      [
+        feeWallet,
+        new BN(minBetLamports),
+        new BN(maxBetLamports),
+        adminPreCutoff,
+      ],
+      accounts
+    );
+
+    console.log("[initializeConfig] ✅ Config initialized successfully:", sig);
+    return sig;
+  } catch (err: any) {
+    console.error("[initializeConfig] ❌ Failed to initialize config:", err);
+
+    // Enhanced error logging for debugging
+    if (err?.logs) {
+      console.error("[initializeConfig] Transaction logs:", err.logs);
+    }
+    if (err?.transactionLogs) {
+      console.error("[initializeConfig] Transaction logs (alt):", err.transactionLogs);
+    }
+    if (err?.transactionMessage) {
+      console.error("[initializeConfig] Transaction message:", err.transactionMessage);
+    }
+    if (err?.simulationResponse) {
+      console.error("[initializeConfig] Simulation response:", err.simulationResponse);
+    }
+    if (err?.error) {
+      console.error("[initializeConfig] Error details:", err.error);
+    }
+
+    throw err;
+  }
+}
+
+/**
+ * Set authority - matches Rust set_authority
+ */
+export async function setAuthority(
+  program: Program<Idl>,
+  params: {
+    authority: PublicKey;
+    newAuthority: PublicKey;
+  }
+) {
+  // Use program.programId directly to ensure consistency with Anchor's internal derivation
+  const programId = program.programId;
+  const [configPda] = getConfigPda(programId);
+
+  const accounts: Record<string, Address> = {
+    authority: params.authority,
+    config: configPda,
+  };
+
+  return callIx(program, "set_authority", [params.newAuthority], accounts);
+}
+
+/**
+ * Set fee wallet - matches Rust set_fee_wallet
+ * Uses standard Anchor .methods().accounts().rpc() pattern
+ */
+export async function setFeeWallet(params: {
+  newFeeWalletStr: string;
+  wallet: WalletContextState;
+}): Promise<string> {
+  const { newFeeWalletStr, wallet } = params;
+
+  console.log("[setFeeWallet] Entered", { newFeeWalletStr });
+
+  if (!wallet.publicKey) {
+    throw new Error("[setFeeWallet] Wallet not connected");
+  }
+
+  const { program, provider } = getAnchorProgramWithProvider(wallet) || {};
+  if (!program || !provider) {
+    throw new Error("[setFeeWallet] Program not initialized");
+  }
+
+  const authority = wallet.publicKey;
+  const newFeeWallet = new PublicKey(newFeeWalletStr);
+
+  // Get config PDA the same way other admin actions do
+  const [configPda] = getConfigPda(program.programId);
+
+  // Use the IDL-driven methods builder so accounts order and signer metadata
+  // come directly from the canonical IDL generated by Anchor.
+  const builder =
+    program.methods.setFeeWallet?.(newFeeWallet) ??
+    program.methods.set_fee_wallet?.(newFeeWallet);
+
+  if (!builder) {
+    throw new Error("[setFeeWallet] methods.setFeeWallet not found on program");
+  }
+
+  let txSig: string;
+  try {
+    txSig = await builder
+      .accounts({
+        config: configPda,
+        authority,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  } catch (err) {
+    console.error("[setFeeWallet] tx failed", err);
+    throw prettyAnchorError(err, program.idl as Idl, "setFeeWallet");
+  }
+
+  console.log("[setFeeWallet] ✅ success", { txSig });
+  return txSig;
+}
+
+/**
+ * Close position - matches Rust close_position
+ */
+export async function closePosition(
+  program: Program<Idl>,
+  params: {
+    user: PublicKey;
+    market: PublicKey;
+  }
+) {
+  // Use program.programId directly to ensure consistency
+  const programId = program.programId;
+  const [positionPda] = findPositionPda(programId, params.market, params.user);
+
+  const accounts: Record<string, Address> = {
+    user: params.user,
+    position: positionPda,
+  };
+
+  return callIx(program, "close_position", [], accounts);
+}

@@ -1,0 +1,602 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Windows 95 inspired color palette with sillymarket branding */
+    --background: 0 0% 75.3%; /* Classic Win95 grey #C0C0C0 */
+    --foreground: 0 0% 0%; /* Black text */
+
+    --card: 0 0% 75.3%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 75.3%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 0 0% 0%; /* Black */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 0 0% 100%; /* White */
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 50.2%;
+    --muted-foreground: 0 0% 30%;
+
+    --accent: 0 0% 83.1%; /* Light grey */
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 0%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 0%;
+
+    --radius: 0rem; /* No rounded corners - Windows 95 style */
+
+    /* Win95 3D effects */
+    --win95-highlight: 0 0% 100%; /* White for top-left borders */
+    --win95-shadow: 0 0% 25.1%; /* Dark grey for bottom-right borders */
+    --win95-light: 0 0% 87.8%; /* Light grey for subtle highlights */
+    --win95-dark: 0 0% 50.2%; /* Medium grey for subtle shadows */
+    
+    /* Brand colors */
+    --brand-yes: 120 40% 50%; /* Subtle green for yes */
+    --brand-no: 0 40% 50%; /* Subtle red for no */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground lowercase;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  /* Windows 95 raised effect */
+  .win95-raised {
+    border-top: 2px solid hsl(var(--win95-highlight));
+    border-left: 2px solid hsl(var(--win95-highlight));
+    border-right: 2px solid hsl(var(--win95-shadow));
+    border-bottom: 2px solid hsl(var(--win95-shadow));
+    box-shadow: inset 1px 1px 0 hsl(var(--win95-light)), inset -1px -1px 0 hsl(var(--win95-dark));
+    transition: all 0.1s ease;
+  }
+
+  /* Windows 95 sunken effect */
+  .win95-sunken {
+    border-top: 2px solid hsl(var(--win95-shadow));
+    border-left: 2px solid hsl(var(--win95-shadow));
+    border-right: 2px solid hsl(var(--win95-highlight));
+    border-bottom: 2px solid hsl(var(--win95-highlight));
+    box-shadow: inset 1px 1px 0 hsl(var(--win95-dark)), inset -1px -1px 0 hsl(var(--win95-light));
+  }
+
+  /* Outcome color tokens */
+  .border-outcome-0 { border-color: #22c55e; }
+  .text-outcome-0 { color: #16a34a; }
+  .bg-outcome-0 { background-color: #22c55e; }
+  .bg-outcome-0-selected { background-color: #dcfce7; }
+
+  .border-outcome-1 { border-color: #ef4444; }
+  .text-outcome-1 { color: #dc2626; }
+  .bg-outcome-1 { background-color: #ef4444; }
+  .bg-outcome-1-selected { background-color: #fee2e2; }
+
+  .border-outcome-2 { border-color: #3b82f6; }
+  .text-outcome-2 { color: #2563eb; }
+  .bg-outcome-2 { background-color: #3b82f6; }
+  .bg-outcome-2-selected { background-color: #dbeafe; }
+
+  .border-outcome-3 { border-color: #eab308; }
+  .text-outcome-3 { color: #ca8a04; }
+  .bg-outcome-3 { background-color: #eab308; }
+  .bg-outcome-3-selected { background-color: #fef9c3; }
+
+  .border-outcome-4 { border-color: #a855f7; }
+  .text-outcome-4 { color: #9333ea; }
+  .bg-outcome-4 { background-color: #a855f7; }
+  .bg-outcome-4-selected { background-color: #f3e8ff; }
+
+  .market-card-address {
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .copy-pill {
+    margin-left: 4px;
+    padding: 0 4px;
+    border: 1px solid #000;
+    background: #ffffcc;
+    font-size: 9px;
+    text-transform: uppercase;
+  }
+
+  /* Outcome card shared styles */
+  .outcome-card {
+    transition: background-color 120ms linear, box-shadow 120ms linear;
+  }
+
+  .outcome-name--accent {
+    font-weight: 600;
+    color: var(--outcome-accent, #000);
+  }
+
+  .outcome-card--homepage:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    box-shadow: 0 0 0 1px var(--outcome-accent, #000);
+  }
+
+  .outcome-card:not(.outcome-card--homepage):hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .market-card-share {
+    margin-left: 6px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #000;
+    background: #e0e0e0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .market-card-share:active {
+    border-style: inset;
+  }
+
+  .share-preview-image {
+    width: 100%;
+    height: 100%;
+    background: #d9d9d9;
+    overflow: hidden;
+  }
+
+  .share-preview-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .share-preview-image--placeholder {
+    width: 100%;
+    height: 100%;
+    background: #d9d9d9;
+  }
+
+  .share-image-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .share-image-actions button {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+.share-image-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Outcome button styling */
+.outcome-btn {
+  width: 100%;
+  text-align: left;
+  border: 2px solid var(--outcome-color, #000);
+  background: #f9f9f9;
+  padding: 6px 10px 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000;
+  transition: background-color 120ms ease-out, transform 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+.outcome-btn__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.outcome-btn__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1px solid #000;
+}
+
+.outcome-btn__label {
+  font-weight: 700;
+}
+
+.outcome-btn__meta {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* probability bar inside outcome button */
+.outcome-btn__bar {
+  width: 100%;
+  height: 6px;
+  border: 1px solid #000;
+  background: #e5e5e5;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.outcome-btn__bar-fill {
+  display: block;
+  height: 100%;
+  transition: width 120ms ease-out;
+}
+
+.outcome-btn__row {
+  display: flex;
+  gap: 4px;
+}
+
+.outcome-btn__meta-label {
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.outcome-btn__meta-value {
+  font-weight: 700;
+}
+
+.outcome-btn:hover {
+  background-color: color-mix(in srgb, var(--outcome-color, #000) 10%, #ffffff 90%);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #000;
+}
+
+.outcome-btn:active {
+  transform: translate(0, 0);
+  box-shadow: 1px 1px 0 #000;
+}
+
+.outcome-btn--disabled,
+.outcome-btn--disabled:hover,
+.outcome-btn--disabled:active {
+  cursor: default;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: 2px 2px 0 #000;
+}
+  .share-capture-card {
+    display: inline-block;
+    background: inherit;
+  }
+
+  .share-image-hidden-root {
+    position: fixed;
+    top: -10000px;
+    left: -10000px;
+    display: inline-block;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .share-image-hidden-root .win95-window {
+    margin: 0 !important;
+  }
+
+
+  .share-image-status {
+    font-size: 11px;
+    margin-bottom: 4px;
+    color: #555;
+  }
+
+  .share-image-status .error {
+    color: #c00;
+  }
+
+  .share-image-hint,
+  .share-image-error {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .share-image-error {
+    color: #b00020;
+  }
+
+  .share-section {
+    margin-top: 12px;
+  }
+
+  .share-preview-card-wrapper {
+    max-width: 1200px;
+    width: 100%;
+  }
+
+  .share-section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .share-section-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .share-preview-hint {
+    margin-top: 4px;
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .share-preview-error {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #c0392b;
+  }
+
+  .share-market-dialog-content {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .share-market-image-wrapper {
+    margin: 12px 0;
+  }
+
+  .share-market-image {
+    border: 1px solid var(--window-border, #000);
+    box-shadow: 0 0 0 2px var(--window-border, #000);
+  }
+
+  .share-preview-card {
+    width: 1200px;
+    height: 420px;
+    background: #d3d3d3;
+    border-top: 40px solid #000000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .share-preview-card-header {
+    display: flex;
+    padding: 24px 32px 0 32px;
+    position: relative;
+  }
+
+  .share-preview-image-wrapper {
+    width: 160px;
+    height: 160px;
+    background: #e5e5e5;
+    border: 4px solid #000;
+    box-sizing: border-box;
+    margin-right: 24px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .share-preview-header-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .share-preview-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .share-preview-subline {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .share-preview-subline .dot {
+    margin: 0 4px;
+  }
+
+  .share-preview-metrics-row {
+    display: flex;
+    gap: 16px;
+  }
+
+  .share-preview-metric .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .share-preview-metric .value {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .share-preview-status-pill {
+    position: absolute;
+    top: -32px;
+    right: 32px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 2px solid #000;
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .share-preview-footer {
+    height: 40px;
+    background: #1b2533;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 32px;
+    box-sizing: border-box;
+  }
+
+  .share-preview-brand {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* Market stats row */
+  .market-stat-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 20px;
+    width: 100%;
+  }
+
+  .market-stat-box {
+    flex: 1 1 0;
+    background: #f4f4f4;
+    border: 2px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    padding: 10px 16px;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .market-stat-box--status {
+    align-items: flex-start;
+  }
+
+  .market-stat-label {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+    color: #555;
+    margin-bottom: 4px;
+  }
+
+  .market-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .market-stat-unit {
+    font-size: 14px;
+    margin-left: 3px;
+  }
+
+  .market-stat-value--status {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .market-stat-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 2px solid #000;
+    background: #ffe39b;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: lowercase;
+  }
+
+  .market-stat-winner-hint {
+    font-size: 11px;
+    text-transform: lowercase;
+    color: #444;
+  }
+
+  .market-stat-box--status-open .market-stat-pill {
+    background: #b6ffb6;
+  }
+
+  .market-stat-box--status-locked .market-stat-pill {
+    background: #ffd5b0;
+  }
+
+  .market-stat-box--status-resolved .market-stat-pill {
+    background: #fff5a5;
+  }
+
+  .market-stat-box--status-void .market-stat-pill {
+    background: #ddd;
+  }
+
+  /* Outcome color overrides for winner pills - more specific than status colors */
+  .market-stat-pill.bg-outcome-0 {
+    background: #22c55e !important;
+  }
+
+  .market-stat-pill.bg-outcome-1 {
+    background: #ef4444 !important;
+  }
+
+  .market-stat-pill.bg-outcome-2 {
+    background: #3b82f6 !important;
+  }
+
+  .market-stat-pill.bg-outcome-3 {
+    background: #eab308 !important;
+  }
+
+  .market-stat-pill.bg-outcome-4 {
+    background: #a855f7 !important;
+  }
+
+  .market-resolution-pill {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Windows 95 window frame */
+  .win95-window {
+    border: 2px solid hsl(var(--border));
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Brand-specific utilities */
+  .smiley-text {
+    position: relative;
+  }
+
+  .smiley-text::before {
+    content: ':)';
+    opacity: 0.1;
+    position: absolute;
+    font-size: 8rem;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+}

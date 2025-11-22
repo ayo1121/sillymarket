@@ -1,0 +1,11 @@
+# Devnet is the default cluster for development.
+# Localnet is still available for local testing.
+[programs.localnet]
+yesno_markets = "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb"
+
+[programs.devnet]
+yesno_markets = "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb"
+
+[provider]
+cluster = "Devnet"
+wallet  = "/home/ayo/.config/solana/deployer.json"
