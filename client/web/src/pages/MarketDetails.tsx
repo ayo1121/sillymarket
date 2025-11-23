@@ -113,6 +113,7 @@ const MarketDetails = () => {
   const [shareTarget, setShareTarget] = useState<UIMarket | null>(null);
   const handleOpenShare = useCallback((m: UIMarket) => setShareTarget(m), []);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedCreator, setCopiedCreator] = useState(false);
   const closesAtMs = useMemo(
     () =>
       market?.closesAt?.getTime?.() ??
@@ -312,6 +313,17 @@ const MarketDetails = () => {
     }
   }, [market]);
 
+  const handleCopyCreator = useCallback(async () => {
+    if (!market?.creatorPubkey) return;
+    try {
+      await navigator.clipboard.writeText(market.creatorPubkey);
+      setCopiedCreator(true);
+      setTimeout(() => setCopiedCreator(false), 1500);
+    } catch (err) {
+      console.error("[MarketDetails] failed to copy creator address", err);
+    }
+  }, [market]);
+
   // Supabase Realtime subscription for bet inserts
   useEffect(() => {
     if (!marketId) {
@@ -433,8 +445,6 @@ const MarketDetails = () => {
     setModalOpen(true);
   };
 
-  const title = market.displayQuestion || `Market ${market.pubkey.slice(0, 4)}...`;
-
   const [copiedCreator, setCopiedCreator] = useState(false);
 
   const handleCopyCreator = useCallback(async () => {
@@ -447,6 +457,8 @@ const MarketDetails = () => {
       console.error("[MarketDetails] failed to copy creator address", err);
     }
   }, [market]);
+
+  const title = market.displayQuestion || `Market ${market.pubkey.slice(0, 4)}...`;
 
   return (
     <div className="min-h-screen bg-win95-teal">
