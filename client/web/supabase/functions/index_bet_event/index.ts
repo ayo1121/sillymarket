@@ -258,10 +258,52 @@ function normalizeNumericArrayFromEvent(value: any): number[] | null {
 }
 
 /**
- * Call Helius decoded transactions API to get decoded transaction
- * Returns null on errors or empty responses (never throws)
+ * Fetch raw transaction from Solana RPC (Helius RPC)
+ * Used when Enhanced API doesn't return logs
  */
-async function fetchDecodedTx(signature: string, fallbackTx?: any): Promise<any[] | null> {
+async function fetchRawTransaction(signature: string): Promise<any> {
+  try {
+    const rpcUrl = `https://devnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "bets-indexer-raw",
+        method: "getTransaction",
+        params: [
+          signature,
+          {
+            encoding: "json",
+            maxSupportedTransactionVersion: 0,
+            commitment: "confirmed"
+          }
+        ]
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`[bets-indexer] fetchRawTransaction HTTP error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      console.error("[bets-indexer] fetchRawTransaction RPC error:", data.error);
+      return null;
+    }
+
+    return data.result;
+  } catch (err) {
+    console.error("[bets-indexer] fetchRawTransaction exception:", err);
+    return null;
+  }
+}
+
+/**
+ * Fetch decoded transaction from Helius API (Enhanced Transactions)
+ */
+async function fetchDecodedTx(signature: string, payloadTx: any = null): Promise<any[] | null> {
   try {
     const resp = await fetch(HELIUS_TX_URL, {
       method: "POST",
@@ -1045,17 +1087,24 @@ Deno.serve(async (req) => {
       const decoded = decodedTxs?.[0] ?? null;
 
       // Extract Anchor events from transaction logs (PRIORITY: most reliable source)
-      const logs = decoded?.meta?.logMessages ?? decoded?.logs ?? [];
+      let logs = decoded?.meta?.logMessages ?? decoded?.logs ?? [];
 
-      console.log("[bets-indexer] 🔍 DETAILED DIAGNOSTIC:", {
+      // If logs are missing (common with Helius Enhanced API), fetch raw transaction
+      if (!logs || logs.length === 0) {
+        console.log("[bets-indexer] ⚠️ Logs missing in Enhanced API response, fetching raw transaction...");
+        const rawTx = await fetchRawTransaction(signature);
+        if (rawTx?.meta?.logMessages) {
+          logs = rawTx.meta.logMessages;
+          console.log("[bets-indexer] ✅ Retrieved", logs.length, "logs from raw transaction");
+        } else {
+          console.log("[bets-indexer] ❌ Failed to retrieve logs from raw transaction");
+        }
+      }
+
+      console.log("[bets-indexer] Transaction logs info:", {
         signature,
         hasDecoded: !!decoded,
-        decodedKeys: decoded ? Object.keys(decoded) : [],
-        hasMetaLogMessages: !!decoded?.meta?.logMessages,
-        hasLogs: !!decoded?.logs,
         logsCount: Array.isArray(logs) ? logs.length : 0,
-        logsType: typeof logs,
-        firstLogSample: Array.isArray(logs) && logs.length > 0 ? logs[0] : null,
       });
 
       const anchorEvents = extractAnchorEventsFromLogs(logs);
