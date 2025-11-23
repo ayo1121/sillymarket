@@ -435,6 +435,19 @@ const MarketDetails = () => {
 
   const title = market.displayQuestion || `Market ${market.pubkey.slice(0, 4)}...`;
 
+  const [copiedCreator, setCopiedCreator] = useState(false);
+
+  const handleCopyCreator = useCallback(async () => {
+    if (!market?.creatorPubkey) return;
+    try {
+      await navigator.clipboard.writeText(market.creatorPubkey);
+      setCopiedCreator(true);
+      setTimeout(() => setCopiedCreator(false), 1500);
+    } catch (err) {
+      console.error("[MarketDetails] failed to copy creator address", err);
+    }
+  }, [market]);
+
   return (
     <div className="min-h-screen bg-win95-teal">
       <Header />
@@ -518,37 +531,27 @@ const MarketDetails = () => {
                   <h1 className="text-2xl sm:text-4xl font-black mb-3 sm:mb-4 break-words">{title}</h1>
                   <div className="space-y-2 mb-3 sm:mb-4">
                     <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm sm:text-base">
-                      <span className="font-bold">
+                      <button
+                        type="button"
+                        onClick={handleCopyCreator}
+                        className="font-bold hover:underline flex items-center gap-1 group"
+                        title="Copy creator address"
+                      >
                         by {market.creatorName ?? market.creatorLabel}{" "}
-                        <span className="creator-wallet text-muted-foreground text-xs sm:text-sm">
+                        <span className="creator-wallet text-muted-foreground text-xs sm:text-sm font-normal group-hover:text-foreground transition-colors">
                           {shortenWallet(market.creatorPubkey ?? "")}
                         </span>
-                      </span>
+                        {copiedCreator && <span className="text-xs font-normal ml-1 text-green-600">• copied</span>}
+                      </button>
                       <span className="hidden sm:inline">•</span>
                       <button
                         type="button"
                         onClick={handleCopyAddress}
                         className="font-mono text-xs sm:text-sm truncate underline-offset-2 hover:underline"
+                        title="Copy market address"
                       >
                         {market.pubkey.slice(0, 8)}...{market.pubkey.slice(-4)}{" "}
                         <span className="font-semibold">{copiedAddress ? "• copied" : ""}</span>
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs sm:text-sm">
-                      <span className="font-bold">by {market.creatorName ?? market.creatorLabel}</span>
-                      <span className="hidden sm:inline">•</span>
-                      <span className="font-bold">{liveClosesLabel}</span>
-                      <button
-                        type="button"
-                        className="market-card-share"
-                        title="share market"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleOpenShare(market);
-                        }}
-                      >
-                        💾
                       </button>
                     </div>
                   </div>
