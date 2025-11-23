@@ -34,6 +34,7 @@ import { getMarketImageUrl } from "@/solana/marketImage";
 import { OutcomeCard, MarketStatsRow } from "@/components/MarketCard";
 import ProbabilityChart from "@/components/ProbabilityChart";
 import { showErrorToast } from "@/lib/errorHandling";
+import type { MarketHistoryPoint } from "@/solana/marketMapping";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -162,6 +163,38 @@ const MarketDetails = () => {
 
   // Probability history for chart - must be called before early returns
   const probabilityHistory = useMarketProbabilityHistory(market);
+  const [probHistory, setProbHistory] = useState<MarketHistoryPoint[]>([]);
+
+  // Seed history when market changes
+  useEffect(() => {
+    if (!market) {
+      setProbHistory([]);
+      return;
+    }
+    const initialHistory = Array.isArray(market.history) ? market.history : [];
+    setProbHistory(initialHistory);
+  }, [market?.pubkey]);
+
+  // Append new point whenever probabilities change
+  useEffect(() => {
+    if (!market) return;
+    if (!poolProbabilities.length) return;
+    if (poolProbabilities.length !== outcomeCount) return;
+
+    setProbHistory((prev) => {
+      const last = prev[prev.length - 1];
+      const unchanged =
+        last &&
+        last.probs?.length === poolProbabilities.length &&
+        poolProbabilities.every((p, i) => Math.abs((last.probs?.[i] ?? 0) - p) < 1e-6);
+      if (unchanged) return prev;
+      const nextPoint: MarketHistoryPoint = {
+        ts: Date.now(),
+        probs: poolProbabilities.slice(),
+      };
+      return [...prev, nextPoint];
+    });
+  }, [market?.pubkey, poolProbabilities, outcomeCount]);
 
   const MAX_VISIBLE_RECENT = 10;
 
@@ -757,7 +790,7 @@ const MarketDetails = () => {
                 </div>
                 <div className="win95-sunken bg-background p-3 sm:p-6">
                   <div className="h-48 sm:h-64 win95-sunken p-2 sm:p-4 bg-input">
-                    <ProbabilityChart market={market} />
+                    <ProbabilityChart market={market} history={probHistory} />
                   </div>
                 </div>
               </div>
