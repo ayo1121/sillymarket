@@ -194,7 +194,7 @@ const CreateMarket = () => {
 
       console.log("[CreateMarket] Anchor tx success", { txSig, marketPubkey });
 
-      // 2) Local metadata (still ok to keep)
+      // 2) Store metadata in Supabase for global access
       const creatorWallet = wallet.publicKey?.toBase58() ?? null;
       const createdAtIso = new Date().toISOString();
 
@@ -209,13 +209,36 @@ const CreateMarket = () => {
         createdAt: createdAtIso,
       };
 
+      // Insert into Supabase markets table for global access
+      try {
+        const { error: supabaseError } = await (await import("@/integrations/supabase/client")).supabase
+          .from("markets")
+          .insert({
+            market_pubkey: marketPubkey,
+            question: question.trim(),
+            creator_wallet: creatorWallet,
+            creator_name: username ?? null,
+            image_url: finalImageUrl || null,
+            answers: answers, // This will be outcome_labels
+            description: null,
+          });
+
+        if (supabaseError) {
+          console.error("[CreateMarket] Supabase insert failed:", supabaseError);
+          // Don't block market creation if Supabase fails, just log it
+          toast.error("Market created but metadata save failed. Some info may not display.");
+        } else {
+          console.log("[CreateMarket] Market metadata stored in Supabase");
+        }
+      } catch (supabaseErr) {
+        console.error("[CreateMarket] Supabase insert exception:", supabaseErr);
+      }
+
+      // Also store locally as fallback
       const { upsertLocalMarketMetadata } = await import("../lib/marketMetadata");
       upsertLocalMarketMetadata(metadata);
 
-      // ⚠️ SECURITY NOTE: Frontend no longer writes to Supabase markets table
-      // Market metadata is stored locally and read from on-chain data
-      // If backend indexing is needed, it should be done via Edge Function/API
-      console.log("[CreateMarket] Market metadata stored locally");
+      console.log("[CreateMarket] Market metadata stored");
 
 
       // 4) Existing success UI: reset form, navigate, toast, etc.
