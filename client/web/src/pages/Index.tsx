@@ -85,6 +85,11 @@ const Index = () => {
       if (statusFilter === "closed" && market.state === "open") return false;
     }
 
+    // Special filter for "ending-soon": only show active markets
+    if (sortBy === "ending-soon" && market.state !== "open") {
+      return false;
+    }
+
     return true;
   }).sort((a, b) => {
     switch (sortBy) {
@@ -97,7 +102,7 @@ const Index = () => {
         return a.closesAt.getTime() - b.closesAt.getTime();
       case "newest":
       default:
-        return b.closesAt.getTime() - a.closesAt.getTime();
+        return b.createdAt.getTime() - a.createdAt.getTime();
     }
   });
 

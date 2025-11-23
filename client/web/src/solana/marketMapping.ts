@@ -58,12 +58,15 @@ export type UIMarket = {
   creatorLabel: string; // username if present, else shortened wallet
 
   state: "open" | "locked" | "resolved" | "void";
-  
+
   // Status flags derived from on-chain fields
   isLocked: boolean;   // state === ACTIVE && now >= cutoff_ts && winning_index === WIN_UNSET
   isResolved: boolean; // state === RESOLVED
-  
+
+  isResolved: boolean; // state === RESOLVED
+
   closesAt: Date;
+  createdAt: Date;
   timeRemainingLabel: string;
 
   // Multi-outcome support (up to 5)
@@ -243,7 +246,7 @@ export function mapRawMarketToUi(raw: any): UIMarket {
   const now = Math.floor(Date.now() / 1000);
   const isResolved = state === STATE_RESOLVED;
   const isLocked = (state === STATE_ACTIVE) && (now >= cutoffTs) && (winningIndex === WIN_UNSET);
-  
+
   if (state === STATE_RESOLVED) {
     if (winningIndex === WIN_VOID) {
       uiState = "void";
@@ -289,6 +292,7 @@ export function mapRawMarketToUi(raw: any): UIMarket {
     isLocked,
     isResolved,
     closesAt,
+    createdAt: new Date(createdTs * 1000),
     timeRemainingLabel,
     outcomes,
     yesPool,
