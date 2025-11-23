@@ -36,19 +36,59 @@ const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
 /**
+ * Helper functions for decoding Anchor events from transaction logs
+ */
+
+// Read u32 little-endian
+function readU32LE(data: Uint8Array, offset: number): number {
+  return (
+    data[offset] |
+    (data[offset + 1] << 8) |
+    (data[offset + 2] << 16) |
+    (data[offset + 3] << 24)
+  ) >>> 0;
+}
+
+// Read u64 little-endian (returns as number, may lose precision for very large values)
+function readU64LE(data: Uint8Array, offset: number): number {
+  const low =
+    data[offset] |
+    (data[offset + 1] << 8) |
+    (data[offset + 2] << 16) |
+    (data[offset + 3] << 24);
+  const high =
+    data[offset + 4] |
+    (data[offset + 5] << 8) |
+    (data[offset + 6] << 16) |
+    (data[offset + 7] << 24);
+  return low + high * 0x100000000;
+}
+
+// Base64 to Uint8Array
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Check if two arrays are equal
+function arraysEqual(a: Uint8Array | number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/**
  * Helper to normalize outcome index from various formats
  * Returns number | null - supports 0-4 (2-5 outcomes)
  */
 function normalizeOutcomeIndex(value: any): number | null {
   if (value == null) return null;
-
-  if (typeof value === "number" && Number.isFinite(value)) {
-    const intValue = Math.floor(value);
-    if (intValue >= 0 && intValue <= 4 && Number.isInteger(value)) {
-      return intValue;
-    }
-  }
-
   if (typeof value === "string") {
     const trimmed = value.trim().toLowerCase();
     // Numeric string
@@ -62,6 +102,121 @@ function normalizeOutcomeIndex(value: any): number | null {
   }
 
   return null;
+}
+
+/**
+ * Decode BetPlaced event from Anchor event data
+ * Event structure from IDL:
+ * - 8 bytes: discriminator
+ * - 32 bytes: market pubkey
+ * - 32 bytes: bettor pubkey
+ * - 1 byte: outcome_index (u8)
+ * - 8 bytes: amount_lamports (u64)
+ * - 4 bytes: pools_after length (u32)
+ * - N * 8 bytes: pools_after values (Vec<u64>)
+ */
+function decodeBetPlacedEvent(eventData: Uint8Array): {
+  market: string;
+  bettor: string;
+  outcome_index: number;
+  amount_lamports: number;
+  pools_after: number[];
+} | null {
+  try {
+    // Minimum size: 8 (discriminator) + 32 (market) + 32 (bettor) + 1 (outcome) + 8 (amount) + 4 (vec len) = 85 bytes
+    if (eventData.length < 85) {
+      console.warn("[bets-indexer] BetPlaced event data too short:", eventData.length);
+      return null;
+    }
+
+    let offset = 8; // Skip discriminator
+
+    // Read market pubkey (32 bytes)
+    const marketBytes = eventData.slice(offset, offset + 32);
+    const market = bs58.encode(marketBytes);
+    offset += 32;
+
+    // Read bettor pubkey (32 bytes)
+    const bettorBytes = eventData.slice(offset, offset + 32);
+    const bettor = bs58.encode(bettorBytes);
+    offset += 32;
+
+    // Read outcome_index (u8, 1 byte)
+    const outcome_index = eventData[offset];
+    offset += 1;
+
+    // Read amount_lamports (u64, 8 bytes little-endian)
+    const amount_lamports = readU64LE(eventData, offset);
+    offset += 8;
+
+    // Read pools_after (Vec<u64>)
+    const poolsLength = readU32LE(eventData, offset);
+    offset += 4;
+
+    const pools_after: number[] = [];
+    for (let i = 0; i < poolsLength; i++) {
+      if (offset + 8 > eventData.length) {
+        console.warn("[bets-indexer] Incomplete pools_after data");
+        break;
+      }
+      pools_after.push(readU64LE(eventData, offset));
+      offset += 8;
+    }
+
+    return {
+      market,
+      bettor,
+      outcome_index,
+      amount_lamports,
+      pools_after,
+    };
+  } catch (err) {
+    console.error("[bets-indexer] Failed to decode BetPlaced event:", err);
+    return null;
+  }
+}
+
+/**
+ * Extract Anchor events from transaction logs
+ * Anchor emits events as: "Program data: <base64_encoded_data>"
+ */
+function extractAnchorEventsFromLogs(logs: string[]): Array<{
+  name: string;
+  data: Uint8Array;
+}> {
+  const events: Array<{ name: string; data: Uint8Array }> = [];
+
+  if (!logs || !Array.isArray(logs)) {
+    return events;
+  }
+
+  // BetPlaced event discriminator from IDL
+  const BET_PLACED_DISCRIMINATOR = [88, 88, 145, 226, 126, 206, 32, 0];
+
+  for (const log of logs) {
+    // Anchor events are emitted as "Program data: <base64>"
+    if (log.startsWith("Program data: ")) {
+      const base64Data = log.slice("Program data: ".length).trim();
+      try {
+        const data = base64ToUint8Array(base64Data);
+
+        if (data.length < 8) {
+          continue; // Too short to have discriminator
+        }
+
+        // Check discriminator to identify event type
+        const discriminator = Array.from(data.slice(0, 8));
+
+        if (arraysEqual(discriminator, BET_PLACED_DISCRIMINATOR)) {
+          events.push({ name: "BetPlaced", data });
+        }
+      } catch (err) {
+        console.warn("[bets-indexer] Failed to decode event log:", err);
+      }
+    }
+  }
+
+  return events;
 }
 
 /**
@@ -506,6 +661,14 @@ async function insertBetRow(args: {
   probsAfter?: any;
   blockTimeIso?: string | null;
 }) {
+  console.log("[bets-indexer] Preparing to construct bet row for insert:", {
+    txSig: args.signature,
+    marketPubkey: args.marketPubkey,
+    bettorPubkey: args.bettorPubkey,
+    outcomeIndex: args.outcomeIndex,
+    amountLamports: args.amountLamports,
+  });
+
   const amountSol = args.amountLamports / LAMPORTS_PER_SOL;
   const blockTime =
     args.blockTimeIso ??
@@ -524,13 +687,14 @@ async function insertBetRow(args: {
     probs_after: args.probsAfter ?? null,
   };
 
-  console.log("[bets-indexer] Inserting bet row:", {
-    txSig: args.signature,
-    marketPubkey: args.marketPubkey,
-    bettorPubkey: args.bettorPubkey,
-    outcomeIndex: args.outcomeIndex,
-    amountLamports: args.amountLamports,
-    fullRow: row,
+  console.log("[bets-indexer] Row object about to insert:", {
+    tx_sig: row.tx_sig,
+    market_pubkey: row.market_pubkey,
+    bettor_pubkey: row.bettor_pubkey,
+    outcome_index: row.outcome_index,
+    amount_lamports: row.amount_lamports,
+    pools_after: row.pools_after,
+    probs_after: row.probs_after,
   });
 
   try {
@@ -558,6 +722,22 @@ async function insertBetRow(args: {
         outcomeIndex: args.outcomeIndex ?? null,
         insertedId: data?.[0]?.id,
       });
+
+      // READ BACK to verify what was actually stored
+      const { data: verifyRows, error: verifyError } = await supabase
+        .from("bets")
+        .select("id, market_pubkey, bettor_pubkey, outcome_index, pools_after, probs_after, amount_lamports")
+        .eq("tx_sig", row.tx_sig)
+        .limit(1);
+
+      console.log("[bets-indexer] 🔍 READ BACK row from DB:", {
+        tx_sig: row.tx_sig,
+        verifyError: verifyError ? {
+          message: verifyError.message,
+          code: verifyError.code,
+        } : null,
+        verifyRows,
+      });
     }
   } catch (err) {
     console.error("[bets-indexer] ❌ EXCEPTION during insert:", {
@@ -568,7 +748,7 @@ async function insertBetRow(args: {
       stack: err instanceof Error ? err.stack : undefined,
     });
   }
-}
+} // End of else block (legacy path)
 
 /**
  * Extract Anchor program events from Helius decoded transaction
@@ -851,6 +1031,31 @@ Deno.serve(async (req) => {
       );
       const decoded = decodedTxs?.[0] ?? null;
 
+      // Extract Anchor events from transaction logs (PRIORITY: most reliable source)
+      const logs = decoded?.meta?.logMessages ?? decoded?.logs ?? [];
+      const anchorEvents = extractAnchorEventsFromLogs(logs);
+
+      console.log("[bets-indexer] Extracted", anchorEvents.length, "Anchor event(s) from logs");
+
+      // Decode BetPlaced events
+      let decodedBetPlaced: ReturnType<typeof decodeBetPlacedEvent> = null;
+      for (const anchorEvent of anchorEvents) {
+        if (anchorEvent.name === "BetPlaced") {
+          decodedBetPlaced = decodeBetPlacedEvent(anchorEvent.data);
+          if (decodedBetPlaced) {
+            console.log("[bets-indexer] ✅ Decoded BetPlaced event:", {
+              signature,
+              market: decodedBetPlaced.market,
+              bettor: decodedBetPlaced.bettor,
+              outcome_index: decodedBetPlaced.outcome_index,
+              amount_lamports: decodedBetPlaced.amount_lamports,
+              pools_after: decodedBetPlaced.pools_after,
+            });
+            break; // Use first valid BetPlaced event
+          }
+        }
+      }
+
       const fromHelius = extractFromHeliusJson(decodedTxs ?? []);
       const fromWebhook = extractFromWebhookPayload(payloadEntry);
       const fromInstructions = extractFromInstructionAccounts(decoded ?? payloadEntry, programId);
@@ -872,28 +1077,48 @@ Deno.serve(async (req) => {
           ).toISOString()
           : new Date().toISOString());
 
-      const baseKeys: BetIndexKeys = {
-        signature,
-        blockTimeIso,
-        marketPubkey:
-          fromHelius.marketPubkey ??
-          fromWebhook.marketPubkey ??
-          fromInstructions.marketPubkey ??
-          null,
-        bettorPubkey:
-          fromHelius.bettorPubkey ??
-          fromWebhook.bettorPubkey ??
-          fromInstructions.bettorPubkey ??
-          null,
-        outcomeIndex: fromHelius.outcomeIndex ?? null,
-        amountLamports:
-          fromHelius.amountLamports ??
-          fromWebhook.amountLamports ??
-          fromInstructions.amountLamports ??
-          null,
-        poolsAfter: fromHelius.poolsAfter ?? null,
-        probsAfter: fromHelius.probsAfter ?? null,
-      };
+      // If we have a decoded Anchor event, use it as the primary source
+      let calculatedProbs: number[] | null = null;
+      if (decodedBetPlaced && decodedBetPlaced.pools_after.length > 0) {
+        const total = decodedBetPlaced.pools_after.reduce((a, b) => a + b, 0);
+        if (total > 0) {
+          calculatedProbs = decodedBetPlaced.pools_after.map(p => p / total);
+        }
+      }
+
+      const baseKeys: BetIndexKeys = decodedBetPlaced
+        ? {
+          signature,
+          blockTimeIso,
+          marketPubkey: decodedBetPlaced.market,
+          bettorPubkey: decodedBetPlaced.bettor,
+          outcomeIndex: decodedBetPlaced.outcome_index,
+          amountLamports: decodedBetPlaced.amount_lamports,
+          poolsAfter: decodedBetPlaced.pools_after,
+          probsAfter: calculatedProbs,
+        }
+        : {
+          signature,
+          blockTimeIso,
+          marketPubkey:
+            fromHelius.marketPubkey ??
+            fromWebhook.marketPubkey ??
+            fromInstructions.marketPubkey ??
+            null,
+          bettorPubkey:
+            fromHelius.bettorPubkey ??
+            fromWebhook.bettorPubkey ??
+            fromInstructions.bettorPubkey ??
+            null,
+          outcomeIndex: fromHelius.outcomeIndex ?? null,
+          amountLamports:
+            fromHelius.amountLamports ??
+            fromWebhook.amountLamports ??
+            fromInstructions.amountLamports ??
+            null,
+          poolsAfter: fromHelius.poolsAfter ?? null,
+          probsAfter: fromHelius.probsAfter ?? null,
+        };
 
       const baseOutcomeNormalized = normalizeOutcomeIndex(fromHelius.outcomeIndex ?? baseKeys.outcomeIndex);
       const fromInstructionOutcomeNormalized = normalizeOutcomeIndex(fromInstructions.outcomeIndex);
@@ -952,274 +1177,309 @@ Deno.serve(async (req) => {
       const indexedEvents: string[] = [];
       let betRowsInserted = 0;
 
-      for (const ev of programEvents) {
-        const evType = ev.name || ev.eventType || ev.event_type || ev.type || ev.event;
-        const evData = ev.data || ev.fields || ev.parsed || ev;
+      // PRIORITY: If we have a decoded Anchor BetPlaced event, use it directly
+      if (decodedBetPlaced && baseKeys.outcomeIndex != null) {
+        console.log("[bets-indexer] FINAL decoded bet row input", {
+          signature,
+          marketPubkey: baseKeys.marketPubkey,
+          bettorPubkey: baseKeys.bettorPubkey,
+          outcomeIndex: baseKeys.outcomeIndex,
+          amountLamports: baseKeys.amountLamports,
+          poolsAfter: baseKeys.poolsAfter,
+          probsAfter: baseKeys.probsAfter,
+        });
 
-        if (!evType) continue;
+        await insertBetRow({
+          signature,
+          marketPubkey: baseKeys.marketPubkey!,
+          bettorPubkey: baseKeys.bettorPubkey!,
+          outcomeIndex: baseKeys.outcomeIndex,
+          amountLamports: baseKeys.amountLamports!,
+          poolsAfter: baseKeys.poolsAfter,
+          probsAfter: baseKeys.probsAfter,
+          blockTimeIso: baseKeys.blockTimeIso,
+          username: null,
+          outcomeLabel: null, // TODO: derive from market metadata if needed
+        });
 
-        // Handle BetPlaced event
-        if (evType === "BetPlaced" || evType === "betPlaced") {
-          const eventMarket =
-            evData.market ??
-            evData.market_pubkey ??
-            evData.data?.market ??
-            baseKeys.marketPubkey;
-          const eventBettor =
-            evData.bettor ??
-            evData.bettor_pubkey ??
-            evData.data?.bettor ??
-            baseKeys.bettorPubkey;
+        betRowsInserted += 1;
+        indexedEvents.push("BetPlaced (Anchor event)");
+        console.log("[bets-indexer] ✅ Inserted bet from decoded Anchor event", {
+          signature,
+          outcomeIndex: baseKeys.outcomeIndex,
+        });
+      }
+      // Otherwise, try to process Helius pre-parsed events (legacy path)
+      else {
+        for (const ev of programEvents) {
+          const evType = ev.name || ev.eventType || ev.event_type || ev.type || ev.event;
+          const evData = ev.data || ev.fields || ev.parsed || ev;
 
-          const { outcomeIndex: extractedOutcomeIndex, poolsAfter: extractedPoolsAfter, probsAfter: extractedProbsAfter } =
-            extractOutcomeAndPoolsFromBetEvent(ev);
-          const eventOutcomeCandidates = [
-            evData.outcome_index,
-            evData.outcomeIndex,
-            evData.data?.outcome_index,
-            evData.data?.outcomeIndex,
-            extractedOutcomeIndex,
-          ];
-          let eventOutcome: number | null = null;
-          for (const candidate of eventOutcomeCandidates) {
-            const normalized = normalizeOutcomeIndex(candidate);
-            if (normalized != null) {
-              eventOutcome = normalized;
-              break;
+          if (!evType) continue;
+
+          // Handle BetPlaced event
+          if (evType === "BetPlaced" || evType === "betPlaced") {
+            const eventMarket =
+              evData.market ??
+              evData.market_pubkey ??
+              evData.data?.market ??
+              baseKeys.marketPubkey;
+            const eventBettor =
+              evData.bettor ??
+              evData.bettor_pubkey ??
+              evData.data?.bettor ??
+              baseKeys.bettorPubkey;
+
+            const { outcomeIndex: extractedOutcomeIndex, poolsAfter: extractedPoolsAfter, probsAfter: extractedProbsAfter } =
+              extractOutcomeAndPoolsFromBetEvent(ev);
+            const eventOutcomeCandidates = [
+              evData.outcome_index,
+              evData.outcomeIndex,
+              evData.data?.outcome_index,
+              evData.data?.outcomeIndex,
+              extractedOutcomeIndex,
+            ];
+            let eventOutcome: number | null = null;
+            for (const candidate of eventOutcomeCandidates) {
+              const normalized = normalizeOutcomeIndex(candidate);
+              if (normalized != null) {
+                eventOutcome = normalized;
+                break;
+              }
             }
-          }
-          if (eventOutcome != null) {
-            bestEventOutcome = eventOutcome; // event has highest priority
-          }
-
-          const rawAmount =
-            evData.amount_lamports ??
-            evData.amountLamports ??
-            evData.data?.amount_lamports ??
-            null;
-          let eventAmount: number | null = null;
-          if (rawAmount != null) {
-            const parsed = Number(rawAmount);
-            if (!Number.isNaN(parsed)) {
-              eventAmount = parsed;
+            if (eventOutcome != null) {
+              bestEventOutcome = eventOutcome; // event has highest priority
             }
-          }
-          if (eventAmount == null) {
-            eventAmount = baseKeys.amountLamports;
-          }
 
-          let poolsAfter =
-            normalizeNumericArrayFromEvent(evData.pools_after ?? evData.poolsAfter) ??
-            extractedPoolsAfter ??
-            baseKeys.poolsAfter;
-          let probsAfter =
-            normalizeNumericArrayFromEvent(evData.probs_after ?? evData.probsAfter) ??
-            extractedProbsAfter ??
-            baseKeys.probsAfter;
-          if (!probsAfter && poolsAfter && poolsAfter.length > 0) {
-            const total = poolsAfter.reduce((a, b) => a + b, 0);
-            if (total > 0) {
-              probsAfter = poolsAfter.map((p: number) => p / total);
+            const rawAmount =
+              evData.amount_lamports ??
+              evData.amountLamports ??
+              evData.data?.amount_lamports ??
+              null;
+            let eventAmount: number | null = null;
+            if (rawAmount != null) {
+              const parsed = Number(rawAmount);
+              if (!Number.isNaN(parsed)) {
+                eventAmount = parsed;
+              }
             }
-          }
-          if (poolsAfter && !bestPoolsAfter) {
-            bestPoolsAfter = poolsAfter;
-          }
-          if (probsAfter && !bestProbsAfter) {
-            bestProbsAfter = probsAfter;
-          }
+            if (eventAmount == null) {
+              eventAmount = baseKeys.amountLamports;
+            }
 
-          const baseOutcomeIndex =
-            typeof baseKeys.outcomeIndex === "number"
-              ? baseKeys.outcomeIndex
-              : null;
+            let poolsAfter =
+              normalizeNumericArrayFromEvent(evData.pools_after ?? evData.poolsAfter) ??
+              extractedPoolsAfter ??
+              baseKeys.poolsAfter;
+            let probsAfter =
+              normalizeNumericArrayFromEvent(evData.probs_after ?? evData.probsAfter) ??
+              extractedProbsAfter ??
+              baseKeys.probsAfter;
+            if (!probsAfter && poolsAfter && poolsAfter.length > 0) {
+              const total = poolsAfter.reduce((a, b) => a + b, 0);
+              if (total > 0) {
+                probsAfter = poolsAfter.map((p: number) => p / total);
+              }
+            }
+            if (poolsAfter && !bestPoolsAfter) {
+              bestPoolsAfter = poolsAfter;
+            }
+            if (probsAfter && !bestProbsAfter) {
+              bestProbsAfter = probsAfter;
+            }
 
-          const finalMarket =
-            eventMarket ??
-            baseKeys.marketPubkey ??
-            fromInstructions.marketPubkey ??
-            null;
-          const finalBettor =
-            eventBettor ??
-            baseKeys.bettorPubkey ??
-            fromInstructions.bettorPubkey ??
-            null;
-          const finalAmountLamports =
-            eventAmount ??
-            baseKeys.amountLamports ??
-            fromInstructions.amountLamports ??
-            null;
-          const mergedOutcomeIndex =
-            eventOutcome ??
-            instructionOutcomeNormalized ??
-            baseOutcomeIndex ??
-            null;
+            const baseOutcomeIndex =
+              typeof baseKeys.outcomeIndex === "number"
+                ? baseKeys.outcomeIndex
+                : null;
 
-          console.debug("[index_bet_event] BetPlaced outcome resolution", {
-            signature,
-            eventOutcome,
-            baseOutcomeIndex,
-            finalOutcome: mergedOutcomeIndex,
-          });
+            const finalMarket =
+              eventMarket ??
+              baseKeys.marketPubkey ??
+              fromInstructions.marketPubkey ??
+              null;
+            const finalBettor =
+              eventBettor ??
+              baseKeys.bettorPubkey ??
+              fromInstructions.bettorPubkey ??
+              null;
+            const finalAmountLamports =
+              eventAmount ??
+              baseKeys.amountLamports ??
+              fromInstructions.amountLamports ??
+              null;
+            const mergedOutcomeIndex =
+              eventOutcome ??
+              instructionOutcomeNormalized ??
+              baseOutcomeIndex ??
+              null;
 
-          if (finalMarket == null || finalBettor == null || finalAmountLamports == null) {
-            console.warn("[index_bet_event] ❌ cannot insert bet (event path) due to missing keys", {
+            console.debug("[index_bet_event] BetPlaced outcome resolution", {
               signature,
-              eventMarket: finalMarket,
-              eventBettor: finalBettor,
-              eventAmount: finalAmountLamports,
-              outcomeIndex: mergedOutcomeIndex,
+              eventOutcome,
+              baseOutcomeIndex,
+              finalOutcome: mergedOutcomeIndex,
             });
+
+            if (finalMarket == null || finalBettor == null || finalAmountLamports == null) {
+              console.warn("[index_bet_event] ❌ cannot insert bet (event path) due to missing keys", {
+                signature,
+                eventMarket: finalMarket,
+                eventBettor: finalBettor,
+                eventAmount: finalAmountLamports,
+                outcomeIndex: mergedOutcomeIndex,
+              });
+              continue;
+            }
+
+            if (mergedOutcomeIndex == null) {
+              console.warn("[index_bet_event] BetPlaced event missing outcome index; inserting as Unknown", {
+                signature,
+                eventMarket: finalMarket,
+                eventBettor: finalBettor,
+              });
+            }
+
+            console.log("[index_bet_event] inserting bet row", {
+              signature,
+              marketPubkey: finalMarket,
+              bettorPubkey: finalBettor,
+              outcomeIndex: mergedOutcomeIndex,
+              amountLamports: finalAmountLamports,
+            });
+
+            await insertBetRow({
+              signature,
+              marketPubkey: finalMarket,
+              bettorPubkey: finalBettor,
+              outcomeIndex: mergedOutcomeIndex,
+              amountLamports: finalAmountLamports,
+              poolsAfter,
+              probsAfter,
+              blockTimeIso: baseKeys.blockTimeIso,
+            });
+
+            betRowsInserted += 1;
+            indexedEvents.push("BetPlaced");
             continue;
           }
 
-          if (mergedOutcomeIndex == null) {
-            console.warn("[index_bet_event] BetPlaced event missing outcome index; inserting as Unknown", {
-              signature,
-              eventMarket: finalMarket,
-              eventBettor: finalBettor,
-            });
-          }
+          // Handle MarketCreated event
+          if (evType === "MarketCreated" || evType === "marketCreated") {
+            const market = evData.market || evData.data?.market || evData.args?.market || null;
+            const creator = evData.creator || evData.data?.creator || evData.args?.creator || null;
+            const cutoff_ts = evData.cutoff_ts || evData.cutoffTs || evData.data?.cutoff_ts || evData.args?.cutoff_ts || null;
+            const outcomes_count = evData.outcomes_count || evData.outcomesCount || evData.data?.outcomes_count || evData.args?.outcomes_count || null;
+            const question_hash = evData.question_hash || evData.questionHash || evData.data?.question_hash || evData.args?.question_hash || null;
 
-          console.log("[index_bet_event] inserting bet row", {
-            signature,
-            marketPubkey: finalMarket,
-            bettorPubkey: finalBettor,
-            outcomeIndex: mergedOutcomeIndex,
-            amountLamports: finalAmountLamports,
-          });
+            if (market && creator && cutoff_ts != null && outcomes_count != null) {
+              const row: any = {
+                market_pubkey: String(market),
+                creator_pubkey: String(creator),
+                cutoff_ts: Number(cutoff_ts),
+                outcomes_count: Number(outcomes_count),
+                question_hash: question_hash ? String(question_hash) : null,
+                block_time: blockTimeIso,
+                tx_sig: String(signature),
+              };
 
-          await insertBetRow({
-            signature,
-            marketPubkey: finalMarket,
-            bettorPubkey: finalBettor,
-            outcomeIndex: mergedOutcomeIndex,
-            amountLamports: finalAmountLamports,
-            poolsAfter,
-            probsAfter,
-            blockTimeIso: baseKeys.blockTimeIso,
-          });
-
-          betRowsInserted += 1;
-          indexedEvents.push("BetPlaced");
-          continue;
-        }
-
-        // Handle MarketCreated event
-        if (evType === "MarketCreated" || evType === "marketCreated") {
-          const market = evData.market || evData.data?.market || evData.args?.market || null;
-          const creator = evData.creator || evData.data?.creator || evData.args?.creator || null;
-          const cutoff_ts = evData.cutoff_ts || evData.cutoffTs || evData.data?.cutoff_ts || evData.args?.cutoff_ts || null;
-          const outcomes_count = evData.outcomes_count || evData.outcomesCount || evData.data?.outcomes_count || evData.args?.outcomes_count || null;
-          const question_hash = evData.question_hash || evData.questionHash || evData.data?.question_hash || evData.args?.question_hash || null;
-
-          if (market && creator && cutoff_ts != null && outcomes_count != null) {
-            const row: any = {
-              market_pubkey: String(market),
-              creator_pubkey: String(creator),
-              cutoff_ts: Number(cutoff_ts),
-              outcomes_count: Number(outcomes_count),
-              question_hash: question_hash ? String(question_hash) : null,
-              block_time: blockTimeIso,
-              tx_sig: String(signature),
-            };
-
-            const { error } = await supabase.from("market_events").insert(row);
-            if (error) {
-              if (error.code === "23505" || error.message?.includes("duplicate")) {
-                console.log("[index_bet_event] Duplicate MarketCreated (expected):", signature);
+              const { error } = await supabase.from("market_events").insert(row);
+              if (error) {
+                if (error.code === "23505" || error.message?.includes("duplicate")) {
+                  console.log("[index_bet_event] Duplicate MarketCreated (expected):", signature);
+                } else {
+                  console.error("[index_bet_event] MarketCreated insert error:", error);
+                }
               } else {
-                console.error("[index_bet_event] MarketCreated insert error:", error);
+                indexedEvents.push("MarketCreated");
+                console.log("[index_bet_event] Indexed MarketCreated:", signature);
               }
             } else {
-              indexedEvents.push("MarketCreated");
-              console.log("[index_bet_event] Indexed MarketCreated:", signature);
+              const eventSample = JSON.stringify(evData).slice(0, 600);
+              console.warn("[index_bet_event] MarketCreated missing required fields", {
+                signature,
+                eventSample,
+              });
             }
-          } else {
-            const eventSample = JSON.stringify(evData).slice(0, 600);
-            console.warn("[index_bet_event] MarketCreated missing required fields", {
-              signature,
-              eventSample,
-            });
           }
-        }
 
-        // Handle WinnerResolved event
-        if (evType === "WinnerResolved" || evType === "winnerResolved") {
-          const market = evData.market || evData.data?.market || evData.args?.market || baseKeys.marketPubkey;
-          const winner_index = evData.winner_index !== undefined ? evData.winner_index : (evData.winnerIndex !== undefined ? evData.winnerIndex : (evData.data?.winner_index !== undefined ? evData.data.winner_index : (evData.args?.winner_index !== undefined ? evData.args.winner_index : null)));
-          const auto_void = evData.auto_void !== undefined ? evData.auto_void : (evData.autoVoid !== undefined ? evData.autoVoid : (evData.data?.auto_void !== undefined ? evData.data.auto_void : (evData.args?.auto_void !== undefined ? evData.args.auto_void : false)));
-          const resolved_total_pool = evData.resolved_total_pool || evData.resolvedTotalPool || evData.data?.resolved_total_pool || evData.args?.resolved_total_pool || null;
-          const resolved_win_pool = evData.resolved_win_pool || evData.resolvedWinPool || evData.data?.resolved_win_pool || evData.args?.resolved_win_pool || null;
-          const fees_transferred = evData.fees_transferred || evData.feesTransferred || evData.data?.fees_transferred || evData.args?.fees_transferred || null;
+          // Handle WinnerResolved event
+          if (evType === "WinnerResolved" || evType === "winnerResolved") {
+            const market = evData.market || evData.data?.market || evData.args?.market || baseKeys.marketPubkey;
+            const winner_index = evData.winner_index !== undefined ? evData.winner_index : (evData.winnerIndex !== undefined ? evData.winnerIndex : (evData.data?.winner_index !== undefined ? evData.data.winner_index : (evData.args?.winner_index !== undefined ? evData.args.winner_index : null)));
+            const auto_void = evData.auto_void !== undefined ? evData.auto_void : (evData.autoVoid !== undefined ? evData.autoVoid : (evData.data?.auto_void !== undefined ? evData.data.auto_void : (evData.args?.auto_void !== undefined ? evData.args.auto_void : false)));
+            const resolved_total_pool = evData.resolved_total_pool || evData.resolvedTotalPool || evData.data?.resolved_total_pool || evData.args?.resolved_total_pool || null;
+            const resolved_win_pool = evData.resolved_win_pool || evData.resolvedWinPool || evData.data?.resolved_win_pool || evData.args?.resolved_win_pool || null;
+            const fees_transferred = evData.fees_transferred || evData.feesTransferred || evData.data?.fees_transferred || evData.args?.fees_transferred || null;
 
-          if (market && winner_index != null) {
-            const row: any = {
-              market_pubkey: String(market),
-              winner_index: Number(winner_index),
-              auto_void: Boolean(auto_void),
-              resolved_total_pool: resolved_total_pool != null ? Number(resolved_total_pool) : null,
-              resolved_win_pool: resolved_win_pool != null ? Number(resolved_win_pool) : null,
-              fees_transferred: fees_transferred != null ? Number(fees_transferred) : null,
-              block_time: blockTimeIso,
-              tx_sig: String(signature),
-            };
+            if (market && winner_index != null) {
+              const row: any = {
+                market_pubkey: String(market),
+                winner_index: Number(winner_index),
+                auto_void: Boolean(auto_void),
+                resolved_total_pool: resolved_total_pool != null ? Number(resolved_total_pool) : null,
+                resolved_win_pool: resolved_win_pool != null ? Number(resolved_win_pool) : null,
+                fees_transferred: fees_transferred != null ? Number(fees_transferred) : null,
+                block_time: blockTimeIso,
+                tx_sig: String(signature),
+              };
 
-            const { error } = await supabase.from("market_resolutions").insert(row);
-            if (error) {
-              if (error.code === "23505" || error.message?.includes("duplicate")) {
-                console.log("[index_bet_event] Duplicate WinnerResolved (expected):", signature);
+              const { error } = await supabase.from("market_resolutions").insert(row);
+              if (error) {
+                if (error.code === "23505" || error.message?.includes("duplicate")) {
+                  console.log("[index_bet_event] Duplicate WinnerResolved (expected):", signature);
+                } else {
+                  console.error("[index_bet_event] WinnerResolved insert error:", error);
+                }
               } else {
-                console.error("[index_bet_event] WinnerResolved insert error:", error);
+                indexedEvents.push("WinnerResolved");
+                console.log("[index_bet_event] Indexed WinnerResolved:", signature);
               }
             } else {
-              indexedEvents.push("WinnerResolved");
-              console.log("[index_bet_event] Indexed WinnerResolved:", signature);
+              const eventSample = JSON.stringify(evData).slice(0, 600);
+              console.warn("[index_bet_event] WinnerResolved missing required fields", {
+                signature,
+                eventSample,
+              });
             }
-          } else {
-            const eventSample = JSON.stringify(evData).slice(0, 600);
-            console.warn("[index_bet_event] WinnerResolved missing required fields", {
-              signature,
-              eventSample,
-            });
           }
-        }
 
-        // Handle WinningsClaimed event
-        if (evType === "WinningsClaimed" || evType === "winningsClaimed") {
-          const market = evData.market || evData.data?.market || evData.args?.market || baseKeys.marketPubkey;
-          const user = evData.user || evData.data?.user || evData.args?.user || baseKeys.bettorPubkey;
-          const amount = evData.amount || evData.data?.amount || evData.args?.amount || null;
+          // Handle WinningsClaimed event
+          if (evType === "WinningsClaimed" || evType === "winningsClaimed") {
+            const market = evData.market || evData.data?.market || evData.args?.market || baseKeys.marketPubkey;
+            const user = evData.user || evData.data?.user || evData.args?.user || baseKeys.bettorPubkey;
+            const amount = evData.amount || evData.data?.amount || evData.args?.amount || null;
 
-          if (market && user && amount != null) {
-            const row: any = {
-              market_pubkey: String(market),
-              user_pubkey: String(user),
-              amount_lamports: Number(amount),
-              block_time: blockTimeIso,
-              tx_sig: String(signature),
-            };
+            if (market && user && amount != null) {
+              const row: any = {
+                market_pubkey: String(market),
+                user_pubkey: String(user),
+                amount_lamports: Number(amount),
+                block_time: blockTimeIso,
+                tx_sig: String(signature),
+              };
 
-            const { error } = await supabase.from("claims").insert(row);
-            if (error) {
-              if (error.code === "23505" || error.message?.includes("duplicate")) {
-                console.log("[index_bet_event] Duplicate WinningsClaimed (expected):", signature);
+              const { error } = await supabase.from("claims").insert(row);
+              if (error) {
+                if (error.code === "23505" || error.message?.includes("duplicate")) {
+                  console.log("[index_bet_event] Duplicate WinningsClaimed (expected):", signature);
+                } else {
+                  console.error("[index_bet_event] WinningsClaimed insert error:", error);
+                }
               } else {
-                console.error("[index_bet_event] WinningsClaimed insert error:", error);
+                indexedEvents.push("WinningsClaimed");
+                console.log("[index_bet_event] Indexed WinningsClaimed:", signature);
               }
             } else {
-              indexedEvents.push("WinningsClaimed");
-              console.log("[index_bet_event] Indexed WinningsClaimed:", signature);
+              const eventSample = JSON.stringify(evData).slice(0, 600);
+              console.warn("[index_bet_event] WinningsClaimed missing required fields", {
+                signature,
+                eventSample,
+              });
             }
-          } else {
-            const eventSample = JSON.stringify(evData).slice(0, 600);
-            console.warn("[index_bet_event] WinningsClaimed missing required fields", {
-              signature,
-              eventSample,
-            });
           }
-        }
-      }
+        } // End of for loop over programEvents
+      } // End of else block (legacy Helius events path)
 
       const mergedOutcomeIndex =
         bestEventOutcome ??
