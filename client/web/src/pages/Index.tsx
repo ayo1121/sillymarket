@@ -164,10 +164,10 @@ const Index = () => {
             <div className="win95-window bg-background p-1 h-full">
               <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1 flex items-center gap-2">
                 <span className="text-lg sm:text-xl font-black">:)</span>
-                <span className="font-black text-xs tracking-tight sm:text-base">create market</span>
+                <span className="font-black text-xs tracking-tight sm:text-base">create your own market</span>
               </div>
               <div className="win95-sunken bg-background p-4 sm:p-8 text-center space-y-3 sm:space-y-4 h-[calc(100%-3rem)] flex flex-col justify-center items-center">
-                <p className="text-sm sm:text-base font-bold">got silliness? share it.</p>
+                <p className="text-sm sm:text-base font-bold">create something silly and let the world wonder why while betting on it</p>
                 <Button variant="default" size="lg" className="font-black text-sm sm:text-base px-6 sm:px-8 w-full" onClick={() => navigate("/create-market")}>
                   + new market
                 </Button>
