@@ -87,7 +87,6 @@ export type OutcomeCardProps = {
   odds: number | null;
   color: string;
   series?: OutcomeSeriesPoint[] | { value: number }[];
-  series?: OutcomeSeriesPoint[] | { value: number }[];
   disabled?: boolean;
   onClick?: () => void;
   compact?: boolean;
@@ -113,7 +112,7 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
     <button
       type="button"
       className={cn(
-        "outcome-btn",
+        "outcome-btn h-full", // Added h-full to make button stretch
         compact && "outcome-btn--compact",
         disabled && "outcome-btn--disabled"
       )}
@@ -299,7 +298,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           {market.outcomes.length === 0 || snapshots.length === 0 ? (
             <div className="text-center text-muted-foreground text-xs">No outcomes</div>
           ) : (
-            <div className="grid grid-cols-2 gap-1.5 min-h-[100px]">
+            <div className="grid grid-cols-2 gap-1.5 min-h-[100px] flex-1" style={{ gridAutoRows: '1fr' }}>
               {market.outcomes.map((outcome, i) => {
                 const snap = snapshotMap.get(i);
 

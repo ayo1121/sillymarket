@@ -63,8 +63,6 @@ export type UIMarket = {
   isLocked: boolean;   // state === ACTIVE && now >= cutoff_ts && winning_index === WIN_UNSET
   isResolved: boolean; // state === RESOLVED
 
-  isResolved: boolean; // state === RESOLVED
-
   closesAt: Date;
   createdAt: Date;
   timeRemainingLabel: string;
