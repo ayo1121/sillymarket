@@ -153,32 +153,36 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
         // Check if username exists now
         const checkMe = await api("/me").catch(() => ({ ok: false, user: null }));
         const user = checkMe?.user ?? null;
+        const isAuthenticated = checkMe?.ok && !!user;
         const hasUsername = user && user.username;
 
         console.log("[ConnectWallet] Profile check complete", {
-          hasSession: !!user,
+          isAuthenticated,
           hasUsername,
           username: user?.username || null
         });
 
-        // If still no username after sign-in, prompt for username
-        if (!hasUsername) {
-          console.log("[ConnectWallet] No username/profile found, prompting for username...");
+        // CRITICAL: Only prompt for username if the user is actually authenticated!
+        // If they cancelled sign-in or it failed, isAuthenticated will be false.
+        if (isAuthenticated && !hasUsername) {
+          console.log("[ConnectWallet] Authenticated but no username, prompting...");
           setAskUsername(true);
-          setHasPrompted(true);
+        } else if (!isAuthenticated) {
+          console.log("[ConnectWallet] Not authenticated, skipping username prompt");
         } else {
           console.log("[ConnectWallet] ✅ User has username, no prompt needed");
-          setHasPrompted(true); // Mark as prompted so we don't check again
         }
+
+        setHasPrompted(true);
       } catch (e: any) {
         console.error("[ConnectWallet] Error in sign-in flow:", e);
         // If user cancelled sign-in, don't prompt for username yet
         if (e?.message?.includes("User rejected") || e?.message?.includes("User cancelled")) {
           console.log("[ConnectWallet] User cancelled sign-in, not prompting for username");
-          return;
+        } else {
+          // For other errors, also don't prompt as they likely aren't authenticated
+          console.warn("[ConnectWallet] Sign-in failed, suppressing username prompt");
         }
-        // For other errors, DO NOT prompt for username as they are not authenticated
-        console.warn("[ConnectWallet] Sign-in failed, suppressing username prompt");
         setHasPrompted(true);
       }
     }, 500); // Reduced delay - trigger faster after connection
