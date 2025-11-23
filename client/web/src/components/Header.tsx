@@ -71,7 +71,7 @@ export const Header = () => {
           </button>
           <div className="min-w-0">
             <h1 className="text-3xl sm:text-5xl font-black mb-1 sm:mb-2 tracking-tight">sillymarket</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground font-bold tracking-wide">bet on the silliest outcomes.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground font-bold tracking-wide">the silliest outcome is always the most likely</p>
           </div>
         </div>
 
