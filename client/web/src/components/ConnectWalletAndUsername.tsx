@@ -195,323 +195,321 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
       }
     }, 500); // Reduced delay - trigger faster after connection
 
-  }, 500); // Reduced delay - trigger faster after connection
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, publicKey, hasPrompted, signMessage, setVisible]); // Added signMessage to dependencies
 
-  return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [connected, publicKey, hasPrompted, signMessage, setVisible]); // Added signMessage to dependencies
-
-// Effect to handle case where signMessage becomes available later
-useEffect(() => {
-  if (connected && publicKey && !hasPrompted && (signMessage || wallet?.adapter?.signMessage)) {
-    // This will trigger the main effect above because signMessage changed or we just re-rendered
-  }
-}, [signMessage, wallet, connected, publicKey, hasPrompted]);
-
-const onPrimaryClick = async () => {
-  if (!connected) {
-    console.log("[ConnectWallet] Opening wallet modal...", {
-      connecting,
-      wallets: wallets?.length,
-      availableWallets: available.length,
-      setVisible: typeof setVisible,
-      hasPhantom: typeof window !== "undefined" && !!(window as any).solana?.isPhantom,
-      currentWallet: wallet?.adapter?.name
-    });
-
-    // If a wallet is already selected and not connecting, try direct connect first
-    if (wallet && wallet.adapter && !connecting) {
-      console.log("[ConnectWallet] Wallet already selected:", wallet.adapter.name, "- attempting direct connect");
-      try {
-        await connect();
-        console.log("[ConnectWallet] ✅ Direct connect successful!");
-        return;
-      } catch (e: any) {
-        // Check if it's a WalletNotSelectedError - if so, just open modal
-        if (e?.name === "WalletNotSelectedError" || e?.message?.includes("WalletNotSelectedError")) {
-          console.warn("[ConnectWallet] Wallet not selected, showing modal instead");
-          setVisible(true);
-          return;
-        }
-        console.error("[ConnectWallet] Direct connect failed:", e);
-        console.error("[ConnectWallet] Error details:", {
-          message: e?.message,
-          name: e?.name,
-          code: e?.code
-        });
-        // Fall through to open modal
-      }
+  // Effect to handle case where signMessage becomes available later
+  useEffect(() => {
+    if (connected && publicKey && !hasPrompted && (signMessage || wallet?.adapter?.signMessage)) {
+      // This will trigger the main effect above because signMessage changed or we just re-rendered
     }
+  }, [signMessage, wallet, connected, publicKey, hasPrompted]);
 
-    // If no wallet selected or connecting, just open modal
-    if (!wallet || !wallet.adapter || connecting) {
-      setVisible(true);
-      return;
-    }
+  const onPrimaryClick = async () => {
+    if (!connected) {
+      console.log("[ConnectWallet] Opening wallet modal...", {
+        connecting,
+        wallets: wallets?.length,
+        availableWallets: available.length,
+        setVisible: typeof setVisible,
+        hasPhantom: typeof window !== "undefined" && !!(window as any).solana?.isPhantom,
+        currentWallet: wallet?.adapter?.name
+      });
 
-    // If Phantom is detected and no wallet is selected, try selecting it first
-    if (typeof window !== "undefined" && (window as any).solana?.isPhantom && !wallet) {
-      const phantomWallet = wallets.find((w: any) => w.adapter.name === "Phantom");
-      if (phantomWallet) {
-        console.log("[ConnectWallet] Phantom detected, selecting Phantom wallet...");
+      // If a wallet is already selected and not connecting, try direct connect first
+      if (wallet && wallet.adapter && !connecting) {
+        console.log("[ConnectWallet] Wallet already selected:", wallet.adapter.name, "- attempting direct connect");
         try {
-          select(phantomWallet.adapter.name);
-          console.log("[ConnectWallet] Phantom wallet selected, attempting connect...");
-          // Wait a tick for selection to register
-          await new Promise(resolve => setTimeout(resolve, 50));
-          try {
-            await connect();
-            console.log("[ConnectWallet] ✅ Direct Phantom connect successful!");
+          await connect();
+          console.log("[ConnectWallet] ✅ Direct connect successful!");
+          return;
+        } catch (e: any) {
+          // Check if it's a WalletNotSelectedError - if so, just open modal
+          if (e?.name === "WalletNotSelectedError" || e?.message?.includes("WalletNotSelectedError")) {
+            console.warn("[ConnectWallet] Wallet not selected, showing modal instead");
+            setVisible(true);
             return;
-          } catch (e: any) {
-            console.error("[ConnectWallet] Direct Phantom connect failed:", e);
-            console.error("[ConnectWallet] Error details:", {
-              message: e?.message,
-              name: e?.name,
-              code: e?.code
-            });
-            // Fall through to open modal
           }
-        } catch (err) {
-          console.error("[ConnectWallet] Failed to select Phantom:", err);
+          console.error("[ConnectWallet] Direct connect failed:", e);
+          console.error("[ConnectWallet] Error details:", {
+            message: e?.message,
+            name: e?.name,
+            code: e?.code
+          });
+          // Fall through to open modal
         }
       }
-    }
 
-    // Open the wallet selection modal
+      // If no wallet selected or connecting, just open modal
+      if (!wallet || !wallet.adapter || connecting) {
+        setVisible(true);
+        return;
+      }
+
+      // If Phantom is detected and no wallet is selected, try selecting it first
+      if (typeof window !== "undefined" && (window as any).solana?.isPhantom && !wallet) {
+        const phantomWallet = wallets.find((w: any) => w.adapter.name === "Phantom");
+        if (phantomWallet) {
+          console.log("[ConnectWallet] Phantom detected, selecting Phantom wallet...");
+          try {
+            select(phantomWallet.adapter.name);
+            console.log("[ConnectWallet] Phantom wallet selected, attempting connect...");
+            // Wait a tick for selection to register
+            await new Promise(resolve => setTimeout(resolve, 50));
+            try {
+              await connect();
+              console.log("[ConnectWallet] ✅ Direct Phantom connect successful!");
+              return;
+            } catch (e: any) {
+              console.error("[ConnectWallet] Direct Phantom connect failed:", e);
+              console.error("[ConnectWallet] Error details:", {
+                message: e?.message,
+                name: e?.name,
+                code: e?.code
+              });
+              // Fall through to open modal
+            }
+          } catch (err) {
+            console.error("[ConnectWallet] Failed to select Phantom:", err);
+          }
+        }
+      }
+
+      // Open the wallet selection modal
+      try {
+        setVisible(true);
+        console.log("[ConnectWallet] Wallet modal opened successfully");
+      } catch (err) {
+        console.error("[ConnectWallet] ❌ Failed to open wallet modal:", err);
+      }
+      return;
+    }
+    // connected: ensure session is established
     try {
-      setVisible(true);
-      console.log("[ConnectWallet] Wallet modal opened successfully");
-    } catch (err) {
-      console.error("[ConnectWallet] ❌ Failed to open wallet modal:", err);
+      console.log("[ConnectWallet] Button clicked while connected, ensuring sign-in...");
+      const me = await signInIfNeeded();
+
+      // Wait a moment for profile to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Check current username state
+      const checkMe = await api("/me").catch(() => ({ ok: false, user: null }));
+      const user = checkMe?.user ?? null;
+      const hasUsername = user && user.username;
+
+      // If no username, prompt immediately
+      if (!hasUsername) {
+        console.log("[ConnectWallet] No username found, prompting...");
+        setAskUsername(true);
+        setHasPrompted(true);
+        return;
+      }
+    } catch (e: any) {
+      console.error("[ConnectWallet] Error in signInIfNeeded:", e);
+      // If user cancelled, just open menu
+      if (!e?.message?.includes("User rejected") && !e?.message?.includes("User cancelled")) {
+        // For other errors, DO NOT prompt
+        console.warn("[ConnectWallet] Manual sign-in failed, suppressing username prompt");
+        setHasPrompted(true);
+        return;
+      }
     }
-    return;
-  }
-  // connected: ensure session is established
-  try {
-    console.log("[ConnectWallet] Button clicked while connected, ensuring sign-in...");
-    const me = await signInIfNeeded();
+    // Open menu (allows disconnect even without username)
+    setMenuOpen(v => !v);
+  };
 
-    // Wait a moment for profile to update
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Check current username state
-    const checkMe = await api("/me").catch(() => ({ ok: false, user: null }));
-    const user = checkMe?.user ?? null;
-    const hasUsername = user && user.username;
-
-    // If no username, prompt immediately
-    if (!hasUsername) {
-      console.log("[ConnectWallet] No username found, prompting...");
-      setAskUsername(true);
-      setHasPrompted(true);
-      return;
+  // Reset hasPrompted when wallet disconnects
+  useEffect(() => {
+    if (!connected) {
+      setHasPrompted(false);
+      setMenuOpen(false);
     }
-  } catch (e: any) {
-    console.error("[ConnectWallet] Error in signInIfNeeded:", e);
-    // If user cancelled, just open menu
-    if (!e?.message?.includes("User rejected") && !e?.message?.includes("User cancelled")) {
-      // For other errors, DO NOT prompt
-      console.warn("[ConnectWallet] Manual sign-in failed, suppressing username prompt");
-      setHasPrompted(true);
-      return;
+  }, [connected]);
+
+  const label = !connected
+    ? "connect wallet"
+    : (username ? `@${username}` : (publicKey ? shorten(publicKey.toBase58()) : (wallet?.adapter?.name || "wallet")));
+
+  const available = wallets
+    .filter((w: any) =>
+      w.readyState === WalletReadyState.Installed ||
+      w.readyState === WalletReadyState.Loadable
+    )
+    .filter((w: any) => w.adapter.name === "Phantom");
+
+  // Debug: log wallet states (expanded to show full object)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const states = {
+        connected,
+        connecting,
+        publicKey: publicKey?.toBase58(),
+        wallet: wallet?.adapter?.name,
+        walletsCount: wallets?.length,
+        availableCount: available.length,
+        wallets: wallets?.map((w: any) => ({
+          name: w.adapter?.name,
+          readyState: w.readyState,
+          installed: w.readyState === WalletReadyState.Installed
+        }))
+      };
+      console.log("[ConnectWallet] Wallet states:", JSON.stringify(states, null, 2));
+
+      // Log when connection state changes
+      if (connected) {
+        console.log("[ConnectWallet] ✅ Wallet connected!", publicKey?.toBase58());
+      } else if (connecting) {
+        console.log("[ConnectWallet] ⏳ Connecting...");
+      }
     }
-  }
-  // Open menu (allows disconnect even without username)
-  setMenuOpen(v => !v);
-};
+  }, [connected, connecting, publicKey, wallet, wallets, available]);
 
-// Reset hasPrompted when wallet disconnects
-useEffect(() => {
-  if (!connected) {
-    setHasPrompted(false);
-    setMenuOpen(false);
-  }
-}, [connected]);
+  // Listen for wallet connection events
+  useEffect(() => {
+    if (!wallet?.adapter) return;
 
-const label = !connected
-  ? "connect wallet"
-  : (username ? `@${username}` : (publicKey ? shorten(publicKey.toBase58()) : (wallet?.adapter?.name || "wallet")));
-
-const available = wallets
-  .filter((w: any) =>
-    w.readyState === WalletReadyState.Installed ||
-    w.readyState === WalletReadyState.Loadable
-  )
-  .filter((w: any) => w.adapter.name === "Phantom");
-
-// Debug: log wallet states (expanded to show full object)
-useEffect(() => {
-  if (typeof window !== "undefined") {
-    const states = {
-      connected,
-      connecting,
-      publicKey: publicKey?.toBase58(),
-      wallet: wallet?.adapter?.name,
-      walletsCount: wallets?.length,
-      availableCount: available.length,
-      wallets: wallets?.map((w: any) => ({
-        name: w.adapter?.name,
-        readyState: w.readyState,
-        installed: w.readyState === WalletReadyState.Installed
-      }))
+    const handleConnect = () => {
+      console.log("[ConnectWallet] 🔌 Wallet adapter connect event fired");
     };
-    console.log("[ConnectWallet] Wallet states:", JSON.stringify(states, null, 2));
 
-    // Log when connection state changes
-    if (connected) {
-      console.log("[ConnectWallet] ✅ Wallet connected!", publicKey?.toBase58());
-    } else if (connecting) {
-      console.log("[ConnectWallet] ⏳ Connecting...");
-    }
-  }
-}, [connected, connecting, publicKey, wallet, wallets, available]);
+    const handleDisconnect = () => {
+      console.log("[ConnectWallet] 🔌 Wallet adapter disconnect event fired");
+    };
 
-// Listen for wallet connection events
-useEffect(() => {
-  if (!wallet?.adapter) return;
+    const handleError = (error: any) => {
+      console.error("[ConnectWallet] ❌ Wallet adapter error:", error);
+    };
 
-  const handleConnect = () => {
-    console.log("[ConnectWallet] 🔌 Wallet adapter connect event fired");
-  };
+    wallet.adapter.on?.("connect", handleConnect);
+    wallet.adapter.on?.("disconnect", handleDisconnect);
+    wallet.adapter.on?.("error", handleError);
 
-  const handleDisconnect = () => {
-    console.log("[ConnectWallet] 🔌 Wallet adapter disconnect event fired");
-  };
+    return () => {
+      wallet.adapter.off?.("connect", handleConnect);
+      wallet.adapter.off?.("disconnect", handleDisconnect);
+      wallet.adapter.off?.("error", handleError);
+    };
+  }, [wallet]);
 
-  const handleError = (error: any) => {
-    console.error("[ConnectWallet] ❌ Wallet adapter error:", error);
-  };
-
-  wallet.adapter.on?.("connect", handleConnect);
-  wallet.adapter.on?.("disconnect", handleDisconnect);
-  wallet.adapter.on?.("error", handleError);
-
-  return () => {
-    wallet.adapter.off?.("connect", handleConnect);
-    wallet.adapter.off?.("disconnect", handleDisconnect);
-    wallet.adapter.off?.("error", handleError);
-  };
-}, [wallet]);
-
-return (
-  <div className="relative" ref={menuRef}>
-    <Button
-      variant="default"
-      onClick={onPrimaryClick}
-      className={`font-black flex items-center gap-2 text-sm sm:text-base ${className || ""}`}
-      disabled={connecting}
-      aria-busy={connecting}
-    >
-      <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
-      {label}
-    </Button>
-
-    {connected && menuOpen && (
-      <div
-        style={{
-          position: "absolute", right: 0, top: "110%", zIndex: 60, minWidth: 240,
-          background: "#fff", border: "1px solid #ddd", borderRadius: 8,
-          boxShadow: "0 6px 24px rgba(0,0,0,.15)"
-        }}
+  return (
+    <div className="relative" ref={menuRef}>
+      <Button
+        variant="default"
+        onClick={onPrimaryClick}
+        className={`font-black flex items-center gap-2 text-sm sm:text-base ${className || ""}`}
+        disabled={connecting}
+        aria-busy={connecting}
       >
-        {!username && (
-          <>
+        <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
+        {label}
+      </Button>
+
+      {connected && menuOpen && (
+        <div
+          style={{
+            position: "absolute", right: 0, top: "110%", zIndex: 60, minWidth: 240,
+            background: "#fff", border: "1px solid #ddd", borderRadius: 8,
+            boxShadow: "0 6px 24px rgba(0,0,0,.15)"
+          }}
+        >
+          {!username && (
+            <>
+              <button
+                onClick={() => { setMenuOpen(false); setAskUsername(true); setHasPrompted(true); }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee" }}
+              >
+                set username
+              </button>
+              <button
+                onClick={async () => {
+                  setMenuOpen(false);
+                  try {
+                    await signInIfNeeded();
+                    window.dispatchEvent(new Event("username-refresh"));
+                  } catch (e) {
+                    console.error("Manual sign-in failed", e);
+                  }
+                }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee", color: "blue" }}
+              >
+                sign in (fix stuck)
+              </button>
+            </>
+          )}
+
+          {username && (
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid #eee", fontSize: 14, fontWeight: 500 }}>
+              @{username}
+            </div>
+          )}
+
+          {available.length > 1 && (
+            <div style={{ borderBottom: "1px solid #eee", padding: "6px 12px", fontSize: 12, opacity: .7 }}>
+              switch wallet
+            </div>
+          )}
+          {available.map((w: any) => (
             <button
-              onClick={() => { setMenuOpen(false); setAskUsername(true); setHasPrompted(true); }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee" }}
-            >
-              set username
-            </button>
-            <button
+              key={w.adapter.name}
               onClick={async () => {
                 setMenuOpen(false);
-                try {
-                  await signInIfNeeded();
-                  window.dispatchEvent(new Event("username-refresh"));
-                } catch (e) {
-                  console.error("Manual sign-in failed", e);
-                }
+                try { await disconnect(); } catch (e) { console.error("Error disconnecting:", e); }
+                forgetRemembered();
+                try { select(w.adapter.name); } catch { /* Ignore selection errors */ }
+                try { setVisible(true); } catch { /* Ignore modal errors */ }
               }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee", color: "blue" }}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px" }}
             >
-              sign in (fix stuck)
+              {w.adapter.name}
             </button>
-          </>
-        )}
+          ))}
 
-        {username && (
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid #eee", fontSize: 14, fontWeight: 500 }}>
-            @{username}
-          </div>
-        )}
-
-        {available.length > 1 && (
-          <div style={{ borderBottom: "1px solid #eee", padding: "6px 12px", fontSize: 12, opacity: .7 }}>
-            switch wallet
-          </div>
-        )}
-        {available.map((w: any) => (
+          <div style={{ borderTop: "1px solid #eee" }} />
           <button
-            key={w.adapter.name}
             onClick={async () => {
               setMenuOpen(false);
-              try { await disconnect(); } catch (e) { console.error("Error disconnecting:", e); }
-              forgetRemembered();
-              try { select(w.adapter.name); } catch { /* Ignore selection errors */ }
-              try { setVisible(true); } catch { /* Ignore modal errors */ }
-            }}
-            style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px" }}
-          >
-            {w.adapter.name}
-          </button>
-        ))}
-
-        <div style={{ borderTop: "1px solid #eee" }} />
-        <button
-          onClick={async () => {
-            setMenuOpen(false);
-            try {
-              await disconnect();
-              console.log("Wallet disconnected");
-            } catch (e) {
-              console.error("Error disconnecting wallet:", e);
-              // Try force disconnect
               try {
-                if (wallet?.adapter?.disconnect) {
-                  await wallet.adapter.disconnect();
+                await disconnect();
+                console.log("Wallet disconnected");
+              } catch (e) {
+                console.error("Error disconnecting wallet:", e);
+                // Try force disconnect
+                try {
+                  if (wallet?.adapter?.disconnect) {
+                    await wallet.adapter.disconnect();
+                  }
+                } catch (e2) {
+                  console.error("Force disconnect also failed:", e2);
                 }
-              } catch (e2) {
-                console.error("Force disconnect also failed:", e2);
               }
-            }
-            forgetRemembered();
-            await api("/auth/logout", { method: "POST" }).catch(() => { });
-            setHasPrompted(false); // Reset prompt flag
-          }}
-          style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", color: "#b00020" }}
-        >
-          disconnect
-        </button>
-      </div>
-    )}
+              forgetRemembered();
+              await api("/auth/logout", { method: "POST" }).catch(() => { });
+              setHasPrompted(false); // Reset prompt flag
+            }}
+            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", color: "#b00020" }}
+          >
+            disconnect
+          </button>
+        </div>
+      )}
 
-    <UsernameModal
-      open={askUsername}
-      onOpenChange={(open) => {
-        setAskUsername(open);
-        // If closing and still no username, user might want to set it later
-        if (!open && !username) {
-          // Don't auto-open again immediately
-        }
-      }}
-      onSubmitted={(u) => {
-        setUsername(u);
-        setHasPrompted(true); // Mark as prompted so we don't prompt again
-        // Trigger refresh to ensure it's synced
-        window.dispatchEvent(new Event("username-refresh"));
-      }}
-    />
-  </div>
-);
+      <UsernameModal
+        open={askUsername}
+        onOpenChange={(open) => {
+          setAskUsername(open);
+          // If closing and still no username, user might want to set it later
+          if (!open && !username) {
+            // Don't auto-open again immediately
+          }
+        }}
+        onSubmitted={(u) => {
+          setUsername(u);
+          setHasPrompted(true); // Mark as prompted so we don't prompt again
+          // Trigger refresh to ensure it's synced
+          window.dispatchEvent(new Event("username-refresh"));
+        }}
+      />
+    </div>
+  );
 }
