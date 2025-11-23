@@ -2,12 +2,91 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useAnchorProgram } from "../solana/program";
 import type { UIMarket } from "../solana/marketMapping";
-import { WIN_VOID, STATE_RESOLVED } from "../solana/marketMapping";
+import { WIN_VOID, STATE_RESOLVED, WIN_UNSET } from "../solana/marketMapping";
 import { fetchUserPositions } from "../solana/read";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 
 type PositionRecord = { publicKey: PublicKey; account: any };
+
+export type BetStatus = "active" | "won" | "lost";
+
+export function getBetStatus(position: any, market: any): BetStatus {
+  const rawMarket = market?.rawAccount || market || {};
+  const state = rawMarket.state ?? 0;
+  const winningIndex = rawMarket.winningIndex ?? rawMarket.winning_index ?? WIN_UNSET;
+  const outcomeIndex = position?.outcomeIndex ?? position?.outcome_index;
+
+  const isResolved = state === STATE_RESOLVED;
+  if (!isResolved || winningIndex === null || winningIndex === undefined || winningIndex === WIN_UNSET) {
+    return "active";
+  }
+
+  if (winningIndex === WIN_VOID) {
+    return "active";
+  }
+
+  if (outcomeIndex === winningIndex) {
+    return "won";
+  }
+
+  return "lost";
+}
+
+export function isPositionClaimable(position: any, market: any): boolean {
+  if (!position || !market) return false;
+
+  const rawMarket = market?.rawAccount || market || {};
+  const winningIndex = rawMarket.winningIndex ?? rawMarket.winning_index ?? WIN_UNSET;
+  const state = rawMarket.state ?? 0;
+  const claimed = position.claimed ?? false;
+  const outcomeIndex = position?.outcomeIndex ?? position?.outcome_index;
+
+  if (claimed) return false;
+  if (state !== STATE_RESOLVED) return false;
+
+  if (winningIndex === WIN_VOID) {
+    return true;
+  }
+
+  return outcomeIndex === winningIndex;
+}
+
+export function computePnL(position: any, market: any) {
+  const rawMarket = market?.rawAccount || market || {};
+  const stakeLamports = BigInt(position?.amount ?? position?.amountLamports ?? position?.stakeLamports ?? 0);
+  const winningIndex = rawMarket.winningIndex ?? rawMarket.winning_index ?? WIN_UNSET;
+  const state = rawMarket.state ?? 0;
+  const outcomeIndex = position?.outcomeIndex ?? position?.outcome_index;
+
+  const resolved = state === STATE_RESOLVED && winningIndex !== WIN_UNSET && winningIndex !== null && winningIndex !== undefined;
+  if (!resolved || winningIndex === WIN_VOID) {
+    return { pnlLamports: 0n, realized: false, payoutLamports: 0n };
+  }
+
+  let payoutLamports = 0n;
+
+  if (outcomeIndex === winningIndex) {
+    const totalPool = rawMarket.totalPool ?? rawMarket.total_pool ?? market?.volumeLamports ?? 0;
+    const winPool = market?.outcomes?.[winningIndex]?.poolLamports ?? 0n;
+    const totalPoolLamports = BigInt(totalPool || 0);
+    const winPoolLamports = BigInt(winPool || 0);
+
+    if (totalPoolLamports > 0n && winPoolLamports > 0n) {
+      payoutLamports = (stakeLamports * totalPoolLamports) / winPoolLamports;
+    } else {
+      payoutLamports = stakeLamports;
+    }
+  } else {
+    payoutLamports = 0n;
+  }
+
+  return {
+    pnlLamports: payoutLamports - stakeLamports,
+    realized: true,
+    payoutLamports,
+  };
+}
 
 type Ctx = {
   markets: UIMarket[];
@@ -92,14 +171,7 @@ export function MarketsProvider({ children }: { children: React.ReactNode }) {
     for (const pos of positions) {
       const market = marketMap.get(pos.account.market?.toBase58?.() || pos.account.market?.toString?.());
       if (!market) continue;
-      const raw = market.rawAccount || market;
-      const winningIndex = raw.winningIndex ?? raw.winning_index;
-      const state = raw.state ?? 0;
-      const isVoid = winningIndex === WIN_VOID;
-      const outcomeIndex = pos.account.outcomeIndex ?? pos.account.outcome_index;
-      const claimed = pos.account.claimed ?? false;
-
-      if (state === STATE_RESOLVED && !isVoid && !claimed && winningIndex === outcomeIndex) {
+      if (isPositionClaimable(pos.account, market)) {
         count += 1;
       }
     }

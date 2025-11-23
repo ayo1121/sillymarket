@@ -7,23 +7,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ArrowRight } from "lucide-react";
 import { useAnchorProgram } from "@/solana/program";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { canClaimPosition } from "@/solana/read";
 import { claimWinnings } from "@/solana/actions";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { useMarketsCtx } from "@/hooks/marketsContext";
-import { WIN_VOID, STATE_RESOLVED } from "@/solana/marketMapping";
+import { useMarketsCtx, getBetStatus, computePnL, BetStatus, isPositionClaimable } from "@/hooks/marketsContext";
 import { formatSol, shortenWallet } from "@/utils/format";
 
-interface Bet {
+interface BetView {
   id: string;
   question: string;
   prediction: string;
   amount: number;
   odds: number;
-  potentialReturn: number;
-  status: "pending" | "won" | "lost" | "claimed";
+  pnlLamports: bigint;
+  payoutLamports: bigint | null;
+  status: BetStatus;
+  realized: boolean;
+  stakeLamports: bigint;
   createdAt: string;
   imageUrl?: string;
   category: string;
@@ -34,14 +35,12 @@ interface Bet {
   canClaim: boolean;
 }
 
-type BetView = Bet & { pnlSol: number; payoutSol: number | null; isResolved: boolean; isVoid: boolean };
-
 const MyBets = () => {
   const navigate = useNavigate();
   const program = useAnchorProgram();
   const { publicKey } = useWallet();
   const { markets, loading: marketsLoading, positions, positionsLoading, refreshPositions } = useMarketsCtx();
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "won" | "lost">("all");
+  const [statusFilter, setStatusFilter] = useState<"active" | "won" | "lost">("active");
   const [claiming, setClaiming] = useState<Map<string, boolean>>(new Map());
   
   const marketMap = useMemo(() => {
@@ -52,103 +51,87 @@ const MyBets = () => {
 
   const betsView: BetView[] = useMemo(() => {
     if (!publicKey) return [];
-    return positions.map((pos: any) => {
-      const marketPk = pos.account.market?.toBase58?.() || pos.account.market?.toString?.();
-      const market = marketMap.get(marketPk);
-      if (!market) return null;
+    return positions
+      .map((pos: any) => {
+        const marketPk = pos.account.market?.toBase58?.() || pos.account.market?.toString?.();
+        const market = marketMap.get(marketPk);
+        if (!market) return null;
 
-      const rawMarket = market.rawAccount || market;
-      const outcomeIndex: number | null = pos.account.outcomeIndex ?? pos.account.outcome_index ?? null;
-      const outcomeName =
-        outcomeIndex != null
-          ? market.outcomes?.[outcomeIndex]?.label ?? `Outcome ${outcomeIndex}`
-          : "Unknown";
+        const rawMarket = market.rawAccount || market;
+        const outcomeIndex: number | null = pos.account.outcomeIndex ?? pos.account.outcome_index ?? null;
+        const outcomeName =
+          outcomeIndex != null
+            ? market.outcomes?.[outcomeIndex]?.label ?? `Outcome ${outcomeIndex}`
+            : "Unknown";
 
-      const stakeLamports = Number(pos.account.amount ?? 0);
-      const stakeSol = stakeLamports / LAMPORTS_PER_SOL;
+        const stakeLamports = BigInt(pos.account.amount ?? 0);
+        const stakeSol = Number(stakeLamports) / LAMPORTS_PER_SOL;
 
-      const totalPoolLamports = Number(rawMarket.totalPool ?? rawMarket.total_pool ?? market.volumeLamports ?? 0);
-      const outcomePoolLamports = Number(market.outcomes?.[outcomeIndex ?? -1]?.poolLamports ?? 0);
-      const odds = outcomePoolLamports > 0 ? totalPoolLamports / outcomePoolLamports : 1;
+        const totalPoolLamports = Number(rawMarket.totalPool ?? rawMarket.total_pool ?? market.volumeLamports ?? 0);
+        const outcomePoolLamports = Number(market.outcomes?.[outcomeIndex ?? -1]?.poolLamports ?? 0);
+        const odds = outcomePoolLamports > 0 ? totalPoolLamports / outcomePoolLamports : 1;
 
-      const winningIndex = rawMarket.winningIndex ?? rawMarket.winning_index ?? WIN_UNSET;
-      const state = rawMarket.state ?? 0;
-      const isResolved = state === STATE_RESOLVED;
-      const isVoid = winningIndex === WIN_VOID;
-      const isWinner = isResolved && !isVoid && outcomeIndex != null && winningIndex === outcomeIndex;
+        const status = getBetStatus(pos.account, market);
+        const pnlResult = computePnL(pos.account, market);
+        const pnlLamports = pnlResult.pnlLamports;
+        const payoutLamports = pnlResult.payoutLamports ?? null;
 
-      const payoutSol =
-        isResolved && !isVoid ? (isWinner ? stakeSol * odds : 0) : null;
-      const pnlSol = payoutSol == null ? 0 : payoutSol - stakeSol;
+        const canClaim = isPositionClaimable(pos.account, market);
 
-      const status: "pending" | "won" | "lost" | "claimed" =
-        pos.account.claimed
-          ? "claimed"
-          : isWinner
-            ? "won"
-            : isResolved && !isVoid
-              ? "lost"
-              : "pending";
+        const createdTs =
+          rawMarket.createdTs?.toNumber?.() ??
+          rawMarket.created_ts?.toNumber?.() ??
+          rawMarket.createdTs ??
+          rawMarket.created_ts ??
+          0;
 
-      const canClaim = canClaimPosition({
-        market: rawMarket,
-        position: pos.account,
-        wallet: publicKey,
-      });
-
-      const createdTs =
-        rawMarket.createdTs?.toNumber?.() ??
-        rawMarket.created_ts?.toNumber?.() ??
-        rawMarket.createdTs ??
-        rawMarket.created_ts ??
-        0;
-
-      return {
-        id: pos.publicKey.toBase58(),
-        question: market.displayQuestion || market.question || "Unknown question",
-        prediction: outcomeName,
-        amount: stakeSol,
-        odds: odds.toFixed(2),
-        pnlSol,
-        payoutSol,
-        status,
-        createdAt: createdTs
-          ? formatDistanceToNow(new Date(createdTs * 1000), { addSuffix: true })
-          : "",
-        imageUrl: market.imageUrl || undefined,
-        category: "market",
-        marketAddress: shortenWallet(market.pubkey, 6, 4),
-        creatorAddress: market.creatorPubkey ? shortenWallet(market.creatorPubkey, 6, 4) : "unknown",
-        marketPubkey: market.pubkey,
-        position: pos.account,
-        canClaim,
-        isResolved,
-        isVoid,
-      } as BetView;
-    }).filter((b): b is BetView => b !== null);
+        return {
+          id: pos.publicKey.toBase58(),
+          question: market.displayQuestion || market.question || "Unknown question",
+          prediction: outcomeName,
+          amount: stakeSol,
+          odds: odds.toFixed(2),
+          pnlLamports,
+          payoutLamports,
+          status,
+          realized: pnlResult.realized,
+          stakeLamports,
+          createdAt: createdTs
+            ? formatDistanceToNow(new Date(createdTs * 1000), { addSuffix: true })
+            : "",
+          imageUrl: market.imageUrl || undefined,
+          category: "market",
+          marketAddress: shortenWallet(market.pubkey, 6, 4),
+          creatorAddress: market.creatorPubkey ? shortenWallet(market.creatorPubkey, 6, 4) : "unknown",
+          marketPubkey: market.pubkey,
+          position: pos.account,
+          canClaim,
+        } as BetView;
+      })
+      .filter((b): b is BetView => b !== null);
   }, [positions, marketMap, publicKey]);
 
   const filteredBets = useMemo(() => {
     return betsView.filter((bet) => {
       switch (statusFilter) {
         case "active":
-          return bet.status === "pending";
+          return bet.status === "active";
         case "won":
           return bet.status === "won";
         case "lost":
           return bet.status === "lost";
-        default:
-          return true;
       }
     });
   }, [betsView, statusFilter]);
 
-  const totalBet = betsView.reduce((sum, bet) => sum + bet.amount, 0);
-  const realizedPnl = betsView
-    .filter((bet) => bet.isResolved && !bet.isVoid && bet.payoutSol !== null)
-    .reduce((sum, bet) => sum + bet.pnlSol, 0);
+  const totalBetLamports = betsView.reduce((sum, bet) => sum + bet.stakeLamports, 0n);
+  const realizedPnlLamports = betsView
+    .filter((bet) => bet.realized)
+    .reduce((sum, bet) => sum + bet.pnlLamports, 0n);
+  const totalBet = Number(totalBetLamports) / LAMPORTS_PER_SOL;
+  const realizedPnl = Number(realizedPnlLamports) / LAMPORTS_PER_SOL;
   
-  const handleClaim = async (bet: Bet) => {
+  const handleClaim = async (bet: BetView) => {
     if (!program || !publicKey || claiming.get(bet.id)) return;
     
     const nextClaiming = new Map(claiming);
@@ -212,7 +195,7 @@ const MyBets = () => {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-              {(["all", "active", "won", "lost"] as const).map((status) => (
+              {(["active", "won", "lost"] as const).map((status) => (
                 <Button
                   key={status}
                   variant={statusFilter === status ? "primary" : "outline"}
@@ -257,15 +240,11 @@ const MyBets = () => {
                     <div className="bg-primary/10 px-2 py-1 mb-2 flex items-center justify-between">
                       <span className="font-bold text-xs sm:text-sm">Bet Details</span>
                       <span className={`text-xs px-2 py-1 win95-sunken ${
-                        bet.status === "pending" ? "bg-background" : 
-                        bet.status === "won" ? "bg-brand-yes/20" : 
-                        bet.status === "claimed" ? "bg-brand-yes/10" :
+                        bet.status === "active" ? "bg-background" : 
+                        bet.status === "won" ? "bg-brand-yes/20" :
                         "bg-brand-no/20"
                       }`}>
-                        {bet.status === "pending" ? "Open" : 
-                         bet.status === "won" ? "Won" : 
-                         bet.status === "claimed" ? "Claimed" :
-                         "Lost"}
+                        {bet.status === "active" ? "Open" : bet.status === "won" ? "Won" : "Lost"}
                       </span>
                     </div>
 
@@ -315,16 +294,18 @@ const MyBets = () => {
                           <div className="text-muted-foreground mb-1 text-xs font-bold">PNL</div>
                           <div
                             className={`font-black ${
-                              bet.isResolved
-                                ? bet.pnlSol > 0
+                              bet.realized
+                                ? Number(bet.pnlLamports) / LAMPORTS_PER_SOL > 0
                                   ? "text-brand-yes"
-                                  : bet.pnlSol < 0
+                                  : Number(bet.pnlLamports) / LAMPORTS_PER_SOL < 0
                                     ? "text-brand-no"
                                     : ""
                                 : "text-muted-foreground"
                             }`}
                           >
-                            {bet.isResolved && !bet.isVoid ? `${formatSol(bet.pnlSol, 2)} sol` : "unrealized"}
+                            {bet.realized
+                              ? `${formatSol(Number(bet.pnlLamports) / LAMPORTS_PER_SOL, 2)} sol`
+                              : "unrealized"}
                           </div>
                         </div>
                       </div>
