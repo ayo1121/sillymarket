@@ -268,12 +268,19 @@ export async function fetchBetEvents(
   activity: MarketActivityItem[];
 }> {
   try {
-    const { data: rows, error } = await (supabase as any)
+    const { data: rowsData, error } = await (supabase as any)
       .from<BetRow>("bets")
       .select("id, market_pubkey, bettor_pubkey, username, outcome_index, outcome_label, amount_sol, amount_lamports, tx_sig, created_at, block_time, pools_after, probs_after")
       .eq("market_pubkey", marketPubkey)
-      .order("block_time", { ascending: true, nullsFirst: false })
+      .order("block_time", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
       .limit(500);
+
+    const rows = (rowsData ?? []).sort((a: any, b: any) => {
+      const ta = new Date(a.block_time ?? a.created_at ?? 0).getTime();
+      const tb = new Date(b.block_time ?? b.created_at ?? 0).getTime();
+      return ta - tb; // oldest → newest for chart building
+    });
 
     console.log("[read] bets rows for history", { marketPubkey, count: rows?.length, rows });
 

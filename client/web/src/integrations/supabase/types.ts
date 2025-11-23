@@ -16,28 +16,49 @@ export type Database = {
     Tables: {
       bets: {
         Row: {
-          amount: number
-          bet_type: string
+          amount_lamports: number | null
+          amount_sol: number | null
+          block_time: string | null
+          bettor_pubkey: string
           created_at: string
           id: string
-          market_id: string
-          user_id: string
+          market_pubkey: string
+          outcome_index: number
+          outcome_label: string | null
+          pools_after: Json | null
+          probs_after: Json | null
+          tx_sig: string
+          username: string | null
         }
         Insert: {
-          amount: number
-          bet_type: string
+          amount_lamports?: number | null
+          amount_sol?: number | null
+          block_time?: string | null
+          bettor_pubkey: string
           created_at?: string
           id?: string
-          market_id: string
-          user_id: string
+          market_pubkey: string
+          outcome_index: number
+          outcome_label?: string | null
+          pools_after?: Json | null
+          probs_after?: Json | null
+          tx_sig: string
+          username?: string | null
         }
         Update: {
-          amount?: number
-          bet_type?: string
+          amount_lamports?: number | null
+          amount_sol?: number | null
+          block_time?: string | null
+          bettor_pubkey?: string
           created_at?: string
           id?: string
-          market_id?: string
-          user_id?: string
+          market_pubkey?: string
+          outcome_index?: number
+          outcome_label?: string | null
+          pools_after?: Json | null
+          probs_after?: Json | null
+          tx_sig?: string
+          username?: string | null
         }
         Relationships: []
       }
