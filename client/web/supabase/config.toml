@@ -1,1 +1,4 @@
 project_id = "ibuzpjefotihoagsurqz"
+
+[functions.index_bet_event]
+verify_jwt = false
