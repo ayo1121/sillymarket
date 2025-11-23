@@ -50,29 +50,43 @@ export function getAnchorProgram(wallet: WalletContextState) {
 
   const hasPk = !!wallet.publicKey;
   const hasSigner = !!wallet.signTransaction;
+  const hasSignAll = !!wallet.signAllTransactions;
 
-  if (!hasPk || !hasSigner) {
-    console.warn("[yesno] getAnchorProgram: wallet not ready", {
+  if (!hasPk || !hasSigner || !hasSignAll) {
+    console.warn("[yesno] getAnchorProgram: wallet not ready, using read-only provider", {
       hasPublicKey: hasPk,
       hasSigner,
+      hasSignAll,
     });
-    return null;
   }
+
+  // Provide a dummy wallet for read-only flows so the app can load without a connected wallet
+  const dummy = anchor.web3.Keypair.generate();
+  const readOnlyWallet: anchor.Wallet = {
+    publicKey: dummy.publicKey,
+    signTransaction: async () => {
+      throw new Error("Wallet not connected");
+    },
+    signAllTransactions: async () => {
+      throw new Error("Wallet not connected");
+    },
+  };
 
   // We'll log IDL summary after normalization and patching
 
   // Ensure wallet has all required signing methods
-  if (!wallet.signAllTransactions) {
+  if (!hasSignAll) {
     console.warn("[yesno] getAnchorProgram: wallet missing signAllTransactions");
-    return null;
   }
 
   // Create AnchorWallet wrapper that matches Anchor's expected interface
-  const anchorWallet = {
-    publicKey: wallet.publicKey!,
-    signTransaction: wallet.signTransaction!,
-    signAllTransactions: wallet.signAllTransactions!,
-  } as anchor.Wallet;
+  const anchorWallet: anchor.Wallet = hasPk && hasSigner && hasSignAll
+    ? {
+        publicKey: wallet.publicKey!,
+        signTransaction: wallet.signTransaction!,
+        signAllTransactions: wallet.signAllTransactions!,
+      }
+    : readOnlyWallet;
 
   const provider = new anchor.AnchorProvider(
     connection,
@@ -81,7 +95,7 @@ export function getAnchorProgram(wallet: WalletContextState) {
   );
 
   // Debug log to verify signer mapping
-  if (provider && wallet.publicKey) {
+  if (provider && wallet.publicKey && hasPk && hasSigner && hasSignAll) {
     console.log("[yesno] getAnchorProgram: signer debug", {
       walletPubkey: wallet.publicKey.toBase58(),
       providerWallet: provider.wallet.publicKey?.toBase58?.(),
@@ -181,6 +195,9 @@ export function getAnchorProgramWithProvider(wallet: WalletContextState): {
   program: anchor.Program<anchor.Idl>;
   provider: anchor.AnchorProvider;
 } | null {
+  if (!wallet.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
+    return null;
+  }
   const program = getAnchorProgram(wallet);
   if (!program) return null;
   

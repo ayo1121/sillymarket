@@ -25,6 +25,7 @@ const Index = () => {
   const [markets, setMarkets] = useState<UIMarket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(15);
 
   // Bet modal state
   const [betState, setBetState] = useState<{ market: UIMarket; answerIndex: number } | null>(null);
@@ -55,6 +56,7 @@ const Index = () => {
         // fetchAllMarkets now returns UIMarket[] directly
         const uiMarkets = await fetchAllMarkets(program, wallet.publicKey ?? null);
         setMarkets(uiMarkets);
+        setVisibleCount(15);
       } catch (e: any) {
         console.error("Error fetching markets:", e);
         setError(e?.message || String(e));
@@ -98,6 +100,8 @@ const Index = () => {
         return b.closesAt.getTime() - a.closesAt.getTime();
     }
   });
+
+  const marketsToRender = filteredAndSortedMarkets.slice(0, visibleCount);
 
   useNotifications(markets);
 
@@ -175,19 +179,6 @@ const Index = () => {
       <div className="w-full px-2 sm:px-4 pb-8 sm:pb-16">
 
 
-        {!program && (
-          <div className="win95-window bg-background p-1">
-            <div className="win95-sunken bg-background p-4 sm:p-8 text-center">
-              <p className="text-base sm:text-lg font-bold text-muted-foreground mb-2">
-                Connect wallet to load on-chain markets
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Make sure your wallet is set to <strong>Solana Devnet</strong>
-              </p>
-            </div>
-          </div>
-        )}
-
         {loading && (
           <div className="win95-window bg-background p-1">
             <div className="win95-sunken bg-background p-4 sm:p-8 text-center">
@@ -208,8 +199,8 @@ const Index = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedMarkets.length > 0 ? (
-            filteredAndSortedMarkets.map((market) => (
+          {marketsToRender.length > 0 ? (
+            marketsToRender.map((market) => (
               <div key={market.pubkey} className="cursor-pointer h-full">
                 <MarketCard
                   market={market}
@@ -219,7 +210,7 @@ const Index = () => {
                 />
               </div>
             ))
-          ) : !loading && !error && program ? (
+          ) : !loading && !error ? (
             <div className="col-span-full win95-window bg-background p-1">
               <div className="win95-sunken bg-background p-4 sm:p-8 text-center">
                 <p className="text-base sm:text-lg font-bold text-muted-foreground">
@@ -231,6 +222,18 @@ const Index = () => {
             </div>
           ) : null}
         </div>
+
+        {filteredAndSortedMarkets.length > visibleCount && (
+          <div className="flex justify-center mt-6">
+            <Button
+              variant="outline"
+              className="font-black px-6"
+              onClick={() => setVisibleCount((prev) => prev + 15)}
+            >
+              load more
+            </Button>
+          </div>
+        )}
       </div>
       <div className="max-w-5xl mx-auto px-2 sm:px-4 pb-8 sm:pb-16">
 
