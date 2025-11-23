@@ -247,7 +247,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
 
   return (
     <div
-      className={`win95-window bg-background p-1 mb-4 hover:translate-x-[1px] hover:translate-y-[1px] transition-transform cursor-pointer flex flex-col ${className ?? ""}`}
+      className={`win95-window bg-background p-1 mb-2 hover:translate-x-[1px] hover:translate-y-[1px] transition-transform cursor-pointer flex flex-col ${className ?? ""}`}
       onClick={handleCardClick}
     >
       <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between mb-1">
@@ -262,25 +262,25 @@ export const MarketCard: React.FC<MarketCardProps> = ({
         </div>
       </div>
 
-      <div className="win95-sunken bg-background p-3 relative flex-1 flex flex-col">
-        <div className="space-y-3 relative z-10 flex-1 flex flex-col">
+      <div className="win95-sunken bg-background p-2 relative flex-1 flex flex-col">
+        <div className="space-y-2 relative z-10 flex-1 flex flex-col">
           {/* Market Info Header */}
-          <div className="flex items-start gap-4 mb-3">
+          <div className="flex items-start gap-2 mb-2">
             {imageUrl && (
-              <div className="win95-sunken p-1 bg-input flex-shrink-0" style={{ borderColor: 'hsl(var(--primary))' }}>
+              <div className="win95-sunken p-0.5 bg-input flex-shrink-0" style={{ borderColor: 'hsl(var(--primary))' }}>
                 <img
                   src={imageUrl}
                   alt={market.displayQuestion}
-                  className="w-20 h-20 object-cover"
+                  className="w-10 h-10 object-cover"
                   crossOrigin="anonymous"
                 />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-black mb-2 leading-tight">{market.displayQuestion}</h3>
-              <div className="space-y-1 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span className="font-bold">by {market.creatorName ?? market.creatorLabel}</span>
+              <h3 className="text-sm font-black mb-1 leading-tight line-clamp-2">{market.displayQuestion}</h3>
+              <div className="space-y-0.5 text-[10px] leading-tight">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <span className="font-bold truncate">by {market.creatorName ?? market.creatorLabel}</span>
                   <span>•</span>
                   <button
                     type="button"
@@ -306,9 +306,9 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           </div>
 
           {market.outcomes.length === 0 || snapshots.length === 0 ? (
-            <div className="text-center text-muted-foreground">No outcomes</div>
+            <div className="text-center text-muted-foreground text-xs">No outcomes</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {market.outcomes.map((outcome, i) => {
                 const snap = snapshotMap.get(i);
 
