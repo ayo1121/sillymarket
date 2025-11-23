@@ -116,62 +116,64 @@ const Index = () => {
         <Header />
       </div>
       <div className="w-full px-2 sm:px-4 mb-4 sm:mb-8">
-        {/* Create Market Banner */}
-        <div className="col-span-full mb-6">
-          <div className="win95-window bg-background p-1">
-            <div className="win95-sunken bg-background p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black mb-1">:) create your own market</h2>
-                <p className="text-sm sm:text-base font-bold text-muted-foreground">turn your intrusive thoughts into markets.</p>
+        <div className="col-span-full mb-6 grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
+          {/* Search and Filters Bar - Takes up 3/4 space */}
+          <div className="lg:col-span-3 h-full">
+            <div className="win95-window bg-background p-1 h-full flex flex-col">
+              <div className="bg-primary text-primary-foreground px-2 py-1 mb-1">
+                <span className="font-black text-xs tracking-tight">search & filters</span>
               </div>
-              <Button
-                variant="default"
-                size="lg"
-                className="font-black text-sm sm:text-base px-8 shadow-win95 active:translate-y-[1px]"
-                onClick={() => navigate("/create-market")}
-              >
-                + new market
-              </Button>
+              <div className="win95-sunken bg-background p-3 flex flex-col md:flex-row gap-4 items-center flex-1">
+                <div className="flex-1 w-full">
+                  <MarketSearch
+                    markets={markets}
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                  />
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="win95-sunken bg-background font-bold w-full md:w-[140px]">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-2 border-foreground z-50">
+                      <SelectItem value="all" className="font-bold">all markets</SelectItem>
+                      <SelectItem value="active" className="font-bold">active</SelectItem>
+                      <SelectItem value="closed" className="font-bold">closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="win95-sunken bg-background font-bold w-full md:w-[160px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-2 border-foreground z-50">
+                      <SelectItem value="newest" className="font-bold">newest first</SelectItem>
+                      <SelectItem value="ending-soon" className="font-bold">ending soon</SelectItem>
+                      <SelectItem value="volume" className="font-bold">highest volume</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Search and Filters Bar */}
-        <div className="col-span-full mb-6">
-          <div className="win95-window bg-background p-1">
-            <div className="bg-primary text-primary-foreground px-2 py-1 mb-1">
-              <span className="font-black text-xs tracking-tight">search & filters</span>
-            </div>
-            <div className="win95-sunken bg-background p-3 flex flex-col md:flex-row gap-4 items-center">
-              <div className="flex-1 w-full">
-                <MarketSearch
-                  markets={markets}
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                />
+          {/* Create Market Box - Takes up 1/4 space */}
+          <div className="lg:col-span-1 h-full">
+            <div className="win95-window bg-background p-1 h-full flex flex-col">
+              <div className="bg-primary text-primary-foreground px-2 py-1 mb-1">
+                <span className="font-black text-xs tracking-tight">create market</span>
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="win95-sunken bg-background font-bold w-full md:w-[140px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border-2 border-foreground z-50">
-                    <SelectItem value="all" className="font-bold">all markets</SelectItem>
-                    <SelectItem value="active" className="font-bold">active</SelectItem>
-                    <SelectItem value="closed" className="font-bold">closed</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="win95-sunken bg-background font-bold w-full md:w-[160px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border-2 border-foreground z-50">
-                    <SelectItem value="newest" className="font-bold">newest first</SelectItem>
-                    <SelectItem value="ending-soon" className="font-bold">ending soon</SelectItem>
-                    <SelectItem value="volume" className="font-bold">highest volume</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="win95-sunken bg-background p-3 flex flex-col justify-center items-center text-center gap-2 h-full flex-1">
+                <p className="text-xs font-bold leading-tight px-2">turn your intrusive thoughts into markets.</p>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="font-black text-xs w-full shadow-win95 active:translate-y-[1px]"
+                  onClick={() => navigate("/create-market")}
+                >
+                  + new market
+                </Button>
               </div>
             </div>
           </div>

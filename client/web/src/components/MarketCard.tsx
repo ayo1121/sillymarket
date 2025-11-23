@@ -68,14 +68,14 @@ export const MarketStatsRow: React.FC<MarketStatsRowProps> = ({
     .join(" ");
 
   return (
-    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50 mt-2">
-      <div className="flex items-center gap-1">
-        <span className="font-bold">Vol:</span>
-        <span className="font-mono">{totalVolumeSol} SOL</span>
+    <div className="flex items-center justify-between text-sm text-muted-foreground pt-3 border-t border-border/50 mt-2">
+      <div className="flex items-center gap-1.5">
+        <span className="font-bold text-xs uppercase tracking-wider opacity-70">Vol</span>
+        <span className="font-mono font-bold text-foreground">{totalVolumeSol} SOL</span>
       </div>
-      <div className="flex items-center gap-1">
-        <span className="font-bold">Closes:</span>
-        <span>{closesLabel}</span>
+      <div className="flex items-center gap-1.5">
+        <span className="font-bold text-xs uppercase tracking-wider opacity-70">Ends</span>
+        <span className="font-bold text-foreground">{closesLabel}</span>
       </div>
     </div>
   );
