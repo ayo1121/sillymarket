@@ -1047,13 +1047,10 @@ Deno.serve(async (req) => {
       // Extract Anchor events from transaction logs (PRIORITY: most reliable source)
       const logs = decoded?.meta?.logMessages ?? decoded?.logs ?? [];
 
-      console.log("[bets-indexer] 🔍 DIAGNOSTIC: Transaction logs", {
+      console.log("[bets-indexer] Transaction logs info:", {
         signature,
         hasDecoded: !!decoded,
-        logsCount: logs?.length ?? 0,
-        logsPreview: logs?.slice(0, 10),
-        decodedKeys: decoded ? Object.keys(decoded) : [],
-        metaKeys: decoded?.meta ? Object.keys(decoded.meta) : [],
+        logsCount: Array.isArray(logs) ? logs.length : 0,
       });
 
       const anchorEvents = extractAnchorEventsFromLogs(logs);
