@@ -3,19 +3,32 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import bs58 from "npm:bs58";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Get environment variables (without non-null assertion to allow validation)
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const HELIUS_API_KEY = Deno.env.get("HELIUS_API_KEY");
 const YESNO_PROGRAM_ID = Deno.env.get("YESNO_PROGRAM_ID") || "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb";
 const PLACE_BET_DISCRIMINATOR = Uint8Array.from([222, 62, 67, 220, 63, 166, 126, 33]); // sha256("global:place_bet").slice(0,8)
 
-if (!HELIUS_API_KEY) {
-  throw new Error("Missing HELIUS_API_KEY env var");
+// Validate all required environment variables at startup
+const missingVars: string[] = [];
+if (!SUPABASE_URL) missingVars.push("SUPABASE_URL");
+if (!SUPABASE_SERVICE_ROLE_KEY) missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
+if (!HELIUS_API_KEY) missingVars.push("HELIUS_API_KEY");
+
+if (missingVars.length > 0) {
+  const errorMsg = `[bets-indexer] FATAL: Missing required environment variables: ${missingVars.join(", ")}. Configure via: npx supabase secrets set <VAR_NAME>=<value>`;
+  console.error(errorMsg);
+  throw new Error(errorMsg);
 }
+
+console.log("[bets-indexer] ✅ All environment variables configured");
+console.log("[bets-indexer] Supabase URL:", SUPABASE_URL);
+console.log("[bets-indexer] Program ID:", YESNO_PROGRAM_ID);
 
 const HELIUS_TX_URL = `https://api.helius.xyz/v0/transactions?api-key=${HELIUS_API_KEY}`;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
 });
 
@@ -379,12 +392,12 @@ function extractFromInstructionAccounts(decodedTx: any, programId: string): Part
     .map((key: any, idx: number) => {
       const pubkey = String(
         key?.pubkey ??
-          key?.publicKey ??
-          key?.account ??
-          key?.key ??
-          key?.address ??
-          key ??
-          ""
+        key?.publicKey ??
+        key?.account ??
+        key?.key ??
+        key?.address ??
+        key ??
+        ""
       ).trim();
       if (!pubkey) return null;
       const signer =
@@ -445,10 +458,10 @@ function extractFromInstructionAccounts(decodedTx: any, programId: string): Part
     const ixAccounts: any[] = Array.isArray(ix.accounts)
       ? ix.accounts
       : Array.isArray(ix.accountIndexes)
-      ? ix.accountIndexes
-      : Array.isArray(ix.keys)
-      ? ix.keys
-      : [];
+        ? ix.accountIndexes
+        : Array.isArray(ix.keys)
+          ? ix.keys
+          : [];
 
     let marketPubkey: string | null = null;
     for (const acct of ixAccounts) {
@@ -511,43 +524,48 @@ async function insertBetRow(args: {
     probs_after: args.probsAfter ?? null,
   };
 
-  console.log("[index_bet_event][bets] inserting row", {
+  console.log("[bets-indexer] Inserting bet row:", {
     txSig: args.signature,
     marketPubkey: args.marketPubkey,
     bettorPubkey: args.bettorPubkey,
     outcomeIndex: args.outcomeIndex,
     amountLamports: args.amountLamports,
+    fullRow: row,
   });
 
   try {
-    const { error } = await supabase.from("bets").insert(row);
+    const { error, data } = await supabase.from("bets").insert(row).select();
     if (error) {
-      console.error("[indexer][bets] insert error", {
+      console.error("[bets-indexer] ❌ INSERT FAILED:", {
         txSig: args.signature,
         marketPubkey: args.marketPubkey,
         bettorPubkey: args.bettorPubkey,
         outcomeIndex: row.outcome_index,
-        row,
-        error: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
+        error: {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        },
+        attemptedRow: row,
       });
     } else {
-      console.log("[index_bet_event][bets] ✅ row inserted", {
+      console.log("[bets-indexer] ✅ Row inserted successfully:", {
         txSig: args.signature,
         marketPubkey: args.marketPubkey,
         bettorPubkey: args.bettorPubkey,
         amountLamports: args.amountLamports,
         outcomeIndex: args.outcomeIndex ?? null,
+        insertedId: data?.[0]?.id,
       });
     }
   } catch (err) {
-    console.error("[indexer][bets] unexpected exception during insert", {
+    console.error("[bets-indexer] ❌ EXCEPTION during insert:", {
       txSig: args.signature,
       marketPubkey: args.marketPubkey,
       bettorPubkey: args.bettorPubkey,
-      err,
+      error: err,
+      stack: err instanceof Error ? err.stack : undefined,
     });
   }
 }
@@ -757,8 +775,15 @@ function findInstructionOutcomeIndex(args: {
 Deno.serve(async (req) => {
   const start = Date.now();
 
+  // Log incoming request for debugging
+  console.log("[bets-indexer] Received request:", {
+    method: req.method,
+    url: req.url,
+    timestamp: new Date().toISOString(),
+  });
+
   if (req.method !== "POST") {
-    console.log("[index_bet_event] non-POST request:", req.method);
+    console.log("[bets-indexer] ⚠️ Non-POST request rejected:", req.method);
     return new Response("Method not allowed", { status: 405 });
   }
 
@@ -811,10 +836,10 @@ Deno.serve(async (req) => {
     const accountData: any[] = Array.isArray(body.accountData)
       ? body.accountData
       : Array.isArray(body.accountChanges)
-      ? body.accountChanges
-      : Array.isArray(body.accounts)
-      ? body.accounts
-      : [];
+        ? body.accountChanges
+        : Array.isArray(body.accounts)
+          ? body.accounts
+          : [];
 
     for (const signature of signatures) {
       console.log("[index_bet_event] Processing signature:", signature);
@@ -842,9 +867,9 @@ Deno.serve(async (req) => {
         fromInstructions.blockTimeIso ??
         (decoded
           ? new Date(
-              ((decoded.blockTime ?? decoded.timestamp ?? Math.floor(Date.now() / 1000)) as number) *
-                1000
-            ).toISOString()
+            ((decoded.blockTime ?? decoded.timestamp ?? Math.floor(Date.now() / 1000)) as number) *
+            1000
+          ).toISOString()
           : new Date().toISOString());
 
       const baseKeys: BetIndexKeys = {
@@ -897,35 +922,35 @@ Deno.serve(async (req) => {
         console.log("[index_bet_event] Found", programEvents.length, "program event(s) for", programId);
       }
 
-  const hasBetPlacedEvent = programEvents.some(
-    (ev) => ev.type === "ProgramEvent" && ev.event?.name === "BetPlaced"
-  );
-  const hasMarketCreatedEvent = programEvents.some(
-    (ev) => ev.type === "ProgramEvent" && ev.event?.name === "MarketCreated"
-  );
-  const hasWinnerResolvedEvent = programEvents.some(
-    (ev) => ev.type === "ProgramEvent" && ev.event?.name === "WinnerResolved"
-  );
-  const hasWinningsClaimedEvent = programEvents.some(
-    (ev) => ev.type === "ProgramEvent" && ev.event?.name === "WinningsClaimed"
-  );
-  const hasPlaceBetIx = outcomeFromIx != null;
+      const hasBetPlacedEvent = programEvents.some(
+        (ev) => ev.type === "ProgramEvent" && ev.event?.name === "BetPlaced"
+      );
+      const hasMarketCreatedEvent = programEvents.some(
+        (ev) => ev.type === "ProgramEvent" && ev.event?.name === "MarketCreated"
+      );
+      const hasWinnerResolvedEvent = programEvents.some(
+        (ev) => ev.type === "ProgramEvent" && ev.event?.name === "WinnerResolved"
+      );
+      const hasWinningsClaimedEvent = programEvents.some(
+        (ev) => ev.type === "ProgramEvent" && ev.event?.name === "WinningsClaimed"
+      );
+      const hasPlaceBetIx = outcomeFromIx != null;
 
-  const isDefinitelyNotBet =
-    hasMarketCreatedEvent ||
-    hasWinnerResolvedEvent ||
-    hasWinningsClaimedEvent;
+      const isDefinitelyNotBet =
+        hasMarketCreatedEvent ||
+        hasWinnerResolvedEvent ||
+        hasWinningsClaimedEvent;
 
-  const hasBaseKeys =
-    (baseKeys.marketPubkey ?? fromInstructions.marketPubkey) != null &&
-    (baseKeys.bettorPubkey ?? fromInstructions.bettorPubkey) != null &&
-    (baseKeys.amountLamports ?? fromInstructions.amountLamports) != null;
+      const hasBaseKeys =
+        (baseKeys.marketPubkey ?? fromInstructions.marketPubkey) != null &&
+        (baseKeys.bettorPubkey ?? fromInstructions.bettorPubkey) != null &&
+        (baseKeys.amountLamports ?? fromInstructions.amountLamports) != null;
 
-  const isLikelyBet =
-    hasBetPlacedEvent || hasPlaceBetIx || (!isDefinitelyNotBet && hasBaseKeys);
+      const isLikelyBet =
+        hasBetPlacedEvent || hasPlaceBetIx || (!isDefinitelyNotBet && hasBaseKeys);
 
-  const indexedEvents: string[] = [];
-  let betRowsInserted = 0;
+      const indexedEvents: string[] = [];
+      let betRowsInserted = 0;
 
       for (const ev of programEvents) {
         const evType = ev.name || ev.eventType || ev.event_type || ev.type || ev.event;
@@ -955,14 +980,14 @@ Deno.serve(async (req) => {
             evData.data?.outcomeIndex,
             extractedOutcomeIndex,
           ];
-         let eventOutcome: number | null = null;
-         for (const candidate of eventOutcomeCandidates) {
-           const normalized = normalizeOutcomeIndex(candidate);
-           if (normalized != null) {
-             eventOutcome = normalized;
-             break;
-           }
-         }
+          let eventOutcome: number | null = null;
+          for (const candidate of eventOutcomeCandidates) {
+            const normalized = normalizeOutcomeIndex(candidate);
+            if (normalized != null) {
+              eventOutcome = normalized;
+              break;
+            }
+          }
           if (eventOutcome != null) {
             bestEventOutcome = eventOutcome; // event has highest priority
           }
