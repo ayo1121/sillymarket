@@ -68,30 +68,14 @@ export const MarketStatsRow: React.FC<MarketStatsRowProps> = ({
     .join(" ");
 
   return (
-    <div className="market-stat-row">
-      <div className="market-stat-box">
-        <div className="market-stat-label">total volume</div>
-        <div className="market-stat-value">
-          {totalVolumeSol}
-          <span className="market-stat-unit"> sol</span>
-        </div>
+    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50 mt-2">
+      <div className="flex items-center gap-1">
+        <span className="font-bold">Vol:</span>
+        <span className="font-mono">{totalVolumeSol} SOL</span>
       </div>
-
-      <div className="market-stat-box">
-        <div className="market-stat-label">closes</div>
-        <div className="market-stat-value">{closesLabel}</div>
-      </div>
-
-      <div className={statusBoxClasses}>
-        <div className="market-stat-label">status</div>
-        <div className="market-stat-value market-stat-value--status">
-          <span
-            className={`market-stat-pill ${outcomeColorClass}`}
-            style={hasWinnerColor ? { color: '#ffffff', fontWeight: 'bold' } : undefined}
-          >
-            {statusPillText}
-          </span>
-        </div>
+      <div className="flex items-center gap-1">
+        <span className="font-bold">Closes:</span>
+        <span>{closesLabel}</span>
       </div>
     </div>
   );
