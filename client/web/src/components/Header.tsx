@@ -49,6 +49,10 @@ export const Header = () => {
             <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
             my bets
           </Button>
+          <Button variant={location.pathname === "/admin" ? "primary" : "default"} onClick={() => navigate("/admin")} className="font-black flex items-center gap-2 text-sm sm:text-base">
+            <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
+            admin
+          </Button>
           <ConnectWalletAndUsername />
         </div>
       </div>
