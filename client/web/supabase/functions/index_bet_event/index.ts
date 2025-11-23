@@ -494,6 +494,9 @@ async function insertBetRow(args: {
   blockTimeIso?: string | null;
 }) {
   const amountSol = args.amountLamports / LAMPORTS_PER_SOL;
+  const blockTime =
+    args.blockTimeIso ??
+    new Date().toISOString(); // ensure NOT NULL block_time insert
   const row: any = {
     market_pubkey: String(args.marketPubkey),
     bettor_pubkey: String(args.bettorPubkey),
@@ -502,7 +505,7 @@ async function insertBetRow(args: {
     outcome_label: args.outcomeLabel ?? null,
     amount_sol: amountSol,
     tx_sig: String(args.signature),
-    block_time: args.blockTimeIso,
+    block_time: blockTime,
     amount_lamports: args.amountLamports,
     pools_after: args.poolsAfter ?? null,
     probs_after: args.probsAfter ?? null,
@@ -524,6 +527,7 @@ async function insertBetRow(args: {
         marketPubkey: args.marketPubkey,
         bettorPubkey: args.bettorPubkey,
         outcomeIndex: row.outcome_index,
+        row,
         error: error.message,
         details: error.details,
         hint: error.hint,
