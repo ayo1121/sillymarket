@@ -174,9 +174,10 @@ const MarketDetails = () => {
       setProbHistory([]);
       return;
     }
-    const initialHistory = Array.isArray(market.history) ? market.history : [];
+    const initialHistory =
+      (liveHistory && liveHistory.length > 0 ? liveHistory : market.history) ?? [];
     setProbHistory(initialHistory);
-  }, [market?.pubkey]);
+  }, [market?.pubkey, liveHistory]);
 
   // Append new point whenever probabilities change
   useEffect(() => {
