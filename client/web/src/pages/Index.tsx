@@ -167,7 +167,7 @@ const Index = () => {
                 <span className="font-black text-xs tracking-tight sm:text-base">create your own market</span>
               </div>
               <div className="win95-sunken bg-background p-4 sm:p-8 text-center space-y-3 sm:space-y-4 h-[calc(100%-3rem)] flex flex-col justify-center items-center">
-                <p className="text-sm sm:text-base font-bold">create something silly and let the world wonder why while betting on it</p>
+                <p className="text-sm sm:text-base font-bold">turn your intrusive thoughts into markets.</p>
                 <Button variant="default" size="lg" className="font-black text-sm sm:text-base px-6 sm:px-8 w-full" onClick={() => navigate("/create-market")}>
                   + new market
                 </Button>
