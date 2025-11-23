@@ -1,12 +1,45 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import ConnectWalletAndUsername from "@/components/ConnectWalletAndUsername";
 import logo from "@/assets/sillymarket-logo.jpeg";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAnchorProgram } from "@/solana/program";
+import { fetchConfig } from "@/solana/read";
 
 export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const wallet = useWallet();
+  const program = useAnchorProgram();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      if (!program || !wallet.publicKey) {
+        if (isMounted) setIsAdmin(false);
+        return;
+      }
+      try {
+        const config = await fetchConfig(program);
+        const authority = config?.authority || (config as any)?.authority;
+        const authorityPk = authority?.toBase58 ? authority.toBase58() : authority?.toString?.();
+        const userPk = wallet.publicKey.toBase58();
+        if (isMounted) {
+          setIsAdmin(Boolean(authorityPk && authorityPk === userPk));
+        }
+      } catch (err) {
+        console.warn("[Header] failed to check admin", err);
+        if (isMounted) setIsAdmin(false);
+      }
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [program, wallet.publicKey]);
 
   return <header className="win95-window bg-background p-1 mb-8">
     <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between mb-1">
@@ -49,10 +82,12 @@ export const Header = () => {
             <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
             my bets
           </Button>
-          <Button variant={location.pathname === "/admin" ? "primary" : "default"} onClick={() => navigate("/admin")} className="font-black flex items-center gap-2 text-sm sm:text-base">
-            <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
-            admin
-          </Button>
+          {isAdmin && (
+            <Button variant={location.pathname === "/admin" ? "primary" : "default"} onClick={() => navigate("/admin")} className="font-black flex items-center gap-2 text-sm sm:text-base">
+              <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
+              admin
+            </Button>
+          )}
           <ConnectWalletAndUsername />
         </div>
       </div>
