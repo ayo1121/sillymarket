@@ -445,18 +445,7 @@ const MarketDetails = () => {
     setModalOpen(true);
   };
 
-  const [copiedCreator, setCopiedCreator] = useState(false);
 
-  const handleCopyCreator = useCallback(async () => {
-    if (!market?.creatorPubkey) return;
-    try {
-      await navigator.clipboard.writeText(market.creatorPubkey);
-      setCopiedCreator(true);
-      setTimeout(() => setCopiedCreator(false), 1500);
-    } catch (err) {
-      console.error("[MarketDetails] failed to copy creator address", err);
-    }
-  }, [market]);
 
   const title = market.displayQuestion || `Market ${market.pubkey.slice(0, 4)}...`;
 
