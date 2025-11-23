@@ -260,7 +260,7 @@ function normalizeNumericArray(value: any, expectedLength: number): number[] | n
  * Architecture: Bets are indexed on-chain via Helius → Supabase Edge Function (index_bet_event).
  * Frontend only reads from public.bets and listens to Supabase Realtime; it never writes bets rows.
  */
-async function fetchBetEvents(
+export async function fetchBetEvents(
   marketPubkey: string,
   uiMarket: UIMarket
 ): Promise<{

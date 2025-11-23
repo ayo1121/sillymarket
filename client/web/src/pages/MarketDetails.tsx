@@ -35,6 +35,7 @@ import { OutcomeCard, MarketStatsRow } from "@/components/MarketCard";
 import ProbabilityChart from "@/components/ProbabilityChart";
 import { showErrorToast } from "@/lib/errorHandling";
 import type { MarketHistoryPoint } from "@/solana/marketMapping";
+import { useMarketActivity } from "@/hooks/useMarketActivity";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -150,16 +151,18 @@ const MarketDetails = () => {
   }, [market, poolProbabilities]);
 
   // Activity with labels - moved here to ensure all hooks are called before early returns
+  const { history: liveHistory, activity: liveActivity } = useMarketActivity(market);
+
   const activityWithLabels = useMemo(() => {
     if (!market) return [];
-    const rawActivity = market?.activity ?? [];
+    const rawActivity = (liveActivity && liveActivity.length > 0 ? liveActivity : market?.activity) ?? [];
     return rawActivity
       .filter((item) => item.outcomeIndex !== null && item.outcomeIndex !== undefined)
       .map((item) => ({
         ...item,
         outcomeLabel: resolveOutcomeLabelFromMarket(market, item.outcomeIndex),
       }));
-  }, [market]);
+  }, [market, liveActivity]);
 
   // Probability history for chart - must be called before early returns
   const probabilityHistory = useMarketProbabilityHistory(market);
@@ -580,7 +583,8 @@ const MarketDetails = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                       {outcomesWithProb.map((o) => {
                         // Extract probability history for this specific outcome
-                        const outcomeSeries = (market.history || [])
+                        const historySource = (liveHistory && liveHistory.length > 0 ? liveHistory : market.history) || [];
+                        const outcomeSeries = historySource
                           .map(point => ({
                             value: point.probs[o.index] || 0
                           }))
