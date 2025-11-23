@@ -1,4 +1,4 @@
--- Ensure bets realtime + RLS are intact after schema changes
+-- Ensure bets realtime + RLS are intact and schema tolerates fallback inserts
 
 -- Enable RLS (idempotent)
 ALTER TABLE public.bets ENABLE ROW LEVEL SECURITY;
@@ -10,6 +10,12 @@ CREATE POLICY "Bets are viewable by everyone"
   FOR SELECT
   TO anon, authenticated
   USING (true);
+
+-- Allow outcome_index to be null when the indexer cannot derive it
+ALTER TABLE public.bets ALTER COLUMN outcome_index DROP NOT NULL;
+
+-- Ensure block_time always has a value (default now for missing timestamps)
+ALTER TABLE public.bets ALTER COLUMN block_time SET DEFAULT now();
 
 -- Ensure bets table is part of the supabase_realtime publication
 DO $$
