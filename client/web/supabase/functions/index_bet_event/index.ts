@@ -661,6 +661,14 @@ async function insertBetRow(args: {
   probsAfter?: any;
   blockTimeIso?: string | null;
 }) {
+  console.log("[bets-indexer] INSERT ARGS", {
+    signature: args.signature,
+    outcomeIndex: args.outcomeIndex,
+    amountLamports: args.amountLamports,
+    poolsAfter: args.poolsAfter,
+    probsAfter: args.probsAfter,
+  });
+
   console.log("[bets-indexer] Preparing to construct bet row for insert:", {
     txSig: args.signature,
     marketPubkey: args.marketPubkey,
@@ -698,9 +706,14 @@ async function insertBetRow(args: {
   });
 
   try {
-    const { error, data } = await supabase.from("bets").insert(row).select();
+    // Use UPSERT to handle duplicate tx_sig (decoded data should win over fallback)
+    const { error, data } = await supabase
+      .from("bets")
+      .upsert(row, { onConflict: "tx_sig" })
+      .select();
+
     if (error) {
-      console.error("[bets-indexer] ❌ INSERT FAILED:", {
+      console.error("[bets-indexer] ❌ UPSERT FAILED:", {
         txSig: args.signature,
         marketPubkey: args.marketPubkey,
         bettorPubkey: args.bettorPubkey,
@@ -714,7 +727,7 @@ async function insertBetRow(args: {
         attemptedRow: row,
       });
     } else {
-      console.log("[bets-indexer] ✅ Row inserted successfully:", {
+      console.log("[bets-indexer] ✅ Row upserted successfully:", {
         txSig: args.signature,
         marketPubkey: args.marketPubkey,
         bettorPubkey: args.bettorPubkey,
@@ -740,7 +753,7 @@ async function insertBetRow(args: {
       });
     }
   } catch (err) {
-    console.error("[bets-indexer] ❌ EXCEPTION during insert:", {
+    console.error("[bets-indexer] ❌ EXCEPTION during upsert:", {
       txSig: args.signature,
       marketPubkey: args.marketPubkey,
       bettorPubkey: args.bettorPubkey,
@@ -1179,7 +1192,7 @@ Deno.serve(async (req) => {
 
       // PRIORITY: If we have a decoded Anchor BetPlaced event, use it directly
       if (decodedBetPlaced && baseKeys.outcomeIndex != null) {
-        console.log("[bets-indexer] FINAL decoded bet row input", {
+        console.log("[bets-indexer] PATH=decoded BEFORE insertBetRow", {
           signature,
           marketPubkey: baseKeys.marketPubkey,
           bettorPubkey: baseKeys.bettorPubkey,
@@ -1204,7 +1217,7 @@ Deno.serve(async (req) => {
 
         betRowsInserted += 1;
         indexedEvents.push("BetPlaced (Anchor event)");
-        console.log("[bets-indexer] ✅ Inserted bet from decoded Anchor event", {
+        console.log("[bets-indexer] ✅ PATH=decoded COMPLETED", {
           signature,
           outcomeIndex: baseKeys.outcomeIndex,
         });
@@ -1524,12 +1537,14 @@ Deno.serve(async (req) => {
               finalMergedOutcomeIndex: finalMerged.outcomeIndex,
             });
           }
-          console.log("[index_bet_event] inserting bet row", {
+          console.log("[bets-indexer] PATH=fallback BEFORE insertBetRow", {
             signature,
             marketPubkey: finalMerged.marketPubkey,
             bettorPubkey: finalMerged.bettorPubkey,
             outcomeIndex,
             amountLamports: finalMerged.amountLamports,
+            poolsAfter: finalMerged.poolsAfter,
+            probsAfter: finalMerged.probsAfter,
           });
           await insertBetRow({
             signature,
@@ -1543,7 +1558,7 @@ Deno.serve(async (req) => {
           });
           betRowsInserted += 1;
           indexedEvents.push("BetPlaced (webhook fallback)");
-          console.log("[index_bet_event] ✅ fallback bet row inserted", {
+          console.log("[bets-indexer] ✅ PATH=fallback COMPLETED", {
             signature,
             outcomeIndex,
           });
