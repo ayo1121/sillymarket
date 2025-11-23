@@ -177,8 +177,8 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
           console.log("[ConnectWallet] User cancelled sign-in, not prompting for username");
           return;
         }
-        // For other errors, still prompt (might be first time user)
-        setAskUsername(true);
+        // For other errors, DO NOT prompt for username as they are not authenticated
+        console.warn("[ConnectWallet] Sign-in failed, suppressing username prompt");
         setHasPrompted(true);
       }
     }, 500); // Reduced delay - trigger faster after connection
@@ -290,8 +290,8 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
       console.error("[ConnectWallet] Error in signInIfNeeded:", e);
       // If user cancelled, just open menu
       if (!e?.message?.includes("User rejected") && !e?.message?.includes("User cancelled")) {
-        // For other errors, still prompt
-        setAskUsername(true);
+        // For other errors, DO NOT prompt
+        console.warn("[ConnectWallet] Manual sign-in failed, suppressing username prompt");
         setHasPrompted(true);
         return;
       }
