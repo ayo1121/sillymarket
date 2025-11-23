@@ -44,4 +44,13 @@ export function formatProbability(prob: number): string {
   return `${percent}%`;
 }
 
-
+/**
+ * Format SOL values with a fixed decimal precision and trim unnecessary zeros.
+ */
+export function formatSol(value: number, decimals: number = 2): string {
+  if (!Number.isFinite(value)) return "0";
+  const fixed = value.toFixed(decimals);
+  const num = Number.parseFloat(fixed);
+  if (!Number.isFinite(num)) return "0";
+  return num.toString();
+}
