@@ -9,8 +9,10 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Windows 95 inspired color palette with sillymarket branding */
-    --background: 0 0% 75.3%; /* Classic Win95 grey #C0C0C0 */
-    --foreground: 0 0% 0%; /* Black text */
+    --background: 0 0% 75.3%;
+    /* Classic Win95 grey #C0C0C0 */
+    --foreground: 0 0% 0%;
+    /* Black text */
 
     --card: 0 0% 75.3%;
     --card-foreground: 0 0% 0%;
@@ -18,16 +20,20 @@ All colors MUST be HSL.
     --popover: 0 0% 75.3%;
     --popover-foreground: 0 0% 0%;
 
-    --primary: 0 0% 0%; /* Black */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 0 0% 0%;
+    /* Black */
+    --primary-foreground: 0 0% 100%;
+    /* White */
 
-    --secondary: 0 0% 100%; /* White */
+    --secondary: 0 0% 100%;
+    /* White */
     --secondary-foreground: 0 0% 0%;
 
     --muted: 0 0% 50.2%;
     --muted-foreground: 0 0% 30%;
 
-    --accent: 0 0% 83.1%; /* Light grey */
+    --accent: 0 0% 83.1%;
+    /* Light grey */
     --accent-foreground: 0 0% 0%;
 
     --destructive: 0 0% 0%;
@@ -37,17 +43,24 @@ All colors MUST be HSL.
     --input: 0 0% 100%;
     --ring: 0 0% 0%;
 
-    --radius: 0rem; /* No rounded corners - Windows 95 style */
+    --radius: 0rem;
+    /* No rounded corners - Windows 95 style */
 
     /* Win95 3D effects */
-    --win95-highlight: 0 0% 100%; /* White for top-left borders */
-    --win95-shadow: 0 0% 25.1%; /* Dark grey for bottom-right borders */
-    --win95-light: 0 0% 87.8%; /* Light grey for subtle highlights */
-    --win95-dark: 0 0% 50.2%; /* Medium grey for subtle shadows */
-    
+    --win95-highlight: 0 0% 100%;
+    /* White for top-left borders */
+    --win95-shadow: 0 0% 25.1%;
+    /* Dark grey for bottom-right borders */
+    --win95-light: 0 0% 87.8%;
+    /* Light grey for subtle highlights */
+    --win95-dark: 0 0% 50.2%;
+    /* Medium grey for subtle shadows */
+
     /* Brand colors */
-    --brand-yes: 120 40% 50%; /* Subtle green for yes */
-    --brand-no: 0 40% 50%; /* Subtle red for no */
+    --brand-yes: 120 40% 50%;
+    /* Subtle green for yes */
+    --brand-no: 0 40% 50%;
+    /* Subtle red for no */
   }
 }
 
@@ -65,6 +78,7 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+
   /* Windows 95 raised effect */
   .win95-raised {
     border-top: 2px solid hsl(var(--win95-highlight));
@@ -85,30 +99,85 @@ All colors MUST be HSL.
   }
 
   /* Outcome color tokens */
-  .border-outcome-0 { border-color: #22c55e; }
-  .text-outcome-0 { color: #16a34a; }
-  .bg-outcome-0 { background-color: #22c55e; }
-  .bg-outcome-0-selected { background-color: #dcfce7; }
+  .border-outcome-0 {
+    border-color: #22c55e;
+  }
 
-  .border-outcome-1 { border-color: #ef4444; }
-  .text-outcome-1 { color: #dc2626; }
-  .bg-outcome-1 { background-color: #ef4444; }
-  .bg-outcome-1-selected { background-color: #fee2e2; }
+  .text-outcome-0 {
+    color: #16a34a;
+  }
 
-  .border-outcome-2 { border-color: #3b82f6; }
-  .text-outcome-2 { color: #2563eb; }
-  .bg-outcome-2 { background-color: #3b82f6; }
-  .bg-outcome-2-selected { background-color: #dbeafe; }
+  .bg-outcome-0 {
+    background-color: #22c55e;
+  }
 
-  .border-outcome-3 { border-color: #eab308; }
-  .text-outcome-3 { color: #ca8a04; }
-  .bg-outcome-3 { background-color: #eab308; }
-  .bg-outcome-3-selected { background-color: #fef9c3; }
+  .bg-outcome-0-selected {
+    background-color: #dcfce7;
+  }
 
-  .border-outcome-4 { border-color: #a855f7; }
-  .text-outcome-4 { color: #9333ea; }
-  .bg-outcome-4 { background-color: #a855f7; }
-  .bg-outcome-4-selected { background-color: #f3e8ff; }
+  .border-outcome-1 {
+    border-color: #ef4444;
+  }
+
+  .text-outcome-1 {
+    color: #dc2626;
+  }
+
+  .bg-outcome-1 {
+    background-color: #ef4444;
+  }
+
+  .bg-outcome-1-selected {
+    background-color: #fee2e2;
+  }
+
+  .border-outcome-2 {
+    border-color: #3b82f6;
+  }
+
+  .text-outcome-2 {
+    color: #2563eb;
+  }
+
+  .bg-outcome-2 {
+    background-color: #3b82f6;
+  }
+
+  .bg-outcome-2-selected {
+    background-color: #dbeafe;
+  }
+
+  .border-outcome-3 {
+    border-color: #eab308;
+  }
+
+  .text-outcome-3 {
+    color: #ca8a04;
+  }
+
+  .bg-outcome-3 {
+    background-color: #eab308;
+  }
+
+  .bg-outcome-3-selected {
+    background-color: #fef9c3;
+  }
+
+  .border-outcome-4 {
+    border-color: #a855f7;
+  }
+
+  .text-outcome-4 {
+    color: #9333ea;
+  }
+
+  .bg-outcome-4 {
+    background-color: #a855f7;
+  }
+
+  .bg-outcome-4-selected {
+    background-color: #f3e8ff;
+  }
 
   .market-card-address {
     border: none;
@@ -195,100 +264,118 @@ All colors MUST be HSL.
     cursor: pointer;
   }
 
-.share-image-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .share-image-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-/* Outcome button styling */
-.outcome-btn {
-  width: 100%;
-  text-align: left;
-  border: 2px solid var(--outcome-color, #000);
-  background: #f9f9f9;
-  padding: 6px 10px 8px;
-  margin-bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #000;
-  transition: background-color 120ms ease-out, transform 80ms ease-out, box-shadow 80ms ease-out;
-}
+  /* Outcome button styling */
+  .outcome-btn {
+    width: 100%;
+    text-align: left;
+    border: 2px solid var(--outcome-color, #000);
+    background: #f9f9f9;
+    padding: 6px 10px 8px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #000;
+    transition: background-color 120ms ease-out, transform 80ms ease-out, box-shadow 80ms ease-out;
+  }
 
-.outcome-btn__header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  text-transform: lowercase;
-}
+  .outcome-btn--compact {
+    padding: 4px 6px 6px;
+    margin-bottom: 4px;
+    gap: 2px;
+    font-size: 10px;
+  }
 
-.outcome-btn__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  border: 1px solid #000;
-}
+  .outcome-btn--compact .outcome-btn__header {
+    gap: 4px;
+    font-size: 11px;
+  }
 
-.outcome-btn__label {
-  font-weight: 700;
-}
+  .outcome-btn--compact .outcome-btn__bar {
+    height: 4px;
+    margin-top: 1px;
+  }
 
-.outcome-btn__meta {
-  font-size: 11px;
-  line-height: 1.2;
-}
+  .outcome-btn__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    text-transform: lowercase;
+  }
 
-/* probability bar inside outcome button */
-.outcome-btn__bar {
-  width: 100%;
-  height: 6px;
-  border: 1px solid #000;
-  background: #e5e5e5;
-  overflow: hidden;
-  margin-top: 2px;
-}
+  .outcome-btn__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    border: 1px solid #000;
+  }
 
-.outcome-btn__bar-fill {
-  display: block;
-  height: 100%;
-  transition: width 120ms ease-out;
-}
+  .outcome-btn__label {
+    font-weight: 700;
+  }
 
-.outcome-btn__row {
-  display: flex;
-  gap: 4px;
-}
+  .outcome-btn__meta {
+    font-size: 11px;
+    line-height: 1.2;
+  }
 
-.outcome-btn__meta-label {
-  text-transform: uppercase;
-  opacity: 0.7;
-}
+  /* probability bar inside outcome button */
+  .outcome-btn__bar {
+    width: 100%;
+    height: 6px;
+    border: 1px solid #000;
+    background: #e5e5e5;
+    overflow: hidden;
+    margin-top: 2px;
+  }
 
-.outcome-btn__meta-value {
-  font-weight: 700;
-}
+  .outcome-btn__bar-fill {
+    display: block;
+    height: 100%;
+    transition: width 120ms ease-out;
+  }
 
-.outcome-btn:hover {
-  background-color: color-mix(in srgb, var(--outcome-color, #000) 10%, #ffffff 90%);
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 #000;
-}
+  .outcome-btn__row {
+    display: flex;
+    gap: 4px;
+  }
 
-.outcome-btn:active {
-  transform: translate(0, 0);
-  box-shadow: 1px 1px 0 #000;
-}
+  .outcome-btn__meta-label {
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
 
-.outcome-btn--disabled,
-.outcome-btn--disabled:hover,
-.outcome-btn--disabled:active {
-  cursor: default;
-  opacity: 0.6;
-  transform: none;
-  box-shadow: 2px 2px 0 #000;
-}
+  .outcome-btn__meta-value {
+    font-weight: 700;
+  }
+
+  .outcome-btn:hover {
+    background-color: color-mix(in srgb, var(--outcome-color, #000) 10%, #ffffff 90%);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #000;
+  }
+
+  .outcome-btn:active {
+    transform: translate(0, 0);
+    box-shadow: 1px 1px 0 #000;
+  }
+
+  .outcome-btn--disabled,
+  .outcome-btn--disabled:hover,
+  .outcome-btn--disabled:active {
+    cursor: default;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: 2px 2px 0 #000;
+  }
+
   .share-capture-card {
     display: inline-block;
     background: inherit;

@@ -103,8 +103,10 @@ export type OutcomeCardProps = {
   odds: number | null;
   color: string;
   series?: OutcomeSeriesPoint[] | { value: number }[];
+  series?: OutcomeSeriesPoint[] | { value: number }[];
   disabled?: boolean;
   onClick?: () => void;
+  compact?: boolean;
 };
 
 /**
@@ -118,6 +120,7 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
   series = [],
   disabled,
   onClick,
+  compact,
 }) => {
   const safeSeries = Array.isArray(series)
     ? series.map((p) => ({ value: (p as any)?.prob ?? (p as any)?.value ?? 0 }))
@@ -125,7 +128,11 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
   return (
     <button
       type="button"
-      className={cn("outcome-btn", disabled && "outcome-btn--disabled")}
+      className={cn(
+        "outcome-btn",
+        compact && "outcome-btn--compact",
+        disabled && "outcome-btn--disabled"
+      )}
       style={{
         borderColor: color,
         // CSS var used for hover/active tinting in CSS
@@ -265,20 +272,20 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       <div className="win95-sunken bg-background p-2 relative flex-1 flex flex-col">
         <div className="space-y-2 relative z-10 flex-1 flex flex-col">
           {/* Market Info Header */}
-          <div className="flex items-start gap-2 mb-2">
+          <div className="flex items-start gap-3 mb-3">
             {imageUrl && (
-              <div className="win95-sunken p-0.5 bg-input flex-shrink-0" style={{ borderColor: 'hsl(var(--primary))' }}>
+              <div className="win95-sunken p-1 bg-input flex-shrink-0" style={{ borderColor: 'hsl(var(--primary))' }}>
                 <img
                   src={imageUrl}
                   alt={market.displayQuestion}
-                  className="w-10 h-10 object-cover"
+                  className="w-16 h-16 object-cover"
                   crossOrigin="anonymous"
                 />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-black mb-1 leading-tight line-clamp-2">{market.displayQuestion}</h3>
-              <div className="space-y-0.5 text-[10px] leading-tight">
+              <h3 className="text-lg font-black mb-1 leading-tight line-clamp-2">{market.displayQuestion}</h3>
+              <div className="space-y-1 text-xs leading-tight">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <span className="font-bold truncate">by {market.creatorName ?? market.creatorLabel}</span>
                   <span>•</span>
@@ -308,7 +315,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           {market.outcomes.length === 0 || snapshots.length === 0 ? (
             <div className="text-center text-muted-foreground text-xs">No outcomes</div>
           ) : (
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5 min-h-[100px]">
               {market.outcomes.map((outcome, i) => {
                 const snap = snapshotMap.get(i);
 
@@ -343,6 +350,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
                         series={outcomeSeriesPoints}
                         disabled={market.state !== "open"}
                         onClick={() => onOutcomeClick?.(i)}
+                        compact={true}
                       />
                     </div>
                   </div>
