@@ -39,7 +39,7 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
                             className={cn(
                                 "w-72 sm:w-80 bg-[#e5e5e5] dark:bg-[#1f1f1f] p-3 cursor-pointer transition-all duration-200 relative group flex-shrink-0",
                                 "border border-[#8b8b8b] dark:border-[#3a3a3a] rounded-[4px] shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-white dark:hover:bg-[#262626]",
-                                "flex flex-col justify-between h-[100px]",
+                                "flex flex-col justify-between h-[120px]",
                                 "border-l-[4px]",
                                 i === 0 ? "border-l-[#ff8a2a]" : "border-l-[#15a349]"
                             )}
