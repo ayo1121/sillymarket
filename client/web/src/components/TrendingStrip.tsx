@@ -37,7 +37,7 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
                             key={market.pubkey}
                             onClick={() => market.pubkey.length > 5 && navigate(`/market/${market.pubkey}`)}
                             className={cn(
-                                "w-72 bg-background p-3 cursor-pointer transition-all duration-200 relative group",
+                                "w-72 bg-gradient-to-br from-background to-background/50 p-3 cursor-pointer transition-all duration-200 relative group",
                                 "border border-border/30 rounded-[4px] shadow-sm hover:shadow-md hover:-translate-y-0.5",
                                 "flex flex-col justify-between h-[100px]",
                                 "border-l-[3px]",

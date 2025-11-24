@@ -161,9 +161,9 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   return (
     <div
       className={cn(
-        "market-card bg-background p-4 flex flex-col h-full transition-all duration-200 relative",
-        "border border-border/40 rounded-[4px] shadow-[0_2px_0_rgba(0,0,0,0.05)]",
-        "hover:-translate-y-[2px] hover:shadow-[0_4px_0_rgba(0,0,0,0.1)] hover:border-border/60",
+        "market-card bg-card/50 p-4 flex flex-col h-full transition-all duration-200 ease-out relative",
+        "border border-border/40 rounded-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.03)]",
+        "hover:-translate-y-[2px] hover:shadow-[0_8px_16px_rgba(0,0,0,0.06)] hover:border-border/60",
         isOpen && "border-l-4 border-l-green-500/50",
         (isResolved || isVoid) && "opacity-[0.85] grayscale-[0.1]",
         isLocked && "market-card--locked bg-muted/5",
@@ -206,11 +206,9 @@ export const MarketCard: React.FC<MarketCardProps> = ({
             <span className="font-medium">
               by {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
             </span>
-            <span className="opacity-40">•</span>
             <span className="font-mono opacity-60">
               {shortenWallet(market.pubkey, 4)}
             </span>
-            <span className="opacity-40">•</span>
             <span className={cn(
               "font-bold uppercase tracking-wider text-[10px]",
               isOpen && "text-green-600/90",

@@ -114,15 +114,15 @@ const Index = () => {
     <div className="min-h-screen bg-background font-sans text-foreground">
       <Header />
 
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
+      <main className="container mx-auto px-4 py-8 max-w-[1240px]">
         {/* Top Chrome Divider */}
-        <div className="w-full h-px bg-border/20 mb-6" />
+        <div className="w-full h-px bg-border/20 mb-8" />
 
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-4">
           <div>
-            <h1 className="text-5xl font-black uppercase tracking-tighter mb-1 leading-none">Markets</h1>
-            <div className="flex flex-col gap-1">
+            <h1 className="text-5xl font-black uppercase tracking-tighter mb-2 leading-none">Markets</h1>
+            <div className="flex flex-col gap-1.5">
               <p className="text-muted-foreground font-medium text-sm tracking-wide">
                 predict outcomes, trade positions, and earn rewards.
               </p>
@@ -130,12 +130,14 @@ const Index = () => {
                 {markets.length} markets · {(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000).toFixed(1)} SOL total volume
               </p>
             </div>
+            {/* Section Bar */}
+            <div className="w-20 h-[3px] bg-green-500/70 mt-5" />
           </div>
 
           <Button
             onClick={() => navigate("/create-market")}
             size="lg"
-            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all bg-primary text-primary-foreground border-2 border-primary win95-btn-press h-10 px-6"
+            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all bg-primary text-primary-foreground border-2 border-primary win95-btn-press h-10 px-6 mb-2"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Market
@@ -143,28 +145,28 @@ const Index = () => {
         </div>
 
         {/* Trending Strip Panel */}
-        <div className="mb-8 bg-black/5 rounded-[4px] border border-black/5 p-1">
+        <div className="mb-8 bg-black/5 rounded-[4px] border border-black/5 p-1.5">
           <TrendingStrip markets={markets.filter(m => m.state === 'open').sort((a, b) => b.volumeLamports - a.volumeLamports)} />
         </div>
 
         {/* Unified Search & Filters Bar */}
         <div className="win95-sunken bg-background/50 p-1.5 mb-8 rounded-[4px] border border-border/40">
-          <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-col md:flex-row gap-2 h-auto md:h-10">
             {/* Search Input */}
-            <div className="relative flex-1">
+            <div className="relative flex-[2] h-10 md:h-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search markets..."
-                className="pl-9 h-10 bg-background border-border/20 focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+                className="pl-9 h-full bg-background border-border/20 focus-visible:ring-1 focus-visible:ring-primary/20 font-medium rounded-[2px]"
               />
             </div>
 
             {/* Filters Group */}
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto h-10 md:h-full">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] h-10 bg-background border-border/20 font-bold">
+                <SelectTrigger className="w-full md:w-[160px] h-full bg-background border-border/20 font-bold rounded-[2px]">
                   <div className="flex items-center gap-2">
                     <Filter className="w-3.5 h-3.5 opacity-60" />
                     <SelectValue placeholder="Status" />
@@ -178,7 +180,7 @@ const Index = () => {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[160px] h-10 bg-background border-border/20 font-bold">
+                <SelectTrigger className="w-full md:w-[180px] h-full bg-background border-border/20 font-bold rounded-[2px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
