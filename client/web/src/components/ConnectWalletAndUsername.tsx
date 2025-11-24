@@ -8,6 +8,7 @@ import { api } from "@/lib/http";
 import bs58 from "bs58";
 import { Button } from "@/components/ui/button";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
+import { useNavigate } from "react-router-dom";
 
 function shorten(pk: string) { return pk ? pk.slice(0, 4) + "…" + pk.slice(-4) : ""; }
 function forgetRemembered() {
@@ -20,10 +21,11 @@ function forgetRemembered() {
   }
 }
 
-export default function ConnectWalletAndUsername({ className }: { className?: string }) {
+export default function ConnectWalletAndUsername({ className, claimableCount = 0 }: { className?: string; claimableCount?: number }) {
   const { connected, connecting, connect, disconnect, publicKey, wallet, wallets, select, signMessage } = useWallet() as any;
   const { setVisible } = useWalletModal();
   const { username, setUsername } = useWalletIdentity();
+  const navigate = useNavigate();
 
   const [askUsername, setAskUsername] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -397,12 +399,17 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
       <Button
         variant="default"
         onClick={onPrimaryClick}
-        className={`font-black flex items-center gap-2 text-sm sm:text-base ${className || ""}`}
+        className={`font-black flex items-center gap-2 text-sm sm:text-base relative ${className || ""}`}
         disabled={connecting}
         aria-busy={connecting}
       >
         <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
         {label}
+        {connected && claimableCount > 0 && (
+          <span className="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-brand-yes text-black text-[10px] font-black px-2 py-[2px] leading-none">
+            {claimableCount}
+          </span>
+        )}
       </Button>
 
       {connected && menuOpen && (
@@ -413,6 +420,22 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
             boxShadow: "0 6px 24px rgba(0,0,0,.15)"
           }}
         >
+          {username && (
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid #eee", fontSize: 14, fontWeight: 500 }}>
+              @{username}
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              navigate("/my-bets");
+            }}
+            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee", fontWeight: 600 }}
+          >
+            my profile
+          </button>
+
           {!username && (
             <>
               <button
@@ -436,12 +459,6 @@ export default function ConnectWalletAndUsername({ className }: { className?: st
                 sign in (fix stuck)
               </button>
             </>
-          )}
-
-          {username && (
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid #eee", fontSize: 14, fontWeight: 500 }}>
-              @{username}
-            </div>
           )}
 
           {available.length > 1 && (

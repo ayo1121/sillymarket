@@ -80,26 +80,13 @@ export const Header = () => {
             <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
             markets
           </Button>
-          <Button
-            variant={location.pathname === "/my-bets" ? "primary" : "default"}
-            onClick={() => navigate("/my-bets")}
-            className="font-black flex items-center gap-2 text-sm sm:text-base relative"
-          >
-            <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
-            my bets
-            {claimableCount > 0 && (
-              <span className="absolute -top-2 -right-2 inline-flex items-center justify-center rounded-full bg-brand-yes text-black text-[10px] font-black px-2 py-[2px] leading-none">
-                {claimableCount}
-              </span>
-            )}
-          </Button>
           {isAdmin && (
             <Button variant={location.pathname === "/admin" ? "primary" : "default"} onClick={() => navigate("/admin")} className="font-black flex items-center gap-2 text-sm sm:text-base">
               <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
               admin
             </Button>
           )}
-          <ConnectWalletAndUsername />
+          <ConnectWalletAndUsername claimableCount={claimableCount} />
         </div>
       </div>
     </div>
