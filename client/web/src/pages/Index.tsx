@@ -8,12 +8,14 @@ import { MarketCard } from "@/components/MarketCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MarketSearch } from "@/components/MarketSearch";
-import { Filter, Plus, ExternalLink } from "lucide-react";
+import { Search, Filter, Plus, ExternalLink, Loader2 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { UIMarket } from "@/solana/marketMapping";
 import { BettingModal } from "@/components/BettingModal";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ShareMarketModal } from "@/components/ShareMarketModal";
+import { TrendingStrip } from "@/components/TrendingStrip";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -106,197 +108,143 @@ const Index = () => {
     }
   });
 
-  const marketsToRender = filteredAndSortedMarkets.slice(0, visibleCount);
-
-  useNotifications(markets);
+  const visibleMarkets = filteredAndSortedMarkets.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-win95-teal">
-      <div className="w-full px-2 sm:px-4 pt-4 sm:pt-8">
-        <Header />
-      </div>
-      <div className="w-full px-2 sm:px-4 mb-4 sm:mb-8">
-        <div className="col-span-full mb-6 grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
-          {/* Search and Filters Bar - Takes up 3/4 space */}
-          <div className="lg:col-span-3 h-full">
-            <div className="win95-window bg-background p-1 h-full flex flex-col">
-              <div className="bg-primary text-primary-foreground px-2 py-1 mb-1">
-                <span className="font-black text-xs tracking-tight">search & filters</span>
-              </div>
-              <div className="win95-sunken bg-background p-3 flex flex-col md:flex-row gap-4 items-center flex-1">
-                <div className="flex-1 w-full">
-                  <MarketSearch
-                    markets={markets}
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                  />
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="win95-sunken bg-background font-bold w-full md:w-[140px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border-2 border-foreground z-50">
-                      <SelectItem value="all" className="font-bold">all markets</SelectItem>
-                      <SelectItem value="active" className="font-bold">active</SelectItem>
-                      <SelectItem value="closed" className="font-bold">closed</SelectItem>
-                    </SelectContent>
-                  </Select>
+    <div className="min-h-screen bg-background font-sans text-foreground">
+      <Header />
 
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="win95-sunken bg-background font-bold w-full md:w-[160px]">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border-2 border-foreground z-50">
-                      <SelectItem value="newest" className="font-bold">newest first</SelectItem>
-                      <SelectItem value="ending-soon" className="font-bold">ending soon</SelectItem>
-                      <SelectItem value="volume" className="font-bold">highest volume</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">Markets</h1>
+            <p className="text-muted-foreground font-medium">
+              Predict outcomes, trade positions, and earn rewards.
+            </p>
           </div>
 
-          {/* Create Market Box - Takes up 1/4 space */}
-          <div className="lg:col-span-1 h-full">
-            <div className="win95-window bg-background p-1 h-full flex flex-col">
-              <div className="bg-primary text-primary-foreground px-2 py-1 mb-1">
-                <span className="font-black text-xs tracking-tight">create market</span>
-              </div>
-              <div className="win95-sunken bg-background p-3 flex flex-col justify-center items-center text-center gap-2 h-full flex-1">
-                <p className="text-xs font-bold leading-tight px-2">turn your intrusive thoughts into markets.</p>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="font-black text-xs w-full shadow-win95 active:translate-y-[1px]"
-                  onClick={() => navigate("/create-market")}
-                >
-                  + new market
-                </Button>
-              </div>
+          <Button
+            onClick={() => navigate("/create")}
+            size="lg"
+            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create Market
+          </Button>
+        </div>
+
+        {/* Trending Strip */}
+        <TrendingStrip markets={markets.filter(m => m.state === 'open').sort((a, b) => b.volumeLamports - a.volumeLamports)} />
+
+        {/* Search & Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8 mt-8">
+          {/* Search */}
+          <div className="md:col-span-5 lg:col-span-6">
+            <MarketSearch
+              markets={markets}
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="md:col-span-7 lg:col-span-6 flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full win95-sunken bg-background font-bold">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    <SelectValue placeholder="Status" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active Only</SelectItem>
+                  <SelectItem value="closed">Closed / Resolved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full win95-sunken bg-background font-bold">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="volume">Highest Volume</SelectItem>
+                  <SelectItem value="ending-soon">Ending Soon</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
-      </div>
-      <div className="w-full px-2 sm:px-4 pb-8 sm:pb-16">
 
-
-        {loading && (
-          <div className="win95-window bg-background p-1">
-            <div className="win95-sunken bg-background p-4 sm:p-8 text-center">
-              <p className="text-base sm:text-lg font-bold">Loading markets from blockchain...</p>
-            </div>
+        {/* Markets Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-[320px] bg-muted/10 rounded-md animate-pulse border border-border/30" />
+            ))}
           </div>
-        )}
-
-        {error && (
-          <div className="win95-window bg-background p-1">
-            <div className="win95-sunken bg-background p-4 sm:p-8 text-center">
-              <p className="text-base sm:text-lg font-bold text-red-600">Error loading markets: {error}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Make sure your wallet is connected to <strong>Solana Devnet</strong> and try again
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {marketsToRender.length > 0 ? (
-            marketsToRender.map((market) => (
-              <div key={market.pubkey} className="cursor-pointer h-full">
+        ) : visibleMarkets.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {visibleMarkets.map((market) => (
                 <MarketCard
+                  key={market.pubkey}
                   market={market}
                   onOutcomeClick={(outcomeIndex) => handleOpenBet(market, outcomeIndex)}
-                  onShare={(mkt) => setShareMarket(mkt)}
-                  className="h-full"
+                  onShare={(m) => setShareMarket(m)}
                 />
-              </div>
-            ))
-          ) : !loading && !error ? (
-            <div className="col-span-full win95-window bg-background p-1">
-              <div className="win95-sunken bg-background p-4 sm:p-8 text-center">
-                <p className="text-base sm:text-lg font-bold text-muted-foreground">
-                  {searchQuery || statusFilter !== "all"
-                    ? "no markets found matching your filters"
-                    : "no markets found. create one to get started!"}
-                </p>
-              </div>
+              ))}
             </div>
-          ) : null}
-        </div>
 
-        {filteredAndSortedMarkets.length > visibleCount && (
-          <div className="flex justify-center mt-6">
-            <Button
-              variant="outline"
-              className="font-black px-6"
-              onClick={() => setVisibleCount((prev) => prev + 15)}
-            >
-              load more
+            {visibleCount < filteredAndSortedMarkets.length && (
+              <div className="mt-12 flex justify-center">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setVisibleCount(prev => prev + 12)}
+                  className="min-w-[200px] font-bold border-2 hover:bg-primary/5"
+                >
+                  Load More
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-20 bg-muted/10 rounded-lg border-2 border-dashed border-border/50">
+            <h3 className="text-xl font-bold mb-2">No markets found</h3>
+            <p className="text-muted-foreground mb-6">Try adjusting your search or filters</p>
+            <Button onClick={() => {
+              setSearchQuery("");
+              setStatusFilter("all");
+            }}>
+              Clear Filters
             </Button>
           </div>
         )}
-      </div>
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 pb-8 sm:pb-16">
+      </main>
 
-        <div className="win95-window bg-background p-1 mt-6 sm:mt-8">
-          <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-            <span className="font-black text-xs tracking-tight sm:text-base">about</span>
-          </div>
-          <div className="win95-sunken bg-background p-4 sm:p-6">
-            <div className="space-y-3 sm:space-y-4">
-              <p className="text-base leading-relaxed font-bold sm:text-xl">
-                <span className="text-2xl sm:text-3xl mr-2 sm:mr-3 font-black"></span>
-                place your bets on any silly outcome. winners take all.
-              </p>
-              <div className="flex flex-wrap gap-3 sm:gap-6 text-xs sm:text-sm">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="win95-sunken px-2 sm:px-3 py-1 sm:py-2 bg-input font-black text-xs">✓</span>
-                  <span className="font-bold">100% on-chain</span>
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="win95-sunken px-2 sm:px-3 py-1 sm:py-2 bg-input font-black text-xs">✓</span>
-                  <span className="font-bold">no house edge</span>
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="win95-sunken px-2 sm:px-3 py-1 sm:py-2 bg-input font-black text-xs">✓</span>
-                  <span className="font-bold">instant payouts on resolution</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <footer className="mt-8 sm:mt-12 text-center">
-          <div className="win95-sunken bg-background p-3 sm:p-4 inline-block">
-            <p className="text-sm font-black tracking-tight">:) sillymarket </p>
-            <p className="text-xs text-muted-foreground mt-1 sm:mt-2 font-bold">silly bets, silly outcomes</p>
-          </div>
-        </footer>
-
-        {/* Single bet modal at page level */}
+      {/* Modals */}
+      {betState && (
         <BettingModal
-          open={betState !== null}
-          onOpenChange={(open) => {
-            if (!open) closeBetModal();
-          }}
-          market={betState?.market ?? null}
-          initialAnswerIndex={betState?.answerIndex ?? 0}
-          onBetPlaced={() => {
-            // Index view doesn't maintain its own chart/activity for now.
-          }}
+          isOpen={!!betState}
+          onClose={closeBetModal}
+          market={betState.market}
+          selectedOutcomeIndex={betState.answerIndex}
         />
-        {shareMarket && (
-          <ShareMarketModal
-            open={Boolean(shareMarket)}
-            onOpenChange={(open) => {
-              if (!open) setShareMarket(null);
-            }}
-            market={shareMarket}
-          />
-        )}
-      </div>
+      )}
+
+      {shareMarket && (
+        <ShareMarketModal
+          isOpen={!!shareMarket}
+          onClose={() => setShareMarket(null)}
+          market={shareMarket}
+        />
+      )}
     </div>
   );
 };
