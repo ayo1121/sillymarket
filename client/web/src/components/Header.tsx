@@ -8,6 +8,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useAnchorProgram } from "@/solana/program";
 import { fetchConfig } from "@/solana/read";
 import { useMarketsCtx } from "@/hooks/marketsContext";
+import { cn } from "@/lib/utils";
 
 export const Header = () => {
   const navigate = useNavigate();
