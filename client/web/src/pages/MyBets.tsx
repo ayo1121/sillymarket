@@ -248,6 +248,29 @@ const MyBets = () => {
       });
   }, [markets, publicKey, marketFilter]);
 
+  // Calculate market stats
+  const marketStats = useMemo(() => {
+    if (!publicKey) return { totalVolume: 0, feesCollected: 0 };
+
+    const creatorPubkey = publicKey.toBase58();
+    const creatorMarkets = markets.filter(m => m.creatorPubkey === creatorPubkey);
+
+    const totalVolumeLamports = creatorMarkets.reduce((sum, market) => {
+      const vol = Number(market.volumeLamports || market.rawAccount?.totalPool || 0);
+      return sum + vol;
+    }, 0);
+
+    const feesCollectedLamports = creatorMarkets.reduce((sum, market) => {
+      const fees = Number(market.rawAccount?.feesAccruedCreator || 0);
+      return sum + fees;
+    }, 0);
+
+    return {
+      totalVolume: totalVolumeLamports / LAMPORTS_PER_SOL,
+      feesCollected: feesCollectedLamports / LAMPORTS_PER_SOL,
+    };
+  }, [markets, publicKey]);
+
   const handleResolveMarket = async (marketPubkey: string, winnerIndex: number) => {
     if (!program || !publicKey || resolving.get(marketPubkey)) return;
 
@@ -315,7 +338,7 @@ const MyBets = () => {
 
         <div className="p-4 sm:p-6">
           <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6">
-            {viewMode === "bets" ? "my bets :)" : "my markets"}
+            {viewMode === "bets" ? "my bets :)" : "my markets :)"}
           </h1>
 
           {viewMode === "bets" ? (
@@ -364,6 +387,18 @@ const MyBets = () => {
             </>
           ) : (
             <>
+              {/* Market Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="bg-background win95-sunken p-3 sm:p-4">
+                  <div className="text-xs sm:text-sm text-muted-foreground mb-1">total volume</div>
+                  <div className="text-xl sm:text-2xl font-bold">{formatSol(marketStats.totalVolume, 2)} sol</div>
+                </div>
+                <div className="bg-background win95-sunken p-3 sm:p-4">
+                  <div className="text-xs sm:text-sm text-muted-foreground mb-1">fees collected</div>
+                  <div className="text-xl sm:text-2xl font-bold text-brand-yes">{formatSol(marketStats.feesCollected, 2)} sol</div>
+                </div>
+              </div>
+
               {/* Market Filters */}
               <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
                 {(["active", "resolved"] as const).map((filter) => (
