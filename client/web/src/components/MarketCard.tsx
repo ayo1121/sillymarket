@@ -270,15 +270,11 @@ export const MarketCard: React.FC<MarketCardProps> = ({
                 series={seriesPoints}
                 disabled={!isOpen}
                 onClick={(e) => {
-                  console.log('[MarketCard] OutcomeCard clicked', { idx, isOpen, hasCallback: !!onOutcomeClick });
                   if (e) {
                     e.stopPropagation(); // Prevent card click
                   }
                   if (isOpen && onOutcomeClick) {
-                    console.log('[MarketCard] Calling onOutcomeClick', idx);
                     onOutcomeClick(idx);
-                  } else {
-                    console.log('[MarketCard] Not calling onOutcomeClick', { isOpen, hasCallback: !!onOutcomeClick });
                   }
                 }}
               />

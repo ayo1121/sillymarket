@@ -251,10 +251,12 @@ const Index = () => {
       {/* Modals */}
       {betState && (
         <BettingModal
-          isOpen={!!betState}
-          onClose={closeBetModal}
+          open={!!betState}
+          onOpenChange={(open) => {
+            if (!open) closeBetModal();
+          }}
           market={betState.market}
-          selectedOutcomeIndex={betState.answerIndex}
+          initialAnswerIndex={betState.answerIndex}
         />
       )}
 
