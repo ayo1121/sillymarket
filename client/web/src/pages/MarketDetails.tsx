@@ -596,6 +596,15 @@ const MarketDetails = () => {
                   <span className="text-[#999]">•</span>
                   <span className="font-semibold">{liveClosesLabel}</span>
                 </div>
+
+                {/* Description */}
+                {market.backendDescription && (
+                  <div className="mt-4 pt-4 border-t border-[#e0e0e0] dark:border-[#333]">
+                    <p className="text-sm text-[#333] dark:text-[#d7d7d7] whitespace-pre-wrap leading-relaxed">
+                      {market.backendDescription}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

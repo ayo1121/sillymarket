@@ -25,6 +25,7 @@ const CreateMarket = () => {
   const { username } = useWalletIdentity();
 
   const [question, setQuestion] = useState("");
+  const [description, setDescription] = useState("");
   const [answers, setAnswers] = useState<string[]>(["Yes", "No"]);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [durationType, setDurationType] = useState<"preset" | "custom">("preset");
@@ -146,7 +147,7 @@ const CreateMarket = () => {
         marketPubkey,
         question: question.trim(),
         creatorWallet,
-        description: null,
+        description: description.trim() || null,
         imageUrl: finalImageUrl || null,
         creatorName: username ?? null,
         answers: answers,
@@ -164,7 +165,7 @@ const CreateMarket = () => {
             creator_name: username ?? null,
             image_url: finalImageUrl || null,
             answers: answers,
-            description: null,
+            description: description.trim() || null,
           });
 
         if (supabaseError) {
@@ -246,6 +247,23 @@ const CreateMarket = () => {
                 />
                 <p className="text-xs text-right text-[#999] font-mono">
                   {question.length}/140
+                </p>
+              </div>
+
+              {/* Description Input */}
+              <div className="space-y-3">
+                <label className="block text-sm font-black uppercase tracking-wide text-[#555] dark:text-[#c7c7c7]">
+                  Description (Optional)
+                </label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add more details about resolution criteria, sources, etc."
+                  className="min-h-[100px] text-sm font-medium bg-[#fafafa] dark:bg-[#1a1a1a] border-2 border-[#d3d3d3] dark:border-[#333] focus:border-[#111] dark:focus:border-white rounded resize-none p-4 shadow-inner"
+                  maxLength={1000}
+                />
+                <p className="text-xs text-right text-[#999] font-mono">
+                  {description.length}/1000
                 </p>
               </div>
 

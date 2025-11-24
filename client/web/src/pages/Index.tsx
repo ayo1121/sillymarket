@@ -123,7 +123,7 @@ const Index = () => {
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div className="w-full md:w-auto">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2 leading-none text-[#111] dark:text-white drop-shadow-sm break-words">
-                Markets
+                markets
               </h1>
               <div className="flex flex-col gap-1.5">
                 <p className="text-[#444] dark:text-[#d7d7d7] font-bold text-xs sm:text-sm tracking-wide">
