@@ -64,7 +64,7 @@ export const Header = () => {
               sillymarket
             </h1>
             <p className="text-[10px] font-bold text-[#5f5f5f] tracking-wide uppercase">
-              the silliest outcome
+              silly bets, silly outcomes
             </p>
           </div>
         </div>

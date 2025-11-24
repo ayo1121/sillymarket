@@ -125,7 +125,7 @@ const Index = () => {
               <h1 className="text-5xl font-black uppercase tracking-tighter mb-2 leading-none text-[#111] drop-shadow-sm">Markets</h1>
               <div className="flex flex-col gap-1.5">
                 <p className="text-[#444] font-bold text-sm tracking-wide">
-                  predict outcomes, trade positions, and earn rewards.
+                  the silliest outcome is always the most likely
                 </p>
                 <p className="text-[11px] font-mono text-[#5f5f5f] uppercase tracking-wider font-semibold">
                   {markets.length} markets · {(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000).toFixed(1)} SOL total volume
