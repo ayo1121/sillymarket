@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useMarketsCtx, getBetStatus, computePnL, BetStatus, isPositionClaimable } from "@/hooks/marketsContext";
 import { formatSol, shortenWallet } from "@/utils/format";
+import { MarketCard } from "@/components/MarketCard";
 
 interface BetView {
   id: string;
@@ -43,6 +44,8 @@ const MyBets = () => {
   const [statusFilter, setStatusFilter] = useState<"active" | "won" | "lost">("active");
   const [claiming, setClaiming] = useState<Map<string, boolean>>(new Map());
   const [claimingAll, setClaimingAll] = useState(false);
+  const [viewMode, setViewMode] = useState<"bets" | "markets">("bets");
+  const [marketFilter, setMarketFilter] = useState<"active" | "resolved">("active");
 
   const marketMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -212,6 +215,28 @@ const MyBets = () => {
     }
   };
 
+  // Filter markets created by connected wallet
+  const myMarkets = useMemo(() => {
+    if (!publicKey) return [];
+    const creatorPubkey = publicKey.toBase58();
+
+    return markets
+      .filter(market => market.creatorPubkey === creatorPubkey)
+      .filter(market => {
+        const isResolved = market.state === "resolved" || market.isResolved;
+        if (marketFilter === "active") {
+          return !isResolved;
+        } else {
+          return isResolved;
+        }
+      })
+      .sort((a, b) => {
+        const aTs = a.rawAccount?.createdTs?.toNumber?.() ?? a.rawAccount?.created_ts?.toNumber?.() ?? 0;
+        const bTs = b.rawAccount?.createdTs?.toNumber?.() ?? b.rawAccount?.created_ts?.toNumber?.() ?? 0;
+        return bTs - aTs; // Newest first
+      });
+  }, [markets, publicKey, marketFilter]);
+
   const loading = marketsLoading || positionsLoading;
 
   return <div className="min-h-screen bg-win95-teal">
@@ -221,188 +246,250 @@ const MyBets = () => {
       <div className="bg-background win95-raised p-1 sm:p-2 mb-4 sm:mb-8 max-w-4xl mx-auto">
         <div className="bg-primary px-2 py-1 flex items-center justify-between">
           <span className="text-xs text-slate-50 font-bold sm:text-base">mybets.exe</span>
-          <div className="flex gap-1">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-background win95-raised"></div>
-            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-background win95-raised"></div>
-            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-background win95-raised"></div>
-          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setViewMode(viewMode === "bets" ? "markets" : "bets")}
+            className="text-xs h-6 px-2 font-bold"
+          >
+            {viewMode === "bets" ? "My Markets" : "My Bets"}
+          </Button>
         </div>
 
         <div className="p-4 sm:p-6">
-          <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6">my bets :)</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6">
+            {viewMode === "bets" ? "my bets :)" : "my markets"}
+          </h1>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-background win95-sunken p-3 sm:p-4">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">total bet</div>
-              <div className="text-xl sm:text-2xl font-bold">{formatSol(totalBet, 2)} sol</div>
-            </div>
-            <div className="bg-background win95-sunken p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-xs sm:text-sm text-muted-foreground">realized pnl</div>
-                {claimableBets.length > 0 && (
+          {viewMode === "bets" ? (
+            <>
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="bg-background win95-sunken p-3 sm:p-4">
+                  <div className="text-xs sm:text-sm text-muted-foreground mb-1">total bet</div>
+                  <div className="text-xl sm:text-2xl font-bold">{formatSol(totalBet, 2)} sol</div>
+                </div>
+                <div className="bg-background win95-sunken p-3 sm:p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-xs sm:text-sm text-muted-foreground">realized pnl</div>
+                    {claimableBets.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={handleClaimAll}
+                        disabled={claimingAll}
+                        className="text-xs h-6 px-2"
+                      >
+                        {claimingAll ? "Claiming..." : `Claim All (${claimableBets.length})`}
+                      </Button>
+                    )}
+                  </div>
+                  <div className={`text-xl sm:text-2xl font-bold ${realizedPnl > 0 ? "text-brand-yes" : realizedPnl < 0 ? "text-brand-no" : ""}`}>
+                    {formatSol(realizedPnl, 2)} sol
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
+                {(["active", "won", "lost"] as const).map((status) => (
                   <Button
+                    key={status}
+                    variant={statusFilter === status ? "primary" : "outline"}
                     size="sm"
-                    variant="primary"
-                    onClick={handleClaimAll}
-                    disabled={claimingAll}
-                    className="text-xs h-6 px-2"
+                    className="font-bold text-xs sm:text-sm"
+                    onClick={() => setStatusFilter(status)}
                   >
-                    {claimingAll ? "Claiming..." : `Claim All (${claimableBets.length})`}
+                    {status}
                   </Button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Market Filters */}
+              <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
+                {(["active", "resolved"] as const).map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={marketFilter === filter ? "primary" : "outline"}
+                    size="sm"
+                    className="font-bold text-xs sm:text-sm"
+                    onClick={() => setMarketFilter(filter)}
+                  >
+                    {filter}
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Content */}
+          {viewMode === "bets" ? (
+            <TooltipProvider>
+              <div className="space-y-3 sm:space-y-4">
+                {loading ? (
+                  <div className="bg-background win95-sunken p-8 text-center">
+                    <div className="text-muted-foreground">Loading your bets...</div>
+                  </div>
+                ) : !program || !publicKey ? (
+                  <div className="bg-background win95-sunken p-8 text-center">
+                    <div className="text-6xl mb-4">:(</div>
+                    <div className="text-muted-foreground">
+                      {!publicKey ? "Connect your wallet to see your bets" : "Program is loading..."}
+                    </div>
+                  </div>
+                ) : filteredBets.length === 0 ? (
+                  <div className="bg-background win95-sunken p-8 text-center">
+                    <div className="text-6xl mb-4">:(</div>
+                    <div className="text-muted-foreground">no bets yet. go make some predictions!</div>
+                    <Button className="mt-4" onClick={() => window.location.href = "/"}>
+                      browse markets
+                    </Button>
+                  </div>
+                ) : (
+                  filteredBets.map(bet => <Tooltip key={bet.id}>
+                    <TooltipTrigger asChild>
+                      <div
+                        className="bg-background win95-raised p-1 sm:p-2 cursor-pointer hover:opacity-80 transition-opacity relative group"
+                        onClick={() => navigate(`/market/${bet.marketPubkey}`)}
+                      >
+                        <div className="bg-primary/10 px-2 py-1 mb-2 flex items-center justify-between">
+                          <span className="font-bold text-xs sm:text-sm">Bet Details</span>
+                          <span className={`text-xs px-2 py-1 win95-sunken ${bet.status === "active" ? "bg-background" :
+                            bet.status === "won" ? "bg-brand-yes/20" :
+                              "bg-brand-no/20"
+                            }`}>
+                            {bet.status === "active" ? "Open" : bet.status === "won" ? "Won" : "Lost"}
+                          </span>
+                        </div>
+
+                        <div className="p-3 sm:p-4">
+                          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                            {bet.imageUrl && <div className="win95-sunken p-2 bg-input flex-shrink-0 w-full sm:w-auto" style={{
+                              borderColor: 'hsl(var(--primary))'
+                            }}>
+                              <img src={bet.imageUrl} alt={bet.question} className="w-full h-32 sm:w-20 sm:h-20 object-cover" />
+                            </div>}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base sm:text-lg font-black mb-2 leading-tight break-words">{bet.question}</h3>
+                              <div className="space-y-1 text-xs sm:text-sm">
+                                <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+                                  <span className="font-bold">{bet.category}</span>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="font-mono truncate">{bet.marketAddress}</span>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="font-bold">{bet.createdAt}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm win95-sunken bg-input p-2 sm:p-3">
+                            <div>
+                              <div className="text-muted-foreground mb-1 text-xs font-bold">prediction</div>
+                              <div className={`font-black ${bet.status === "won" ? "text-brand-yes" :
+                                bet.status === "lost" ? "text-brand-no" :
+                                  "text-foreground"
+                                }`}>
+                                {bet.prediction} {bet.status === "won" ? ":)" : bet.status === "lost" ? ":(" : ":|"}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-muted-foreground mb-1 text-xs font-bold">bet amount</div>
+                              <div className="font-black">{formatSol(bet.amount, 2)} sol</div>
+                            </div>
+
+                            <div>
+                              <div className="text-muted-foreground mb-1 text-xs font-bold">odds</div>
+                              <div className="font-black">{bet.odds}x</div>
+                            </div>
+
+                            <div>
+                              <div className="text-muted-foreground mb-1 text-xs font-bold">PNL</div>
+                              <div
+                                className={`font-black ${bet.realized
+                                  ? Number(bet.pnlLamports) / LAMPORTS_PER_SOL > 0
+                                    ? "text-brand-yes"
+                                    : Number(bet.pnlLamports) / LAMPORTS_PER_SOL < 0
+                                      ? "text-brand-no"
+                                      : ""
+                                  : "text-muted-foreground"
+                                  }`}
+                              >
+                                {bet.realized
+                                  ? `${formatSol(Number(bet.pnlLamports) / LAMPORTS_PER_SOL, 2)} sol`
+                                  : "unrealized"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Claim button for resolved markets with claimable positions */}
+                          {bet.canClaim && (
+                            <div className="mt-3">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleClaim(bet);
+                                }}
+                                disabled={claiming.get(bet.id)}
+                                className="w-full text-xs"
+                              >
+                                {claiming.get(bet.id) ? "Claiming..." : "Claim Winnings"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowRight className="w-5 h-5 text-primary" />
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Click to view market details</p>
+                    </TooltipContent>
+                  </Tooltip>)
                 )}
               </div>
-              <div className={`text-xl sm:text-2xl font-bold ${realizedPnl > 0 ? "text-brand-yes" : realizedPnl < 0 ? "text-brand-no" : ""}`}>
-                {formatSol(realizedPnl, 2)} sol
-              </div>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-            {(["active", "won", "lost"] as const).map((status) => (
-              <Button
-                key={status}
-                variant={statusFilter === status ? "primary" : "outline"}
-                size="sm"
-                className="font-bold text-xs sm:text-sm"
-                onClick={() => setStatusFilter(status)}
-              >
-                {status}
-              </Button>
-            ))}
-          </div>
-
-          {/* Bets List */}
-          <TooltipProvider>
+            </TooltipProvider>
+          ) : (
+            // Markets View
             <div className="space-y-3 sm:space-y-4">
               {loading ? (
                 <div className="bg-background win95-sunken p-8 text-center">
-                  <div className="text-muted-foreground">Loading your bets...</div>
+                  <div className="text-muted-foreground">Loading your markets...</div>
                 </div>
               ) : !program || !publicKey ? (
                 <div className="bg-background win95-sunken p-8 text-center">
                   <div className="text-6xl mb-4">:(</div>
                   <div className="text-muted-foreground">
-                    {!publicKey ? "Connect your wallet to see your bets" : "Program is loading..."}
+                    {!publicKey ? "Connect your wallet to see your markets" : "Program is loading..."}
                   </div>
                 </div>
-              ) : filteredBets.length === 0 ? (
+              ) : myMarkets.length === 0 ? (
                 <div className="bg-background win95-sunken p-8 text-center">
                   <div className="text-6xl mb-4">:(</div>
-                  <div className="text-muted-foreground">no bets yet. go make some predictions!</div>
-                  <Button className="mt-4" onClick={() => window.location.href = "/"}>
-                    browse markets
+                  <div className="text-muted-foreground">
+                    No {marketFilter} markets yet. {marketFilter === "active" ? "Create your first market!" : ""}
+                  </div>
+                  <Button className="mt-4" onClick={() => navigate("/create")}>
+                    create market
                   </Button>
                 </div>
               ) : (
-                filteredBets.map(bet => <Tooltip key={bet.id}>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="bg-background win95-raised p-1 sm:p-2 cursor-pointer hover:opacity-80 transition-opacity relative group"
-                      onClick={() => navigate(`/market/${bet.marketPubkey}`)}
-                    >
-                      <div className="bg-primary/10 px-2 py-1 mb-2 flex items-center justify-between">
-                        <span className="font-bold text-xs sm:text-sm">Bet Details</span>
-                        <span className={`text-xs px-2 py-1 win95-sunken ${bet.status === "active" ? "bg-background" :
-                          bet.status === "won" ? "bg-brand-yes/20" :
-                            "bg-brand-no/20"
-                          }`}>
-                          {bet.status === "active" ? "Open" : bet.status === "won" ? "Won" : "Lost"}
-                        </span>
-                      </div>
-
-                      <div className="p-3 sm:p-4">
-                        <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
-                          {bet.imageUrl && <div className="win95-sunken p-2 bg-input flex-shrink-0 w-full sm:w-auto" style={{
-                            borderColor: 'hsl(var(--primary))'
-                          }}>
-                            <img src={bet.imageUrl} alt={bet.question} className="w-full h-32 sm:w-20 sm:h-20 object-cover" />
-                          </div>}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-base sm:text-lg font-black mb-2 leading-tight break-words">{bet.question}</h3>
-                            <div className="space-y-1 text-xs sm:text-sm">
-                              <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                                <span className="font-bold">{bet.category}</span>
-                                <span className="hidden sm:inline">•</span>
-                                <span className="font-mono truncate">{bet.marketAddress}</span>
-                                <span className="hidden sm:inline">•</span>
-                                <span className="font-bold">{bet.createdAt}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm win95-sunken bg-input p-2 sm:p-3">
-                          <div>
-                            <div className="text-muted-foreground mb-1 text-xs font-bold">prediction</div>
-                            <div className={`font-black ${bet.status === "won" ? "text-brand-yes" :
-                              bet.status === "lost" ? "text-brand-no" :
-                                "text-foreground"
-                              }`}>
-                              {bet.prediction} {bet.status === "won" ? ":)" : bet.status === "lost" ? ":(" : ":|"}
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="text-muted-foreground mb-1 text-xs font-bold">bet amount</div>
-                            <div className="font-black">{formatSol(bet.amount, 2)} sol</div>
-                          </div>
-
-                          <div>
-                            <div className="text-muted-foreground mb-1 text-xs font-bold">odds</div>
-                            <div className="font-black">{bet.odds}x</div>
-                          </div>
-
-                          <div>
-                            <div className="text-muted-foreground mb-1 text-xs font-bold">PNL</div>
-                            <div
-                              className={`font-black ${bet.realized
-                                ? Number(bet.pnlLamports) / LAMPORTS_PER_SOL > 0
-                                  ? "text-brand-yes"
-                                  : Number(bet.pnlLamports) / LAMPORTS_PER_SOL < 0
-                                    ? "text-brand-no"
-                                    : ""
-                                : "text-muted-foreground"
-                                }`}
-                            >
-                              {bet.realized
-                                ? `${formatSol(Number(bet.pnlLamports) / LAMPORTS_PER_SOL, 2)} sol`
-                                : "unrealized"}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Claim button for resolved markets with claimable positions */}
-                        {bet.canClaim && (
-                          <div className="mt-3">
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleClaim(bet);
-                              }}
-                              disabled={claiming.get(bet.id)}
-                              className="w-full text-xs"
-                            >
-                              {claiming.get(bet.id) ? "Claiming..." : "Claim Winnings"}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ArrowRight className="w-5 h-5 text-primary" />
-                      </div>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Click to view market details</p>
-                  </TooltipContent>
-                </Tooltip>)
+                myMarkets.map(market => (
+                  <MarketCard
+                    key={market.pubkey}
+                    market={market}
+                    disableNavigation={false}
+                  />
+                ))
               )}
             </div>
-          </TooltipProvider>
+          )}
         </div>
       </div>
     </main>
