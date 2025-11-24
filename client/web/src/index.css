@@ -308,6 +308,8 @@ All colors MUST be HSL.
     gap: 6px;
     font-weight: 600;
     text-transform: lowercase;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .outcome-btn__dot {
@@ -319,6 +321,11 @@ All colors MUST be HSL.
 
   .outcome-btn__label {
     font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
 
   .outcome-btn__meta {
@@ -613,6 +620,10 @@ All colors MUST be HSL.
     font-size: 13px;
     font-weight: 700;
     text-transform: lowercase;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .market-stat-winner-hint {
@@ -662,6 +673,8 @@ All colors MUST be HSL.
     display: inline-flex;
     flex-direction: column;
     gap: 2px;
+    max-width: 100%;
+    min-width: 0;
   }
 
   /* Windows 95 window frame */
