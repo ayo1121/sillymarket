@@ -513,13 +513,15 @@ const MarketDetails = () => {
                 <img src={lightbulbIcon} alt="" className="w-4 h-4 sm:w-5 sm:h-5 opacity-80" />
                 <span className="font-black tracking-tight text-xs sm:text-sm">market details</span>
               </div>
-              <div className="flex gap-2 items-center">
-                <ResolutionPill
-                  state={statsStatusLabel}
-                  isVoid={isVoid}
-                  winnerOutcomeLabel={winnerOutcomeLabel}
-                  winnerOutcomeIndex={winnerIndex}
-                />
+              <div className="flex gap-2 items-center min-w-0">
+                <div className="max-w-[200px]">
+                  <ResolutionPill
+                    state={statsStatusLabel}
+                    isVoid={isVoid}
+                    winnerOutcomeLabel={winnerOutcomeLabel}
+                    winnerOutcomeIndex={winnerIndex}
+                  />
+                </div>
                 <Button
                   type="button"
                   size="sm"
@@ -601,7 +603,7 @@ const MarketDetails = () => {
                   {outcomesWithProb.length === 0 ? (
                     <div className="text-center text-muted-foreground text-xs">No outcomes</div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {outcomesWithProb.map((o) => {
                         // Extract probability history for this specific outcome
                         const historySource = (liveHistory && liveHistory.length > 0 ? liveHistory : market.history) || [];

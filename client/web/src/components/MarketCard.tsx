@@ -70,11 +70,11 @@ export const MarketStatsRow: React.FC<MarketStatsRowProps> = ({
   return (
     <div className="flex items-center justify-between text-sm text-muted-foreground pt-3 border-t border-border/50 mt-2">
       <div className="flex items-center gap-1.5">
-        <span className="font-bold text-xs uppercase tracking-wider opacity-70">Vol</span>
+        <span className="font-bold text-sm uppercase tracking-wider opacity-70">Vol</span>
         <span className="font-mono font-bold text-foreground">{totalVolumeSol} SOL</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="font-bold text-xs uppercase tracking-wider opacity-70">Ends</span>
+        <span className="font-bold text-sm uppercase tracking-wider opacity-70">Ends</span>
         <span className="font-bold text-foreground">{closesLabel}</span>
       </div>
     </div>
