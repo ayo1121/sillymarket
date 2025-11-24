@@ -48,7 +48,7 @@ type ResolutionPillProps = {
  * Status pill component for market resolution state.
  * Display rules:
  * - Void markets: "void"
- * - Resolved with winner: shows winner outcome label alone (e.g., "yes", "no", "3214") with outcome color
+ * - Resolved with winner: shows "Winner: [outcome]" (e.g., "Winner: yes", "Winner: no") with outcome color
  * - Resolved without winner: "resolved"
  * - Locked/Closed: "locked" or "closed"
  * - Open: "open"
@@ -64,8 +64,8 @@ const ResolutionPill: React.FC<ResolutionPillProps> = ({ state, isVoid, winnerOu
     text = "void";
     variant = "void";
   } else if (normalized === "resolved" || normalized === "settled") {
-    // Show winner label alone for resolved markets with a winner
-    text = showWinner ? winnerOutcomeLabel : "resolved";
+    // Show "Winner: [outcome]" for resolved markets with a winner
+    text = showWinner ? `Winner: ${winnerOutcomeLabel}` : "resolved";
     variant = "resolved";
   } else if (normalized === "locked" || normalized === "closed") {
     text = state ?? "locked";
@@ -504,6 +504,12 @@ const MarketDetails = () => {
                 <span className="font-black tracking-tight text-xs sm:text-sm">market details</span>
               </div>
               <div className="flex gap-2 items-center">
+                <ResolutionPill
+                  state={statsStatusLabel}
+                  isVoid={isVoid}
+                  winnerOutcomeLabel={winnerOutcomeLabel}
+                  winnerOutcomeIndex={winnerIndex}
+                />
                 <Button
                   type="button"
                   size="sm"

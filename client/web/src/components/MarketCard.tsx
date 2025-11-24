@@ -157,7 +157,24 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
   );
 };
 
-const getMarketStatusLabelAndClass = (status: UIMarket["state"] | string) => {
+const getMarketStatusLabelAndClass = (
+  status: UIMarket["state"] | string,
+  isResolved?: boolean,
+  isVoid?: boolean,
+  winnerOutcomeLabel?: string | null,
+  winnerOutcomeIndex?: number | null
+) => {
+  // If resolved with a winner, show "Winner: [outcome]"
+  if (isResolved && !isVoid && winnerOutcomeLabel) {
+    const outcomeColorClass = winnerOutcomeIndex != null ? `bg-outcome-${winnerOutcomeIndex}` : '';
+    return {
+      label: `Winner: ${winnerOutcomeLabel}`,
+      className: `text-white border-green-600 ${outcomeColorClass}`,
+      hasWinnerColor: true,
+      winnerOutcomeIndex
+    };
+  }
+
   switch (status) {
     case "open":
       return { label: "open", className: "text-green-700 border-green-600 bg-green-50" };
@@ -184,7 +201,6 @@ export const MarketCard: React.FC<MarketCardProps> = ({
     market?.closesAt?.getTime?.() ?? (market as any)?.cutoff_ts ?? null
   );
   const imageUrl = getMarketImageUrl(market);
-  const statusPill = getMarketStatusLabelAndClass(market.state);
   const baseStatus =
     (market as any).statusText ??
     (market as any).statusLabel ??
@@ -214,6 +230,15 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       market.outcomes?.[winnerIndex]
       ? market.outcomes[winnerIndex].label
       : undefined;
+
+  // Get status pill with winner information
+  const statusPill = getMarketStatusLabelAndClass(
+    market.state,
+    isResolved,
+    isVoid,
+    winnerOutcomeLabel,
+    winnerIndex
+  );
   const statusLabelValue = baseStatus?.toString?.() ?? "";
   const totalVolumeSolLabel = (() => {
     const lamports =
