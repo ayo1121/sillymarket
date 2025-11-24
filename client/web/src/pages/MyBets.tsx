@@ -42,6 +42,7 @@ const MyBets = () => {
   const { markets, loading: marketsLoading, positions, positionsLoading, refreshPositions } = useMarketsCtx();
   const [statusFilter, setStatusFilter] = useState<"active" | "won" | "lost">("active");
   const [claiming, setClaiming] = useState<Map<string, boolean>>(new Map());
+  const [claimingAll, setClaimingAll] = useState(false);
 
   const marketMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -113,11 +114,16 @@ const MyBets = () => {
 
   const filteredBets = useMemo(() => {
     const filtered = betsView.filter((bet) => {
+      const market = marketMap.get(bet.marketPubkey);
+      const isVoid = market?.isVoid || market?.rawAccount?.winningIndex === -1;
+
       switch (statusFilter) {
         case "active":
-          return bet.status === "active";
+          // Only show active/locked markets (not voided)
+          return bet.status === "active" && !isVoid;
         case "won":
-          return bet.status === "won";
+          // Show won bets AND voided markets
+          return bet.status === "won" || isVoid;
         case "lost":
           return bet.status === "lost";
       }
@@ -132,6 +138,43 @@ const MyBets = () => {
       return bTs - aTs; // Descending order (newest first)
     });
   }, [betsView, statusFilter, marketMap]);
+
+  // Get all claimable bets
+  const claimableBets = useMemo(() => {
+    return betsView.filter(bet => bet.canClaim);
+  }, [betsView]);
+
+  const handleClaimAll = async () => {
+    if (!program || !publicKey || claimingAll || claimableBets.length === 0) return;
+
+    setClaimingAll(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const bet of claimableBets) {
+      try {
+        const marketPk = new PublicKey(bet.marketPubkey);
+        await claimWinnings(program, {
+          market: marketPk,
+          user: publicKey,
+        });
+        successCount++;
+      } catch (error: any) {
+        console.error(`Claim error for ${bet.id}:`, error);
+        failCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Claimed ${successCount} bet${successCount > 1 ? 's' : ''}!`);
+      await refreshPositions();
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to claim ${failCount} bet${failCount > 1 ? 's' : ''}`);
+    }
+
+    setClaimingAll(false);
+  };
 
   const totalBetLamports = betsView.reduce((sum, bet) => sum + bet.stakeLamports, 0n);
   const realizedPnlLamports = betsView
@@ -195,7 +238,20 @@ const MyBets = () => {
               <div className="text-xl sm:text-2xl font-bold">{formatSol(totalBet, 2)} sol</div>
             </div>
             <div className="bg-background win95-sunken p-3 sm:p-4">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">realized pnl</div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs sm:text-sm text-muted-foreground">realized pnl</div>
+                {claimableBets.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={handleClaimAll}
+                    disabled={claimingAll}
+                    className="text-xs h-6 px-2"
+                  >
+                    {claimingAll ? "Claiming..." : `Claim All (${claimableBets.length})`}
+                  </Button>
+                )}
+              </div>
               <div className={`text-xl sm:text-2xl font-bold ${realizedPnl > 0 ? "text-brand-yes" : realizedPnl < 0 ? "text-brand-no" : ""}`}>
                 {formatSol(realizedPnl, 2)} sol
               </div>
