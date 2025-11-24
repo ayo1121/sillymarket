@@ -20,7 +20,7 @@ import { resolveMarket, claimWinnings, voidMarket } from "@/solana/actions";
 import type { UIMarket, MarketActivityItem } from "@/solana/marketMapping";
 import { resolveOutcomeLabelFromMarket } from "@/solana/marketMapping";
 import { getOutcomeColor } from "@/solana/outcomeColors";
-import { formatVolume, shortenWallet } from "@/utils/format";
+import { formatVolume, shortenWallet, formatSol } from "@/utils/format";
 import { formatTimeAgo } from "@/utils/time";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { BetPlacedPayload } from "../components/BettingModal";
@@ -873,16 +873,6 @@ const MarketDetails = () => {
               </div>
             </div>
 
-            {/* Comments Section */}
-            <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
-                : )
-              </div>
-              <div className="relative z-10">
-                <CommentsSection marketId={marketId!} />
-              </div>
-            </div>
-
             {/* Recent Activity */}
             <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
@@ -915,7 +905,11 @@ const MarketDetails = () => {
                             </div>
                             <div className="flex flex-col">
                               <div className="text-sm font-bold text-[#111] dark:text-white">
-                                {shortenWallet(item.wallet)}
+                                {item.username ? (
+                                  <span className="text-primary dark:text-primary-foreground mr-1">@{item.username}</span>
+                                ) : (
+                                  shortenWallet(item.wallet)
+                                )}
                                 <span className="font-normal text-[#666] dark:text-[#999] mx-1">
                                   {isBuy ? "bet on" : isResolve ? "resolved" : "acted on"}
                                 </span>
@@ -931,7 +925,7 @@ const MarketDetails = () => {
                           </div>
                           <div className="text-right">
                             <div className="font-bold text-[#111] dark:text-white text-sm">
-                              {item.amountSol ? `${formatVolume(item.amountSol)} SOL` : "-"}
+                              {item.amountSol ? `${formatSol(item.amountSol)} SOL` : "-"}
                             </div>
                           </div>
                         </div>
@@ -952,6 +946,16 @@ const MarketDetails = () => {
                     </Button>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Comments Section */}
+            <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+                : )
+              </div>
+              <div className="relative z-10">
+                <CommentsSection marketId={marketId!} />
               </div>
             </div>
 
