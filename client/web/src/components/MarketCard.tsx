@@ -161,12 +161,12 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   return (
     <div
       className={cn(
-        "market-card bg-card/50 p-4 flex flex-col h-full transition-all duration-200 ease-out relative",
-        "border border-border/40 rounded-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.03)]",
-        "hover:-translate-y-[2px] hover:shadow-[0_8px_16px_rgba(0,0,0,0.06)] hover:border-border/60",
-        isOpen && "border-l-4 border-l-green-500/50",
-        (isResolved || isVoid) && "opacity-[0.85] grayscale-[0.1]",
-        isLocked && "market-card--locked bg-muted/5",
+        "market-card bg-[#e5e5e5] p-4 flex flex-col h-full transition-all duration-200 ease-out relative",
+        "border border-[#8a8a8a] rounded-[4px] shadow-[0_2px_4px_rgba(0,0,0,0.15)]",
+        "hover:-translate-y-[3px] hover:shadow-[0_8px_16px_rgba(0,0,0,0.2)] hover:bg-[#f0f0f0]",
+        isOpen && "border-l-[3px] border-l-[#15a349]",
+        (isResolved || isVoid) && "opacity-[0.9] grayscale-[0.2] border-l-0",
+        isLocked && "market-card--locked bg-[#e0e0e0]",
         className
       )}
       onClick={handleCardClick}
@@ -175,7 +175,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       <div className="flex gap-4 mb-5">
         {/* Image */}
         <div className="relative flex-shrink-0">
-          <div className="w-14 h-14 rounded-[3px] overflow-hidden border border-border/20 bg-muted/10">
+          <div className="w-14 h-14 rounded-[3px] overflow-hidden border border-[#8a8a8a] bg-white">
             <img
               src={imageUrl || lightbulbIcon}
               alt="market"
@@ -190,31 +190,33 @@ export const MarketCard: React.FC<MarketCardProps> = ({
         {/* Title & Meta */}
         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
           <div className="flex justify-between items-start gap-2">
-            <h3 className="font-bold text-[1.15rem] leading-tight line-clamp-2 text-foreground/90 tracking-tight">
+            <h3 className="font-bold text-[1.15rem] leading-tight line-clamp-2 text-[#111] tracking-tight">
               {market.displayQuestion}
             </h3>
 
             {/* Status Badge (Top Right) */}
             <div className="flex-shrink-0">
-              {isLocked && <Lock className="w-4 h-4 text-orange-500/70" />}
-              {isResolved && !isVoid && <CheckCircle className="w-4 h-4 text-green-600/70" />}
-              {isVoid && <XCircle className="w-4 h-4 text-[#7a7a7a]/70" />}
+              {isLocked && <div className="bg-orange-100 border border-orange-200 rounded-full p-1"><Lock className="w-3 h-3 text-[#ff8a2a]" /></div>}
+              {isResolved && !isVoid && <div className="bg-green-100 border border-green-200 rounded-full p-1"><CheckCircle className="w-3 h-3 text-[#15a349]" /></div>}
+              {isVoid && <div className="bg-red-100 border border-red-200 rounded-full p-1"><XCircle className="w-3 h-3 text-[#e64545]" /></div>}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-[#7a7a7a] mt-1">
+          <div className="flex items-center gap-2 text-xs text-[#5f5f5f] mt-1">
             <span className="font-medium">
               by {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
             </span>
+            <span className="opacity-40">•</span>
             <span className="font-mono opacity-60">
               {shortenWallet(market.pubkey, 4)}
             </span>
+            <span className="opacity-40">•</span>
             <span className={cn(
-              "font-bold uppercase tracking-wider text-[10px]",
-              isOpen && "text-green-600/90",
-              isLocked && "text-orange-500/90",
-              isResolved && !isVoid && "text-brand-yes/90",
-              isVoid && "text-[#7a7a7a]"
+              "font-bold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded-[2px] border",
+              isOpen && "bg-green-50 text-[#15a349] border-green-100",
+              isLocked && "bg-orange-50 text-[#ff8a2a] border-orange-100",
+              isResolved && !isVoid && "bg-green-50 text-[#15a349] border-green-100",
+              isVoid && "bg-red-50 text-[#e64545] border-red-100"
             )}>
               {isVoid ? "VOID" : isResolved ? "RESOLVED" : isLocked ? "LOCKED" : "OPEN"}
             </span>
@@ -233,39 +235,50 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           const total = Number(market.volumeLamports);
           const odds = pool > 0 ? total / pool : 0;
 
+          // Determine tint based on outcome index (0=Yes/Green, 1=No/Red usually)
+          // Using simple logic: idx 0 is usually YES (Green), idx 1 is NO (Red)
+          const isYes = idx === 0;
+          const tintClass = isYes
+            ? "bg-[#f0fdf4] border-[#15a349]/20 text-[#15a349]"
+            : "bg-[#fef2f2] border-[#e64545]/20 text-[#e64545]";
+
           return (
-            <OutcomeCard
-              key={idx}
-              label={outcome.label}
-              probPct={outcome.probability * 100}
-              odds={odds}
-              color={color}
-              series={seriesPoints}
-              disabled={!isOpen}
-              onClick={() => {
-                if (isOpen && onOutcomeClick) {
-                  onOutcomeClick(idx);
-                }
-              }}
-            />
+            <div className={cn("rounded-[4px] border p-1", tintClass)}>
+              <OutcomeCard
+                key={idx}
+                label={outcome.label}
+                probPct={outcome.probability * 100}
+                odds={odds}
+                color={color}
+                series={seriesPoints}
+                disabled={!isOpen}
+                onClick={() => {
+                  if (isOpen && onOutcomeClick) {
+                    onOutcomeClick(idx);
+                  }
+                }}
+              />
+            </div>
           );
         })}
       </div>
 
       {/* Footer Stats */}
-      <MarketStatsRow
-        totalVolumeSol={totalVolumeSol}
-        closesLabel={timeRemainingLabel}
-        statusLabel={market.state}
-        isResolved={isResolved}
-        isVoid={isVoid}
-        winnerOutcomeLabel={
-          isResolved && !isVoid && market.rawAccount?.winningIndex !== undefined
-            ? market.outcomes[market.rawAccount.winningIndex]?.label
-            : null
-        }
-        winnerOutcomeIndex={market.rawAccount?.winningIndex}
-      />
+      <div className="border-t border-[#d4d4d4] pt-3 mt-auto">
+        <MarketStatsRow
+          totalVolumeSol={totalVolumeSol}
+          closesLabel={timeRemainingLabel}
+          statusLabel={market.state}
+          isResolved={isResolved}
+          isVoid={isVoid}
+          winnerOutcomeLabel={
+            isResolved && !isVoid && market.rawAccount?.winningIndex !== undefined
+              ? market.outcomes[market.rawAccount.winningIndex]?.label
+              : null
+          }
+          winnerOutcomeIndex={market.rawAccount?.winningIndex}
+        />
+      </div>
     </div>
   );
 };

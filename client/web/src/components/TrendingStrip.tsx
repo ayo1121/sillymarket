@@ -37,40 +37,40 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
                             key={market.pubkey}
                             onClick={() => market.pubkey.length > 5 && navigate(`/market/${market.pubkey}`)}
                             className={cn(
-                                "w-72 bg-gradient-to-br from-background to-background/50 p-3 cursor-pointer transition-all duration-200 relative group",
-                                "border border-border/30 rounded-[4px] shadow-sm hover:shadow-md hover:-translate-y-0.5",
+                                "w-72 bg-[#e5e5e5] p-3 cursor-pointer transition-all duration-200 relative group",
+                                "border border-[#8b8b8b] rounded-[4px] shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-white",
                                 "flex flex-col justify-between h-[100px]",
-                                "border-l-[3px]",
-                                i === 0 ? "border-l-orange-500/80" : "border-l-green-500/50"
+                                "border-l-[4px]",
+                                i === 0 ? "border-l-[#ff8a2a]" : "border-l-[#15a349]"
                             )}
                         >
                             <div className="flex justify-between items-start mb-1">
                                 <div className="flex items-center gap-1.5">
                                     <div className={cn(
-                                        "text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1",
-                                        i === 0 ? "bg-orange-100 text-orange-700/90" : "bg-muted/10 text-muted-foreground"
+                                        "text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border",
+                                        i === 0 ? "bg-orange-100 text-[#d35400] border-orange-200" : "bg-gray-100 text-[#5f5f5f] border-gray-200"
                                     )}>
-                                        {i === 0 && <Flame className="w-3 h-3 fill-orange-500/80 text-orange-600" />}
+                                        {i === 0 && <Flame className="w-3 h-3 fill-[#ff8a2a] text-[#d35400]" />}
                                         #{i + 1}
                                     </div>
-                                    {i === 0 && <span className="text-[10px] font-bold text-green-600/90">+124 bets today</span>}
+                                    {i === 0 && <span className="text-[10px] font-bold text-[#15a349]">+124 bets today</span>}
                                 </div>
                                 {market.yesProb && (
-                                    <div className="text-xs font-mono font-bold opacity-60">
+                                    <div className="text-[10px] font-mono font-bold bg-white border border-gray-200 px-1.5 py-0.5 rounded-full text-[#111]">
                                         {Math.round(market.yesProb * 100)}% Yes
                                     </div>
                                 )}
                             </div>
 
-                            <h4 className="font-bold text-sm leading-tight line-clamp-2 pr-2 group-hover:text-primary transition-colors">
+                            <h4 className="font-bold text-sm leading-tight line-clamp-2 pr-2 text-[#111] group-hover:text-black transition-colors">
                                 {market.displayQuestion}
                             </h4>
 
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-auto pt-2">
-                                <span className="font-mono font-medium opacity-70">
+                            <div className="flex items-center justify-between text-[10px] text-[#5f5f5f] mt-auto pt-2">
+                                <span className="font-mono font-medium">
                                     {(market.volumeLamports / 1_000_000_000).toFixed(1)} SOL Vol
                                 </span>
-                                <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-200" />
+                                <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-200 text-[#111]" />
                             </div>
                         </div>
                     ))}
