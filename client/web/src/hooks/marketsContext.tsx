@@ -61,7 +61,16 @@ export function computePnL(position: any, market: any) {
   const outcomeIndex = position?.outcomeIndex ?? position?.outcome_index;
 
   const resolved = state === STATE_RESOLVED && winningIndex !== WIN_UNSET && winningIndex !== null && winningIndex !== undefined;
-  if (!resolved || winningIndex === WIN_VOID) {
+
+  if (winningIndex === WIN_VOID) {
+    return {
+      pnlLamports: 0n,
+      realized: true,
+      payoutLamports: stakeLamports
+    };
+  }
+
+  if (!resolved) {
     return { pnlLamports: 0n, realized: false, payoutLamports: 0n };
   }
 
