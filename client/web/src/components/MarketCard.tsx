@@ -64,7 +64,7 @@ export type OutcomeCardProps = {
   color: string;
   series?: OutcomeSeriesPoint[] | { value: number }[];
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   compact?: boolean;
 };
 
@@ -93,16 +93,20 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
     <div
       className={cn(
         "relative overflow-hidden transition-all duration-200",
-        "bg-background border border-border/20 rounded-[4px]",
-        "hover:border-primary/40 hover:shadow-sm group",
+        "border rounded-[4px]",
+        "hover:shadow-sm group",
         disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]",
         compact ? "p-2" : "p-3"
       )}
+      style={{
+        borderColor: `${color}40`, // 25% opacity border
+        backgroundColor: `${color}08` // 3% opacity bg
+      }}
       onClick={!disabled ? onClick : undefined}
     >
       {/* Background probability bar */}
       <div
-        className="absolute bottom-0 left-0 top-0 transition-all duration-500 opacity-[0.08] group-hover:opacity-[0.12]"
+        className="absolute bottom-0 left-0 top-0 transition-all duration-500 opacity-[0.15] group-hover:opacity-[0.2]"
         style={{ width: `${probDisplay}%`, backgroundColor: color }}
       />
 
@@ -200,8 +204,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               {market.displayQuestion}
             </h3>
 
-            {/* Status Badge (Top Right) - Absolute positioning or separate row if needed, but flex-shrink-0 usually works. 
-                If cutting off, we can adjust min-width or wrap. Let's try wrapping if space is tight. */}
+            {/* Status Badge (Top Right) */}
             <div className="flex-shrink-0 flex gap-1 flex-wrap justify-end max-w-[80px]">
               {isLocked && <div className="bg-orange-100 border border-orange-200 rounded-full p-1"><Lock className="w-3 h-3 text-[#ff8a2a]" /></div>}
               {isResolved && !isVoid && <div className="bg-green-100 border border-green-200 rounded-full p-1"><CheckCircle className="w-3 h-3 text-[#15a349]" /></div>}
@@ -247,15 +250,18 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           const total = Number(market.volumeLamports);
           const odds = pool > 0 ? total / pool : 0;
 
-          const isYes = idx === 0;
-          const tintClass = isYes
-            ? "bg-[#f0fdf4] border-[#15a349]/20 text-[#15a349]"
-            : "bg-[#fef2f2] border-[#e64545]/20 text-[#e64545]";
+          // Symmetry: if odd number of outcomes, last one spans 2 cols
+          const isLastAndOdd = (market.outcomes.length % 2 !== 0) && (idx === market.outcomes.length - 1);
 
           return (
-            <div className={cn("rounded-[4px] border p-1", tintClass)}>
+            <div
+              key={idx}
+              className={cn(
+                "rounded-[4px] p-0.5 transition-all", // p-0.5 for slight gap if needed, or just rely on OutcomeCard
+                isLastAndOdd ? "col-span-2" : ""
+              )}
+            >
               <OutcomeCard
-                key={idx}
                 label={outcome.label}
                 probPct={outcome.probability * 100}
                 odds={odds}
