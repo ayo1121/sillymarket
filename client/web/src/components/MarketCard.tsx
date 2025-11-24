@@ -169,6 +169,13 @@ export const MarketCard: React.FC<MarketCardProps> = ({
     // Could add a toast here if we had a toast hook easily accessible in this component
   };
 
+  // Winner logic
+  const winningIndex = market.rawAccount?.winningIndex ?? market.rawAccount?.winning_index;
+  const winnerLabel = (isResolved && !isVoid && winningIndex !== undefined && winningIndex >= 0)
+    ? market.outcomes[winningIndex]?.label
+    : null;
+  const winnerColor = (winnerLabel && winningIndex !== undefined) ? getOutcomeColor(winningIndex) : undefined;
+
   return (
     <div
       className={cn(
@@ -226,14 +233,21 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               <span className="sr-only">Copy</span>
             </button>
             <span className="opacity-40">•</span>
-            <span className={cn(
-              "font-bold uppercase tracking-wider text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-[2px] border whitespace-nowrap",
-              isOpen && "bg-green-50 text-[#15a349] border-green-100 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800",
-              isLocked && "bg-orange-50 text-[#ff8a2a] border-orange-100 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-800",
-              isResolved && !isVoid && "bg-green-50 text-[#15a349] border-green-100 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800",
-              isVoid && "bg-red-50 text-[#e64545] border-red-100 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800"
-            )}>
-              {isVoid ? "VOID" : isResolved ? "RESOLVED" : isLocked ? "LOCKED" : "OPEN"}
+            <span
+              className={cn(
+                "font-bold uppercase tracking-wider text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-[2px] border whitespace-nowrap",
+                isOpen && "bg-green-50 text-[#15a349] border-green-100 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800",
+                isLocked && "bg-orange-50 text-[#ff8a2a] border-orange-100 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-800",
+                isResolved && !isVoid && !winnerLabel && "bg-green-50 text-[#15a349] border-green-100 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800",
+                isVoid && "bg-red-50 text-[#e64545] border-red-100 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800"
+              )}
+              style={winnerLabel ? {
+                backgroundColor: `${winnerColor}20`,
+                color: winnerColor,
+                borderColor: `${winnerColor}40`
+              } : undefined}
+            >
+              {isVoid ? "VOID" : isResolved ? (winnerLabel ? `WINNER: ${winnerLabel}` : "RESOLVED") : isLocked ? "LOCKED" : "OPEN"}
             </span>
           </div>
         </div>
