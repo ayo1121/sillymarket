@@ -165,7 +165,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
         "border border-border/40 rounded-[4px] shadow-[0_2px_0_rgba(0,0,0,0.05)]",
         "hover:-translate-y-[2px] hover:shadow-[0_4px_0_rgba(0,0,0,0.1)] hover:border-border/60",
         isOpen && "border-l-4 border-l-green-500/50",
-        (isResolved || isVoid) && "opacity-85 grayscale-[0.1]",
+        (isResolved || isVoid) && "opacity-[0.85] grayscale-[0.1]",
         isLocked && "market-card--locked bg-muted/5",
         className
       )}
@@ -190,7 +190,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
         {/* Title & Meta */}
         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
           <div className="flex justify-between items-start gap-2">
-            <h3 className="font-bold text-lg leading-tight line-clamp-2 text-foreground/90">
+            <h3 className="font-bold text-[1.15rem] leading-tight line-clamp-2 text-foreground/90 tracking-tight">
               {market.displayQuestion}
             </h3>
 
@@ -198,11 +198,11 @@ export const MarketCard: React.FC<MarketCardProps> = ({
             <div className="flex-shrink-0">
               {isLocked && <Lock className="w-4 h-4 text-orange-500/70" />}
               {isResolved && !isVoid && <CheckCircle className="w-4 h-4 text-green-600/70" />}
-              {isVoid && <XCircle className="w-4 h-4 text-muted-foreground/70" />}
+              {isVoid && <XCircle className="w-4 h-4 text-[#7a7a7a]/70" />}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground/70 mt-1">
+          <div className="flex items-center gap-2 text-xs text-[#7a7a7a] mt-1">
             <span className="font-medium">
               by {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
             </span>
@@ -213,10 +213,10 @@ export const MarketCard: React.FC<MarketCardProps> = ({
             <span className="opacity-40">•</span>
             <span className={cn(
               "font-bold uppercase tracking-wider text-[10px]",
-              isOpen && "text-green-600/80",
-              isLocked && "text-orange-500/80",
-              isResolved && !isVoid && "text-brand-yes/80",
-              isVoid && "text-muted-foreground"
+              isOpen && "text-green-600/90",
+              isLocked && "text-orange-500/90",
+              isResolved && !isVoid && "text-brand-yes/90",
+              isVoid && "text-[#7a7a7a]"
             )}>
               {isVoid ? "VOID" : isResolved ? "RESOLVED" : isLocked ? "LOCKED" : "OPEN"}
             </span>
@@ -225,7 +225,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       </div>
 
       {/* Outcomes Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
         {market.outcomes.map((outcome, idx) => {
           const color = getOutcomeColor(idx);
           const seriesPoints = outcomeSnapshots[idx]?.seriesPoints || [];

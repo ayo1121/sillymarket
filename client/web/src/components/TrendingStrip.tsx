@@ -40,19 +40,20 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
                                 "w-72 bg-background p-3 cursor-pointer transition-all duration-200 relative group",
                                 "border border-border/30 rounded-[4px] shadow-sm hover:shadow-md hover:-translate-y-0.5",
                                 "flex flex-col justify-between h-[100px]",
-                                i === 0 && "border-l-4 border-l-orange-500"
+                                "border-l-[3px]",
+                                i === 0 ? "border-l-orange-500/80" : "border-l-green-500/50"
                             )}
                         >
                             <div className="flex justify-between items-start mb-1">
                                 <div className="flex items-center gap-1.5">
                                     <div className={cn(
                                         "text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1",
-                                        i === 0 ? "bg-orange-100 text-orange-700" : "bg-muted/10 text-muted-foreground"
+                                        i === 0 ? "bg-orange-100 text-orange-700/90" : "bg-muted/10 text-muted-foreground"
                                     )}>
-                                        {i === 0 && <Flame className="w-3 h-3 fill-orange-500" />}
+                                        {i === 0 && <Flame className="w-3 h-3 fill-orange-500/80 text-orange-600" />}
                                         #{i + 1}
                                     </div>
-                                    {i === 0 && <span className="text-[10px] font-bold text-green-600">+124 bets today</span>}
+                                    {i === 0 && <span className="text-[10px] font-bold text-green-600/90">+124 bets today</span>}
                                 </div>
                                 {market.yesProb && (
                                     <div className="text-xs font-mono font-bold opacity-60">

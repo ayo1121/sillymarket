@@ -114,28 +114,36 @@ const Index = () => {
     <div className="min-h-screen bg-background font-sans text-foreground">
       <Header />
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* Top Chrome Divider */}
+        <div className="w-full h-px bg-border/20 mb-6" />
+
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 mt-2">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter mb-1">Markets</h1>
-            <p className="text-muted-foreground font-medium text-sm tracking-wide">
-              predict outcomes, trade positions, and earn rewards.
-            </p>
+            <h1 className="text-5xl font-black uppercase tracking-tighter mb-1 leading-none">Markets</h1>
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground font-medium text-sm tracking-wide">
+                predict outcomes, trade positions, and earn rewards.
+              </p>
+              <p className="text-[11px] font-mono text-muted-foreground/60 uppercase tracking-wider">
+                {markets.length} markets · {(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000).toFixed(1)} SOL total volume
+              </p>
+            </div>
           </div>
 
           <Button
             onClick={() => navigate("/create-market")}
             size="lg"
-            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all bg-primary text-primary-foreground border-2 border-primary"
+            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all bg-primary text-primary-foreground border-2 border-primary win95-btn-press h-10 px-6"
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-4 h-4 mr-2" />
             Create Market
           </Button>
         </div>
 
-        {/* Trending Strip */}
-        <div className="mb-10">
+        {/* Trending Strip Panel */}
+        <div className="mb-8 bg-black/5 rounded-[4px] border border-black/5 p-1">
           <TrendingStrip markets={markets.filter(m => m.state === 'open').sort((a, b) => b.volumeLamports - a.volumeLamports)} />
         </div>
 

@@ -749,4 +749,25 @@ All colors MUST be HSL.
     z-index: 1;
     white-space: nowrap;
   }
+
+  /* Win95 Button Press Effect */
+  .win95-btn-press {
+    transition: all 0.1s ease;
+  }
+
+  .win95-btn-press:hover {
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #000;
+    transform: translateY(1px);
+  }
+
+  .win95-btn-press:active {
+    box-shadow: inset 2px 2px 0 #000, inset -2px -2px 0 #fff;
+    transform: translateY(2px);
+  }
+}
+
+/* Global Background Texture */
+body {
+  background-image: linear-gradient(to bottom, #e0e0e0, #d4d4d4);
+  background-attachment: fixed;
 }
