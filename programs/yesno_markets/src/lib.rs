@@ -637,7 +637,35 @@ pub mod yesno_markets {
         let was_last = m.win_unclaimed == 1;
 
         let mut pay: u64 = if m.winning_index == WIN_VOID {
-            p.amount
+            // Refund NET amount (stake - fees)
+            // Calculate share: (user_stake * remaining_pool) / total_pool_snapshot
+            // Note: resolved_total_pool is the NET pool after fees
+            // We use the original total_pool (from m.total_pool or reconstructed) as denominator?
+            // Actually, simpler: (user_stake * resolved_total_pool) / (resolved_total_pool + fees)
+            // But we don't store "fees" easily here.
+            
+            // Better approach:
+            // The ratio is (resolved_total_pool / total_pool_gross)
+            // pay = user_stake * ratio
+            
+            // We can reconstruct total_pool_gross from m.resolved_total_pool + m.fees_accrued_total?
+            // No, fees_accrued_total is reset to 0 in resolve().
+            
+            // However, we know:
+            // m.resolved_total_pool is the TOTAL remaining in the market for users.
+            // We need to distribute this proportionally to stake.
+            // We don't track "total_stake" explicitly in resolved state except via iterating?
+            // Wait, m.total_pool IS the total gross stake!
+            
+            let total_stake = m.total_pool;
+            if total_stake == 0 {
+                0
+            } else {
+                let num = (m.resolved_total_pool as u128)
+                    .checked_mul(p.amount as u128).ok_or(ErrorCode::Overflow)?;
+                let share = num.checked_div(total_stake as u128).ok_or(ErrorCode::Overflow)?;
+                u64::try_from(share).map_err(|_| error!(ErrorCode::Overflow))?
+            }
         } else {
             require!(p.outcome_index as i8 == m.winning_index, ErrorCode::Unauthorized);
             let winners = m.resolved_win_pool as u128;

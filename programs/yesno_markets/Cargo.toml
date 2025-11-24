@@ -30,3 +30,6 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"
 
 [dev-dependencies]
 proptest = "1.0"
+solana-program-test = "3.1.2"
+solana-sdk = "3.0.0"
+tokio = "1.48.0"
