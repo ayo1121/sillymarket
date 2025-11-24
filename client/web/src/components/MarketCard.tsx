@@ -92,7 +92,7 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
   return (
     <div
       className={cn(
-        "relative overflow-hidden transition-all duration-200",
+        "outcome-card relative overflow-hidden transition-all duration-200",
         "border rounded-[4px]",
         "hover:shadow-sm group",
         disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]",
@@ -143,8 +143,9 @@ export const MarketCard: React.FC<MarketCardProps> = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (disableNavigation) return;
-    // Don't navigate if clicking buttons/interactive elements
+    // Don't navigate if clicking buttons/interactive elements or outcome cards
     if ((e.target as HTMLElement).closest("button")) return;
+    if ((e.target as HTMLElement).closest(".outcome-card")) return;
     navigate(`/market/${market.pubkey}`);
   };
 
@@ -214,7 +215,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5f5f5f] mt-1">
             <span className="font-medium whitespace-nowrap">
-              by {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
+              by {market.creatorUsername || market.creatorPubkey}
             </span>
             <span className="opacity-40">•</span>
             <button
