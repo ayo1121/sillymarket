@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { getMarketImageUrl } from "@/solana/marketImage";
 import { getOutcomeColor } from "@/solana/outcomeColors";
 import { MiniOutcomeSparkline } from "@/components/charts/MiniOutcomeSparkline";
+import { shortenWallet } from "@/utils/format";
 import {
   useMarketProbabilityHistory,
   OutcomeSeriesPoint,
@@ -83,6 +84,11 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
   const probDisplay = probPct !== null ? Math.round(probPct) : 0;
   const oddsDisplay = odds !== null ? odds.toFixed(2) : "1.00";
 
+  // Ensure series data is in the correct format for sparkline
+  const safeSeries = Array.isArray(series)
+    ? series.map((p: any) => ({ value: p.value ?? p.prob ?? 0 }))
+    : [];
+
   return (
     <div
       className={cn(
@@ -110,9 +116,9 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
           <span className="text-2xl font-black tracking-tighter leading-none" style={{ color }}>
             {probDisplay}%
           </span>
-          {series && series.length > 0 && (
+          {safeSeries.length > 0 && (
             <div className="w-12 h-6 opacity-60">
-              <MiniOutcomeSparkline data={series} color={color} width={48} height={24} />
+              <MiniOutcomeSparkline series={safeSeries} stroke={color} />
             </div>
           )}
         </div>
@@ -129,7 +135,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   disableNavigation,
 }) => {
   const navigate = useNavigate();
-  const { timeRemainingLabel } = useTimeRemaining(market.closesAt);
+  const { label: timeRemainingLabel } = useTimeRemaining(market.closesAt);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (disableNavigation) return;
@@ -145,11 +151,11 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   const normalizedStatus = market.state.toLowerCase();
   const isResolved = market.state === "resolved";
   const isVoid = market.state === "void" || (isResolved && market.rawAccount?.winningIndex === -2);
-  const isLocked = market.state === "locked" || (market.state === "active" && market.isLocked);
+  const isLocked = market.state === "locked" || (market.state === "open" && market.isLocked);
 
   // Probability history hook
-  const { history, loading: historyLoading } = useMarketProbabilityHistory(market.pubkey);
-  const outcomeSnapshots = computeOutcomeSnapshotsFromHistory(history, market.outcomes.length);
+  const { series, loading: historyLoading } = useMarketProbabilityHistory(market);
+  const outcomeSnapshots = computeOutcomeSnapshotsFromHistory({ market, series });
 
   return (
     <div
@@ -203,7 +209,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       <div className="grid grid-cols-2 gap-2 mb-auto">
         {market.outcomes.map((outcome, idx) => {
           const color = getOutcomeColor(idx);
-          const series = outcomeSnapshots[idx];
+          const seriesPoints = outcomeSnapshots[idx]?.seriesPoints || [];
 
           // Calculate odds
           const pool = Number(outcome.poolLamports);
@@ -217,7 +223,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               probPct={outcome.probability * 100}
               odds={odds}
               color={color}
-              series={series}
+              series={seriesPoints}
               disabled={normalizedStatus !== "open"}
               onClick={() => {
                 if (normalizedStatus === "open" && onOutcomeClick) {
