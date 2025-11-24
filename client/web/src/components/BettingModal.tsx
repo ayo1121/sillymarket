@@ -292,128 +292,146 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="win95-window bg-background p-0 max-w-md border-0">
-        <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between">
-          <span className="font-black text-sm tracking-tight">place bet</span>
+      <DialogContent className="bg-[#f5f5f5] p-0 max-w-[560px] border border-[#d3d3d3] rounded shadow-[0_2px_8px_rgba(0,0,0,0.08)] overflow-hidden">
+        {/* Faint smiley watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] text-[120px] font-black text-gray-400 select-none">
+          : )
+        </div>
+
+        {/* Header Bar - Windows95 style */}
+        <div className="relative bg-[#ececec] px-4 py-3 flex items-center justify-between border-b border-[#d3d3d3] shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)]">
+          <span className="font-bold text-[#111] text-sm uppercase tracking-wide">Place Bet</span>
           <button
             onClick={() => onOpenChange(false)}
-            className="w-4 h-4 win95-raised bg-background flex items-center justify-center text-foreground text-xs font-black hover:bg-accent"
+            className="w-6 h-6 border border-[#111] bg-white flex items-center justify-center text-[#111] text-base font-bold hover:bg-[#111] hover:text-white transition-colors rounded-sm"
           >
-            ×
+            ✖
           </button>
         </div>
 
-        <div className="win95-sunken bg-background p-6 m-1">
-          <div className="space-y-4">
-            <div className="win95-sunken bg-input p-3">
-              <div className="text-xs text-muted-foreground font-bold mb-1">market</div>
-              <div className="text-sm font-black">{market.displayQuestion}</div>
-            </div>
+        {/* Modal Content */}
+        <div className="relative p-8 space-y-6">
+          {/* Market Info Box */}
+          <div className="bg-[#fafafa] border border-[#e0e0e0] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+            <div className="text-[11px] uppercase text-[#666] font-semibold mb-1 tracking-wide">Market</div>
+            <div className="text-sm font-bold text-[#111]">{market.displayQuestion}</div>
+          </div>
 
-            {/* Outcome selection (if multiple outcomes) */}
-            {market.outcomes.length > 2 && (
-              <div className="space-y-2">
-                <label className="text-sm font-bold">select outcome</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {market.outcomes.map((outcome) => {
-                    const isSelected = answerIndex === outcome.index;
-                    const theme = getOutcomeTheme(outcome.index);
-                    return (
-                      <button
-                        key={outcome.index}
-                        type="button"
-                        onClick={() => handleSelectOutcome(outcome.index)}
-                        className={`w-full win95-sunken bg-input p-3 text-left cursor-pointer transition-colors border-2 rounded ${theme.border} ${isSelected ? theme.bgSelected : ""}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className={`font-bold text-sm truncate ${theme.text}`}>
-                              {outcome.label}
-                            </div>
+          {/* Outcome selection (if multiple outcomes) */}
+          {market.outcomes.length > 2 && (
+            <div className="space-y-3">
+              <label className="text-[13px] uppercase text-[#666] font-semibold tracking-wide">Select Outcome</label>
+              <div className="grid grid-cols-2 gap-3">
+                {market.outcomes.map((outcome) => {
+                  const isSelected = answerIndex === outcome.index;
+                  const theme = getOutcomeTheme(outcome.index);
+                  return (
+                    <button
+                      key={outcome.index}
+                      type="button"
+                      onClick={() => handleSelectOutcome(outcome.index)}
+                      className={`w-full bg-white border border-[#d3d3d3] rounded p-3 text-left cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-[#111] shadow-md' : ''
+                        }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-bold text-sm truncate ${theme.text}`}>
+                            {outcome.label}
                           </div>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="win95-sunken bg-input p-3">
-                <div className="text-xs text-muted-foreground font-bold mb-1">betting on</div>
-                <div
-                  className={`text-lg font-black px-2 py-1 rounded border-2 inline-block ${getOutcomeTheme(answerIndex ?? -1).border} ${getOutcomeTheme(answerIndex ?? -1).text}`}
-                >
-                  {selectedLabel}
-                </div>
-              </div>
-              <div className="win95-sunken bg-input p-3">
-                <div className="text-xs text-muted-foreground font-bold mb-1">payout</div>
-                <div className="text-lg font-black">{odds}</div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold">bet amount (sol)</label>
-              <Input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="win95-sunken bg-input border-0 h-12 text-lg font-black"
-                step="0.01"
-                min="0"
-                disabled={isSubmitting}
-              />
-              {(() => {
-                const existingOutcomeLabel =
-                  existingOutcomeIndex != null && market?.outcomes?.[existingOutcomeIndex]
-                    ? market.outcomes[existingOutcomeIndex].label ??
-                    `Outcome ${existingOutcomeIndex}`
-                    : null;
-
-                return existingOutcomeLabel ? (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You already have a position on: <strong>{existingOutcomeLabel}</strong>.
-                    The program only allows adding to that outcome; betting on another side
-                    may fail with an error.
-                  </p>
-                ) : null;
-              })()}
-            </div>
-
-            {simulation && (
-              <div className="win95-sunken bg-input p-3 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-bold">potential return</span>
-                  <span className="font-black">{expectedPayoutSol} sol</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>implied odds</span>
-                  <span>{(simulation.impliedOdds * 100).toFixed(1)}%</span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="flex-1"
-                disabled={isSubmitting}
+          {/* Betting On & Payout Boxes */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#fafafa] border border-[#e0e0e0] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+              <div className="text-[11px] uppercase text-[#666] font-semibold mb-2 tracking-wide">Betting On</div>
+              <div
+                className={`text-base font-bold px-3 py-1.5 rounded inline-block ${answerIndex === 0
+                    ? 'bg-green-500/15 text-green-900'
+                    : 'bg-red-500/15 text-red-900'
+                  } shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]`}
               >
-                cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSubmit}
-                disabled={!amount || parseFloat(amount) <= 0 || isSubmitting || !wallet.connected}
-                className="flex-1"
-              >
-                {isSubmitting ? "placing..." : "confirm bet"}
-              </Button>
+                {selectedLabel}
+              </div>
             </div>
+            <div className="bg-[#fafafa] border border-[#e0e0e0] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+              <div className="text-[11px] uppercase text-[#666] font-semibold mb-2 tracking-wide">Payout</div>
+              <div className="text-base font-bold text-[#111]">{odds}</div>
+            </div>
+          </div>
+
+          {/* Input Field */}
+          <div className="space-y-3">
+            <label className="text-[13px] uppercase text-[#666] font-semibold tracking-wide">Bet Amount (SOL)</label>
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="h-12 text-base font-semibold bg-white border border-[#d3d3d3] rounded shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] placeholder:text-[#999] focus:ring-2 focus:ring-[#111] focus:border-[#111]"
+              step="0.01"
+              min="0"
+              disabled={isSubmitting}
+            />
+            {(() => {
+              const existingOutcomeLabel =
+                existingOutcomeIndex != null && market?.outcomes?.[existingOutcomeIndex]
+                  ? market.outcomes[existingOutcomeIndex].label ??
+                  `Outcome ${existingOutcomeIndex}`
+                  : null;
+
+              return existingOutcomeLabel ? (
+                <p className="text-xs text-[#666] mt-2 leading-relaxed">
+                  You already have a position on: <strong className="text-[#111]">{existingOutcomeLabel}</strong>.
+                  The program only allows adding to that outcome; betting on another side
+                  may fail with an error.
+                </p>
+              ) : null;
+            })()}
+          </div>
+
+          {/* Potential Return Box */}
+          {simulation && (
+            <div className="bg-white border border-[#d3d3d3] rounded p-4 shadow-sm relative overflow-hidden">
+              {/* Green gradient highlight at top */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-green-400 to-green-600"></div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-semibold text-[#111]">Potential Return</span>
+                  <span className="font-mono font-bold text-[#111]">{expectedPayoutSol} SOL</span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-[#666]">
+                  <span>Implied Odds</span>
+                  <span className="font-mono">{(simulation.impliedOdds * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Buttons */}
+          <div className="flex gap-4 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1 h-11 bg-[#f0f0f0] border border-[#111] text-[#111] font-normal rounded hover:bg-[#e0e0e0] shadow-none"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!amount || parseFloat(amount) <= 0 || isSubmitting || !wallet.connected}
+              className="flex-1 h-11 bg-[#111] text-white border border-white/20 font-semibold rounded hover:bg-white hover:text-[#111] hover:border-[#111] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#111] disabled:hover:text-white"
+            >
+              {isSubmitting ? "Placing..." : "Confirm Bet"}
+            </Button>
           </div>
         </div>
       </DialogContent>

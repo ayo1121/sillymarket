@@ -161,77 +161,88 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
   };
 
   return (
-    <div className="win95-window bg-background p-1">
-      <div className="bg-primary text-primary-foreground px-3 py-2 mb-1">
-        <span className="font-black text-sm tracking-tight">comments ({comments.length})</span>
+    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+      {/* Faint smiley watermark */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+        : )
       </div>
 
-      <div className="win95-sunken bg-background p-4 space-y-4">
-        {isAuthenticated ? (
-          <form onSubmit={handleSubmit} className="space-y-2">
-            <Textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="share your prediction..."
-              className="win95-sunken font-bold resize-none"
-              rows={3}
-              maxLength={500}
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground font-bold">
-                {newComment.length}/500
-              </span>
-              <Button
-                type="submit"
-                disabled={loading || !newComment.trim()}
-                className="font-black"
-              >
-                {loading ? "posting..." : "post comment"}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <div className="win95-sunken bg-input p-4 text-center">
-            <p className="text-sm font-bold text-muted-foreground">
-              Connect your wallet to comment
-            </p>
-          </div>
-        )}
+      <div className="relative z-10">
+        {/* Header */}
+        <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+          Comments ({comments.length})
+        </h2>
 
-        {error && (
-          <div className="win95-sunken bg-destructive/10 p-2 text-center">
-            <p className="text-xs font-bold text-destructive">{error}</p>
-          </div>
-        )}
-
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {fetchLoading && comments.length === 0 ? (
-            <div className="win95-sunken bg-input p-4 text-center">
-              <p className="text-sm font-bold text-muted-foreground">loading comments...</p>
-            </div>
-          ) : comments.length === 0 ? (
-            <div className="win95-sunken bg-input p-4 text-center">
-              <p className="text-sm font-bold text-muted-foreground">
-                no comments yet. be the first!
+        <div className="space-y-4">
+          {isAuthenticated ? (
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <Textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="share your prediction..."
+                className="border-2 border-[#8b8b8b] rounded font-semibold resize-none focus:border-[#111] transition-colors bg-white shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)]"
+                rows={3}
+                maxLength={500}
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-[#666] font-semibold">
+                  {newComment.length}/500
+                </span>
+                <Button
+                  type="submit"
+                  disabled={loading || !newComment.trim()}
+                  className="font-bold shadow-md"
+                >
+                  {loading ? "posting..." : "post comment"}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-4 text-center shadow-sm">
+              <p className="text-sm font-semibold text-[#666]">
+                Connect your wallet to comment
               </p>
             </div>
-          ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="win95-raised p-3 bg-background">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="win95-sunken px-2 py-1 bg-input font-mono text-xs">
-                    {comment.username || shortenWallet(comment.walletAddress)}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-bold">
+          )}
+
+          {error && (
+            <div className="bg-red-50 border-2 border-red-400 rounded p-3 text-center shadow-sm">
+              <p className="text-xs font-bold text-red-700">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {fetchLoading && comments.length === 0 ? (
+              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-4 text-center shadow-sm">
+                <p className="text-sm font-semibold text-[#666]">loading comments...</p>
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-8 text-center shadow-sm">
+                <div className="text-4xl mb-2 opacity-20">💬</div>
+                <p className="text-sm font-semibold text-[#666]">
+                  no comments yet. be the first!
+                </p>
+              </div>
+            ) : (
+              comments.map((comment, idx) => (
+                <div
+                  key={comment.id}
+                  className={`border border-[#e0e0e0] rounded p-3 shadow-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="bg-[#f0f0f0] border border-[#d3d3d3] px-2 py-1 rounded font-mono text-xs font-bold text-[#111]">
+                      {comment.username || shortenWallet(comment.walletAddress)}
+                    </span>
+                    <span className="text-[10px] text-[#999] font-semibold">
                       {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                     </span>
                   </div>
+                  <p className="font-semibold text-sm text-[#111] leading-relaxed">{comment.commentText}</p>
                 </div>
-                <p className="font-bold text-sm">{comment.commentText}</p>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

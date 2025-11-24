@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BettingModal } from "@/components/BettingModal";
 import { CommentsSection } from "@/components/CommentsSection";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import { useAnchorProgram } from "@/solana/program";
 import { ShareMarketModal } from "@/components/ShareMarketModal";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -59,37 +59,39 @@ const ResolutionPill: React.FC<ResolutionPillProps> = ({ state, isVoid, winnerOu
   const showWinner = !isVoid && typeof winnerOutcomeLabel === "string" && winnerOutcomeLabel.trim().length > 0;
 
   let text = state || "unknown";
-  let variant: "open" | "locked" | "resolved" | "void" | "unknown" = "unknown";
+  let bgColor = "#e0e0e0";
+  let textColor = "#111";
 
   if (isVoid) {
-    text = "void";
-    variant = "void";
+    text = "VOID";
+    bgColor = "#666";
+    textColor = "#fff";
   } else if (normalized === "resolved" || normalized === "settled") {
-    // Show "Winner: [outcome]" for resolved markets with a winner
-    text = showWinner ? `Winner: ${winnerOutcomeLabel}` : "resolved";
-    variant = "resolved";
+    text = showWinner ? `Winner: ${winnerOutcomeLabel}` : "RESOLVED";
+    if (showWinner && winnerOutcomeIndex != null) {
+      const outcomeColor = getOutcomeColor(winnerOutcomeIndex);
+      bgColor = outcomeColor;
+      textColor = "#fff";
+    } else {
+      bgColor = "#4caf50";
+      textColor = "#fff";
+    }
   } else if (normalized === "locked" || normalized === "closed") {
-    text = state ?? "locked";
-    variant = "locked";
+    text = "LOCKED";
+    bgColor = "#ff9800";
+    textColor = "#fff";
   } else if (normalized === "open") {
-    text = "open";
-    variant = "open";
-  } else {
-    console.warn("[ResolutionPill] unknown status", state);
+    text = "OPEN";
+    bgColor = "#4caf50";
+    textColor = "#fff";
   }
 
-  // Apply outcome color when showing winner
-  const hasWinnerColor = showWinner && winnerOutcomeIndex != null;
-  const outcomeColorClass = hasWinnerColor ? `bg-outcome-${winnerOutcomeIndex}` : '';
-
   return (
-    <div className={`market-resolution-pill market-stat-box--status-${variant}`}>
-      <span
-        className={`market-stat-pill ${outcomeColorClass} truncate max-w-[150px]`}
-        style={hasWinnerColor ? { color: '#ffffff', fontWeight: 'bold' } : undefined}
-      >
-        {text}
-      </span>
+    <div
+      className="inline-flex items-center px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide shadow-sm"
+      style={{ backgroundColor: bgColor, color: textColor }}
+    >
+      {text}
     </div>
   );
 };
@@ -367,10 +369,10 @@ const MarketDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-win95-teal">
+      <div className="min-h-screen bg-[#c0c0c0]">
         <Header />
-        <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-          <div className="text-center">Loading market...</div>
+        <main className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="text-center text-muted-foreground">Loading market...</div>
         </main>
       </div>
     );
@@ -378,11 +380,15 @@ const MarketDetails = () => {
 
   if (error || !market) {
     return (
-      <div className="min-h-screen bg-win95-teal">
+      <div className="min-h-screen bg-[#c0c0c0]">
         <Header />
-        <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-          <div className="text-center text-red-600">{error || "Market not found"}</div>
-          <Button onClick={() => navigate("/")} className="mt-4">Back to markets</Button>
+        <main className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="text-center text-red-600 mb-4">{error || "Market not found"}</div>
+          <div className="text-center">
+            <Button onClick={() => navigate("/")} variant="outline" className="font-semibold">
+              Back to Markets
+            </Button>
+          </div>
         </main>
       </div>
     );
@@ -446,480 +452,472 @@ const MarketDetails = () => {
     setModalOpen(true);
   };
 
-
-
   const title = market.displayQuestion || `Market ${market.pubkey.slice(0, 4)}...`;
 
   return (
-    <div className="min-h-screen bg-win95-teal">
+    <div className="min-h-screen bg-[#c0c0c0]">
       <Header />
 
-      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        <div className="max-w-6xl mx-auto">
+      <main className="container mx-auto px-4 py-6 max-w-6xl">
+        {/* Top Navigation Bar - Retro Toolbar Style */}
+        <div className="bg-[#d4d0c8] border border-[#8b8b8b] rounded-sm shadow-[inset_1px_1px_0_rgba(255,255,255,0.8),inset_-1px_-1px_0_rgba(0,0,0,0.2)] mb-6 px-3 py-2">
           <Button
-            variant="default"
+            variant="ghost"
             onClick={() => navigate("/")}
-            className="mb-4 sm:mb-6 font-black text-sm sm:text-base"
+            className="font-semibold text-sm hover:bg-[#e8e8e8] px-3 py-1 h-auto"
           >
-            <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-            back to markets
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Back to Markets
           </Button>
+        </div>
 
-          {/* Claim Status Banner */}
-          {market && (() => {
-            const configAuthority = config?.authority ? (typeof config.authority === "string" ? new PublicKey(config.authority) : config.authority) : null;
-            const canClaim = canClaimPosition({
-              market: market.rawAccount,
-              position: userPosition?.account || userPosition,
-              wallet: publicKey,
-            });
+        {/* Claim Status Banner */}
+        {market && (() => {
+          const configAuthority = config?.authority ? (typeof config.authority === "string" ? new PublicKey(config.authority) : config.authority) : null;
+          const canClaim = canClaimPosition({
+            market: market.rawAccount,
+            position: userPosition?.account || userPosition,
+            wallet: publicKey,
+          });
 
-            if (canClaim) {
-              return (
-                <div className="win95-window bg-background p-1 mb-4 sm:mb-6" style={{ textAlign: "center", padding: "16px" }}>
-                  <div className="win95-sunken bg-background p-4" style={{ backgroundColor: "#fff3cd", border: "2px solid #ffc107" }}>
-                    <div style={{ fontWeight: 700, marginBottom: 8, fontSize: "16px" }}>You have unclaimed winnings</div>
-                    <div style={{ marginBottom: 12, fontSize: 13 }}>
-                      Click the <strong>Claim</strong> button below to withdraw your winnings.
-                    </div>
-                  </div>
-                </div>
-              );
-            } else if (market.isResolved && publicKey) {
-              return (
-                <div className="win95-window bg-background p-1 mb-4 sm:mb-6" style={{ textAlign: "center" }}>
-                  <div className="win95-sunken bg-background p-3" style={{ padding: "12px" }}>
-                    <span style={{ fontSize: 12 }}>Market resolved · no claimable position on this wallet.</span>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })()}
-
-          {/* Fee Decay Information (for creators after cutoff) */}
-          {market && publicKey && publicKey.toBase58() === market.creatorPubkey && (
-            <FeeDecayInfo
-              cutoffTs={market.closesAt}
-              isResolved={isResolved}
-              isCreator={true}
-            />
-          )}
-
-          {/* Market Header */}
-          <div className="win95-window bg-background p-1 mb-4 sm:mb-6">
-            <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <img src={lightbulbIcon} alt="" className="w-4 h-4 sm:w-5 sm:h-5 opacity-80" />
-                <span className="font-black tracking-tight text-xs sm:text-sm">market details</span>
-              </div>
-              <div className="flex gap-2 items-center min-w-0">
-                <div className="max-w-[200px]">
-                  <ResolutionPill
-                    state={statsStatusLabel}
-                    isVoid={isVoid}
-                    winnerOutcomeLabel={winnerOutcomeLabel}
-                    winnerOutcomeIndex={winnerIndex}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="font-black text-xs sm:text-sm"
-                  onClick={() => handleOpenShare(market)}
-                >
-                  share
-                </Button>
-              </div>
-            </div>
-
-            <div className="win95-sunken bg-background p-3 sm:p-6">
-              <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 mb-4 sm:mb-6">
-                {imageUrl && (
-                  <div className="win95-sunken p-2 bg-input flex-shrink-0 w-full sm:w-auto" style={{ borderColor: 'hsl(var(--primary))' }}>
-                    <img
-                      src={imageUrl}
-                      alt={title}
-                      className="w-full h-48 sm:w-32 sm:h-32 object-cover"
-                      crossOrigin="anonymous"
-                    />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl sm:text-4xl font-black mb-3 sm:mb-4 break-words">{title}</h1>
-                  <div className="space-y-2 mb-3 sm:mb-4">
-                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm sm:text-base">
-                      <button
-                        type="button"
-                        onClick={handleCopyCreator}
-                        className="font-bold hover:underline flex items-center gap-1 group"
-                        title="Copy creator address"
-                      >
-                        by {market.creatorName ?? market.creatorLabel}{" "}
-                        <span className="creator-wallet text-muted-foreground text-xs sm:text-sm font-normal group-hover:text-foreground transition-colors">
-                          {shortenWallet(market.creatorPubkey ?? "")}
-                        </span>
-                        {copiedCreator && <span className="text-xs font-normal ml-1 text-green-600">• copied</span>}
-                      </button>
-                      <span className="hidden sm:inline">•</span>
-                      <button
-                        type="button"
-                        onClick={handleCopyAddress}
-                        className="font-mono text-xs sm:text-sm truncate underline-offset-2 hover:underline"
-                        title="Copy market address"
-                      >
-                        {market.pubkey.slice(0, 8)}...{market.pubkey.slice(-4)}{" "}
-                        <span className="font-semibold">{copiedAddress ? "• copied" : ""}</span>
-                      </button>
-                    </div>
-                  </div>
+          if (canClaim) {
+            return (
+              <div className="bg-[#fff9e6] border-2 border-[#ffc107] rounded p-4 mb-6 shadow-md">
+                <div className="font-black text-base mb-2 text-[#111]">🎉 You have unclaimed winnings!</div>
+                <div className="text-sm text-[#333]">
+                  Click the <strong>Claim Winnings</strong> button below to withdraw your earnings.
                 </div>
               </div>
+            );
+          } else if (market.isResolved && publicKey) {
+            return (
+              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-3 mb-6 text-center text-sm text-muted-foreground">
+                Market resolved · no claimable position on this wallet.
+              </div>
+            );
+          }
+          return null;
+        })()}
 
-              {market && (
-                <MarketStatsRow
-                  totalVolumeSol={totalVolumeLabel}
-                  closesLabel={liveClosesLabel}
-                  statusLabel={statsStatusLabel}
-                  isResolved={isResolved}
-                  isVoid={isVoid}
-                  winnerOutcomeLabel={winnerOutcomeLabel}
-                  winnerOutcomeIndex={winnerIndex}
-                />
-              )}
-            </div>
+        {/* Fee Decay Information (for creators after cutoff) */}
+        {market && publicKey && publicKey.toBase58() === market.creatorPubkey && (
+          <FeeDecayInfo
+            cutoffTs={market.closesAt}
+            isResolved={isResolved}
+            isCreator={true}
+          />
+        )}
+
+        {/* Market Header Card - Enhanced */}
+        <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-6 mb-8 relative overflow-hidden">
+          {/* Faint smiley watermark */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[200px] font-black text-gray-400 select-none">
+            : )
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* Betting Panel */}
-            <div className="lg:col-span-1">
-              <div className="win95-window bg-background p-1">
-                <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-                  <span className="font-black text-xs sm:text-sm tracking-tight">place your bet</span>
-                </div>
+          <div className="relative z-10">
+            {/* Top Row: Status + Share Button */}
+            <div className="flex justify-between items-center mb-5">
+              <ResolutionPill
+                state={statsStatusLabel}
+                isVoid={isVoid}
+                winnerOutcomeLabel={winnerOutcomeLabel}
+                winnerOutcomeIndex={winnerIndex}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenShare(market)}
+                className="font-semibold border-[#8b8b8b] hover:bg-[#e8e8e8] shadow-sm"
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
 
-                <div className="win95-sunken bg-background p-3 sm:p-4 space-y-2">
-                  {outcomesWithProb.length === 0 ? (
-                    <div className="text-center text-muted-foreground text-xs">No outcomes</div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      {outcomesWithProb.map((o) => {
-                        // Extract probability history for this specific outcome
-                        const historySource = (liveHistory && liveHistory.length > 0 ? liveHistory : market.history) || [];
-                        const outcomeSeries = historySource
-                          .map(point => ({
-                            value: point.probs[o.index] || 0
-                          }))
-                          .filter(p => typeof p.value === 'number');
+            {/* Main Content Row */}
+            <div className="flex flex-col md:flex-row items-start gap-6">
+              {/* Market Image */}
+              {imageUrl && (
+                <div className="flex-shrink-0 border-2 border-[#8b8b8b] rounded overflow-hidden w-full md:w-36 h-48 md:h-36 shadow-sm">
+                  <img
+                    src={imageUrl}
+                    alt={title}
+                    className="w-full h-full object-cover"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              )}
+
+              {/* Market Info */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-3xl md:text-4xl font-black mb-4 break-words leading-tight text-[#111]">{title}</h1>
+
+                {/* Creator & Market Info */}
+                <div className="flex flex-wrap items-center gap-2 text-sm text-[#555]">
+                  <button
+                    type="button"
+                    onClick={handleCopyCreator}
+                    className="font-semibold hover:text-[#111] transition-colors hover:underline"
+                    title="Copy creator address"
+                  >
+                    by {market.creatorUsername ?? market.creatorName ?? market.creatorLabel}
+                    {copiedCreator && <span className="ml-1 text-green-600 font-bold">✓ copied</span>}
+                  </button>
+                  <span className="text-[#999]">•</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyAddress}
+                    className="font-mono text-xs hover:text-[#111] transition-colors hover:underline"
+                    title="Copy market address"
+                  >
+                    {shortenWallet(market.pubkey)}
+                    {copiedAddress && <span className="ml-1 text-green-600 font-bold">✓</span>}
+                  </button>
+                  <span className="text-[#999]">•</span>
+                  <span className={Number(totalVolumeLabel) > 0 ? "text-green-600 font-semibold" : ""}>
+                    Vol: {totalVolumeLabel} SOL
+                  </span>
+                  <span className="text-[#999]">•</span>
+                  <span className="font-semibold">{liveClosesLabel}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Two-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Betting Panel */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Place Your Bet Panel */}
+            <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+                : )
+              </div>
+
+              <div className="relative z-10">
+                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                  Place Your Bet
+                </h2>
+
+                {outcomesWithProb.length === 0 ? (
+                  <div className="text-center text-muted-foreground text-sm py-8">No outcomes</div>
+                ) : (
+                  <div className="space-y-3">
+                    {outcomesWithProb.map((o) => {
+                      const historySource = (liveHistory && liveHistory.length > 0 ? liveHistory : market.history) || [];
+                      const outcomeSeries = historySource
+                        .map(point => ({
+                          value: point.probs[o.index] || 0
+                        }))
+                        .filter(p => typeof p.value === 'number');
+
+                      return (
+                        <div key={o.index} onClick={() => handleBetClick(o.index)}>
+                          <OutcomeCard
+                            label={o.label}
+                            probPct={o.probPct}
+                            odds={o.odds}
+                            color={getOutcomeColor(o.index)}
+                            series={outcomeSeries}
+                            disabled={market.state !== "open"}
+                            onClick={() => handleBetClick(o.index)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Resolve/Claim Actions */}
+            {publicKey && market && (() => {
+              const configAuthority = config?.authority ? (typeof config.authority === "string" ? new PublicKey(config.authority) : config.authority) : null;
+              const canResolve = canResolveMarket({
+                market: market.rawAccount,
+                wallet: publicKey,
+                configAuthority,
+                configAdminPreCutoff: config?.adminPreCutoff ?? config?.admin_pre_cutoff ?? false,
+              });
+
+              const canClaim = canClaimPosition({
+                market: market.rawAccount,
+                position: userPosition?.account || userPosition,
+                wallet: publicKey,
+              });
+
+              return (
+                <>
+                  {canResolve && (
+                    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5">
+                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                        Resolve Market
+                      </h2>
+                      {market.isLocked && (
+                        <div className="text-xs text-muted-foreground mb-3 bg-[#fff9e6] border border-[#ffc107] rounded px-2 py-1">
+                          Status: Locked (cutoff passed)
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {market.outcomes.slice(0, 5).map((outcome, i) => (
+                          <Button
+                            key={i}
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (!program || !publicKey || !marketId || resolving) return;
+
+                              const feeWallet = (config as any)?.feeWallet || (config as any)?.fee_wallet || (config as any)?.feeWalletAcc;
+                              if (!feeWallet) {
+                                toast.error("Config fee wallet not found");
+                                return;
+                              }
+
+                              const creatorWallet = (market.rawAccount as any)?.creator;
+                              if (!creatorWallet) {
+                                toast.error("Market creator wallet not found");
+                                return;
+                              }
+
+                              setResolving(true);
+                              try {
+                                const marketPk = new PublicKey(marketId);
+                                const sig = await resolveMarket(program as any, {
+                                  market: marketPk,
+                                  signer: publicKey,
+                                  winnerIndex: i,
+                                  platformFeeWallet: new PublicKey(feeWallet),
+                                  creatorWallet: new PublicKey(creatorWallet),
+                                });
+                                toast.success(`Market resolved! Transaction: ${sig.slice(0, 8)}...`);
+                                await refreshMarket();
+                              } catch (error: any) {
+                                console.error("Resolve error:", error);
+                                showErrorToast(error, "Failed to resolve market");
+                              } finally {
+                                setResolving(false);
+                              }
+                            }}
+                            disabled={resolving}
+                            className="font-semibold border-[#8b8b8b] hover:bg-[#e8e8e8]"
+                          >
+                            {resolving ? "Resolving..." : outcome.label}
+                          </Button>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!program || !publicKey || !marketId || resolving) return;
+
+                            const feeWallet = (config as any)?.feeWallet || (config as any)?.fee_wallet || (config as any)?.feeWalletAcc;
+                            if (!feeWallet) {
+                              toast.error("Config fee wallet not found");
+                              return;
+                            }
+
+                            const creatorWallet = (market.rawAccount as any)?.creator;
+                            if (!creatorWallet) {
+                              toast.error("Market creator wallet not found");
+                              return;
+                            }
+
+                            setResolving(true);
+                            try {
+                              const marketPk = new PublicKey(marketId);
+                              const sig = await voidMarket(program as any, {
+                                market: marketPk,
+                                signer: publicKey,
+                                platformFeeWallet: new PublicKey(feeWallet),
+                                creatorWallet: new PublicKey(creatorWallet),
+                              });
+                              toast.success(`Market voided! Transaction: ${sig.slice(0, 8)}...`);
+                              await refreshMarket();
+                            } catch (error: any) {
+                              console.error("Void error:", error);
+                              showErrorToast(error, "Failed to void market");
+                            } finally {
+                              setResolving(false);
+                            }
+                          }}
+                          disabled={resolving}
+                          className="font-semibold border-[#8b8b8b] hover:bg-[#e8e8e8]"
+                        >
+                          {resolving ? "Resolving..." : "VOID"}
+                        </Button>
+                      </div>
+                      {resolving && (
+                        <div className="text-xs text-muted-foreground mt-2">Submitting transaction...</div>
+                      )}
+                    </div>
+                  )}
+
+                  {market.isResolved && canClaim && (
+                    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5">
+                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                        Claim Winnings
+                      </h2>
+                      <Button
+                        variant="default"
+                        onClick={async () => {
+                          if (!program || !publicKey || !marketId || claiming) return;
+                          setClaiming(true);
+                          try {
+                            const marketPk = new PublicKey(marketId);
+                            const sig = await claimWinnings(program as any, {
+                              market: marketPk,
+                              user: publicKey,
+                            });
+                            toast.success(`Winnings claimed! Transaction: ${sig.slice(0, 8)}...`);
+                            await refreshMarket();
+                          } catch (error: any) {
+                            console.error("Claim error:", error);
+                            showErrorToast(error, "Failed to claim winnings");
+                          } finally {
+                            setClaiming(false);
+                          }
+                        }}
+                        disabled={claiming}
+                        className="w-full font-bold shadow-md"
+                      >
+                        {claiming ? "Claiming..." : "Claim Winnings"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {market.isResolved && publicKey && !canClaim && (
+                    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5">
+                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-3 pb-2 border-b-2 border-[#d3d3d3]">
+                        Claim Status
+                      </h2>
+                      <div className="text-xs text-muted-foreground">
+                        No claimable position. You may not have a winning position or it may already be claimed.
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Right Column - Charts and Activity */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Probability Chart */}
+            <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+                : )
+              </div>
+
+              <div className="relative z-10">
+                <div className="flex justify-between items-center mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                  <h2 className="text-xs uppercase font-black tracking-wider text-[#555]">
+                    Probability Over Time
+                  </h2>
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                      <span className="font-semibold text-[#555]">Yes</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                      <span className="font-semibold text-[#555]">No</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">Live odds snapshots as bets are placed</p>
+
+                <div className="h-64 bg-[#fafafa] border border-[#e0e0e0] rounded p-4">
+                  <ProbabilityChart market={market} history={probHistory} />
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+                : )
+              </div>
+
+              <div className="relative z-10">
+                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                  Recent Activity
+                </h2>
+
+                {visibleActivity.length === 0 ? (
+                  <div className="text-center py-12 text-sm text-muted-foreground">
+                    no activity yet. be the first!
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-0.5">
+                      {visibleActivity.map((item, idx) => {
+                        const solscanUrl = item.txSig
+                          ? `https://solscan.io/tx/${item.txSig}?cluster=devnet`
+                          : undefined;
+                        const timeStr = new Date(item.ts).toLocaleTimeString();
+                        const displayName = item.username || shortenWallet(item.wallet);
+
+                        let activityText = "";
+                        if (item.kind === "bet") {
+                          activityText = `bet ${item.outcomeLabel ?? "Unknown"}`;
+                        } else if (item.kind === "market_created") {
+                          activityText = "created market";
+                        } else if (item.kind === "resolved") {
+                          activityText = `resolved ${item.outcomeLabel ?? "Unknown"}`;
+                        }
 
                         return (
-                          <div key={o.index} onClick={() => handleBetClick(o.index)}>
-                            <OutcomeCard
-                              label={o.label}
-                              probPct={o.probPct}
-                              odds={o.odds}
-                              color={getOutcomeColor(o.index)}
-                              series={outcomeSeries}
-                              disabled={market.state !== "open"}
-                              onClick={() => handleBetClick(o.index)}
-                            />
-                          </div>
+                          <button
+                            key={`${item.kind}-${item.ts}-${item.wallet}`}
+                            type="button"
+                            className={`w-full text-left px-3 py-2.5 text-xs rounded transition-colors ${idx % 2 === 0 ? 'bg-[#f9f9f9]' : 'bg-white'
+                              } ${item.txSig ? 'hover:bg-[#e8e8e8] cursor-pointer' : ''} border-b border-[#f0f0f0]`}
+                            onClick={() => {
+                              if (item.txSig && solscanUrl) {
+                                window.open(solscanUrl, "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-[#111]">{displayName}</div>
+                                <div className="text-[#666]">
+                                  {activityText}
+                                  {item.kind === "bet" && item.amountSol != null && ` • ${item.amountSol.toFixed(3)} SOL`}
+                                </div>
+                              </div>
+                              <div className="text-right ml-3">
+                                {item.kind === "bet" && item.amountSol != null && (
+                                  <div className="font-mono font-bold text-[#111]">{item.amountSol.toFixed(2)} SOL</div>
+                                )}
+                                <div className="text-[#999] text-[10px]">{timeStr}</div>
+                              </div>
+                            </div>
+                          </button>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Resolve/Claim Actions */}
-              {publicKey && market && (() => {
-                const configAuthority = config?.authority ? (typeof config.authority === "string" ? new PublicKey(config.authority) : config.authority) : null;
-                const canResolve = canResolveMarket({
-                  market: market.rawAccount,
-                  wallet: publicKey,
-                  configAuthority,
-                  configAdminPreCutoff: config?.adminPreCutoff ?? config?.admin_pre_cutoff ?? false,
-                });
-
-                const canClaim = canClaimPosition({
-                  market: market.rawAccount,
-                  position: userPosition?.account || userPosition,
-                  wallet: publicKey,
-                });
-
-                return (
-                  <>
-                    {canResolve && (
-                      <div className="win95-window bg-background p-1">
-                        <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-                          <span className="font-black text-xs sm:text-sm tracking-tight">resolve market</span>
-                        </div>
-                        <div className="win95-sunken bg-background p-3 sm:p-4 space-y-2">
-                          {market.isLocked && (
-                            <div className="text-xs text-muted-foreground mb-2">Status: Locked (cutoff passed)</div>
-                          )}
-                          <div className="flex flex-wrap gap-2">
-                            {market.outcomes.slice(0, 5).map((outcome, i) => (
-                              <Button
-                                key={i}
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                  if (!program || !publicKey || !marketId || resolving) return;
-
-                                  // Get fee wallet from config
-                                  const feeWallet = (config as any)?.feeWallet || (config as any)?.fee_wallet || (config as any)?.feeWalletAcc;
-                                  if (!feeWallet) {
-                                    toast.error("Config fee wallet not found");
-                                    return;
-                                  }
-
-                                  // Get creator wallet
-                                  const creatorWallet = (market.rawAccount as any)?.creator;
-                                  if (!creatorWallet) {
-                                    toast.error("Market creator wallet not found");
-                                    return;
-                                  }
-
-                                  setResolving(true);
-                                  try {
-                                    const marketPk = new PublicKey(marketId);
-                                    const sig = await resolveMarket(program as any, {
-                                      market: marketPk,
-                                      signer: publicKey,
-                                      winnerIndex: i,
-                                      platformFeeWallet: new PublicKey(feeWallet),
-                                      creatorWallet: new PublicKey(creatorWallet),
-                                    });
-                                    toast.success(`Market resolved! Transaction: ${sig.slice(0, 8)}...`);
-                                    await refreshMarket();
-                                  } catch (error: any) {
-                                    console.error("Resolve error:", error);
-                                    showErrorToast(error, "Failed to resolve market");
-                                  } finally {
-                                    setResolving(false);
-                                  }
-                                }}
-                                disabled={resolving}
-                                className="font-bold"
-                              >
-                                Resolve: {outcome.label}
-                              </Button>
-                            ))}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={async () => {
-                                if (!program || !publicKey || !marketId || resolving) return;
-
-                                // Get fee wallet from config
-                                const feeWallet = (config as any)?.feeWallet || (config as any)?.fee_wallet || (config as any)?.feeWalletAcc;
-                                if (!feeWallet) {
-                                  toast.error("Config fee wallet not found");
-                                  return;
-                                }
-
-                                // Get creator wallet
-                                const creatorWallet = (market.rawAccount as any)?.creator;
-                                if (!creatorWallet) {
-                                  toast.error("Market creator wallet not found");
-                                  return;
-                                }
-
-                                setResolving(true);
-                                try {
-                                  const marketPk = new PublicKey(marketId);
-                                  const sig = await voidMarket(program as any, {
-                                    market: marketPk,
-                                    signer: publicKey,
-                                    platformFeeWallet: new PublicKey(feeWallet),
-                                    creatorWallet: new PublicKey(creatorWallet),
-                                  });
-                                  toast.success(`Market voided! Transaction: ${sig.slice(0, 8)}...`);
-                                  await refreshMarket();
-                                } catch (error: any) {
-                                  console.error("Void error:", error);
-                                  showErrorToast(error, "Failed to void market");
-                                } finally {
-                                  setResolving(false);
-                                }
-                              }}
-                              disabled={resolving}
-                              className="font-bold"
-                            >
-                              VOID
-                            </Button>
-                          </div>
-                          {resolving && (
-                            <div className="text-xs text-muted-foreground">Submitting transaction...</div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {market.isResolved && canClaim && (
-                      <div className="win95-window bg-background p-1">
-                        <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-                          <span className="font-black text-xs sm:text-sm tracking-tight">claim winnings</span>
-                        </div>
-                        <div className="win95-sunken bg-background p-3 sm:p-4">
-                          <Button
-                            variant="primary"
-                            onClick={async () => {
-                              if (!program || !publicKey || !marketId || claiming) return;
-                              setClaiming(true);
-                              try {
-                                const marketPk = new PublicKey(marketId);
-                                const sig = await claimWinnings(program as any, {
-                                  market: marketPk,
-                                  user: publicKey,
-                                });
-                                toast.success(`Winnings claimed! Transaction: ${sig.slice(0, 8)}...`);
-                                await refreshMarket();
-                              } catch (error: any) {
-                                console.error("Claim error:", error);
-                                showErrorToast(error, "Failed to claim winnings");
-                              } finally {
-                                setClaiming(false);
-                              }
-                            }}
-                            disabled={claiming}
-                            className="w-full"
-                          >
-                            {claiming ? "Claiming..." : "Claim Winnings"}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {market.isResolved && publicKey && !canClaim && (
-                      <div className="win95-window bg-background p-1">
-                        <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-                          <span className="font-black text-xs sm:text-sm tracking-tight">claim status</span>
-                        </div>
-                        <div className="win95-sunken bg-background p-3 sm:p-4 text-xs text-muted-foreground">
-                          No claimable position. You may not have a winning position or it may already be claimed.
-                        </div>
+                    {hasMoreActivity && (
+                      <div className="mt-4 text-center pt-3 border-t-2 border-[#d3d3d3]">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllActivity(v => !v)}
+                          className="text-xs text-primary hover:underline font-bold"
+                        >
+                          {showAllActivity ? "show less activity" : `show more activity (${filteredActivity.length - MAX_VISIBLE_RECENT} more)`}
+                        </button>
                       </div>
                     )}
                   </>
-                );
-              })()}
+                )}
+              </div>
             </div>
 
-            {/* Charts and Activity */}
-            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              {/* Chart */}
-              <div className="win95-window bg-background p-1">
-                <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-                  <span className="font-black text-xs sm:text-sm tracking-tight">probability over time</span>
-                </div>
-                <div className="win95-sunken bg-background p-3 sm:p-6">
-                  <div className="h-48 sm:h-64 win95-sunken p-2 sm:p-4 bg-input">
-                    <ProbabilityChart market={market} history={probHistory} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="win95-window bg-background p-1">
-                <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1">
-                  <span className="font-black text-xs sm:text-sm tracking-tight">recent activity</span>
-                </div>
-
-                <div className="win95-sunken bg-background p-3 sm:p-4">
-                  <div className="border border-gray-400 border-t-0 bg-[#d3d3d3]">
-                    {visibleActivity.length === 0 ? (
-                      <div className="px-4 py-6 text-xs text-gray-700 italic">
-                        no activity yet. be the first!
-                      </div>
-                    ) : (
-                      <>
-                        <div className="divide-y divide-gray-400">
-                          {visibleActivity.map((item) => {
-                            const solscanUrl = item.txSig
-                              ? `https://solscan.io/tx/${item.txSig}?cluster=devnet`
-                              : undefined;
-                            const timeStr = new Date(item.ts).toLocaleTimeString();
-                            const displayName = item.username || shortenWallet(item.wallet);
-
-                            let activityText = "";
-                            if (item.kind === "bet") {
-                              activityText = `bet ${item.outcomeLabel ?? "Unknown"}`;
-                            } else if (item.kind === "market_created") {
-                              activityText = "created market";
-                            } else if (item.kind === "resolved") {
-                              activityText = `resolved ${item.outcomeLabel ?? "Unknown"}`;
-                            }
-
-                            return (
-                              <button
-                                key={`${item.kind}-${item.ts}-${item.wallet}`}
-                                type="button"
-                                className={
-                                  item.txSig
-                                    ? "w-full text-left cursor-pointer hover:bg-muted px-4 py-2 text-xs border-t border-gray-400"
-                                    : "w-full text-left px-4 py-2 text-xs border-t border-gray-400"
-                                }
-                                onClick={() => {
-                                  if (item.txSig && solscanUrl) {
-                                    window.open(solscanUrl, "_blank", "noopener,noreferrer");
-                                  }
-                                }}
-                              >
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <div>{displayName}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {activityText}
-                                      {item.kind === "bet" && item.amountSol != null && ` • ${item.amountSol.toFixed(3)} SOL`}
-                                    </div>
-                                  </div>
-                                  <div className="text-right text-xs">
-                                    {item.kind === "bet" && item.amountSol != null && (
-                                      <div>{item.amountSol.toFixed(2)} sol</div>
-                                    )}
-                                    <div className="text-muted-foreground">{timeStr}</div>
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {hasMoreActivity && (
-                          <div className="px-4 py-2 border-t border-gray-400">
-                            <button
-                              type="button"
-                              onClick={() => setShowAllActivity(v => !v)}
-                              className="text-xs text-primary hover:underline cursor-pointer"
-                              style={{ textDecoration: "underline", color: "#0066cc" }}
-                            >
-                              {showAllActivity ? "show less activity" : `show more activity (${filteredActivity.length - MAX_VISIBLE_RECENT} more)`}
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Comments Section */}
-              <CommentsSection marketId={market.pubkey} />
-              {shareTarget && (
-                <ShareMarketModal
-                  open={Boolean(shareTarget)}
-                  onOpenChange={(open) => {
-                    if (!open) setShareTarget(null);
-                  }}
-                  market={shareTarget}
-                />
-              )}
-            </div>
+            {/* Comments Section */}
+            <CommentsSection marketId={market.pubkey} />
           </div>
-
-
         </div>
       </main>
 
@@ -930,6 +928,16 @@ const MarketDetails = () => {
         initialAnswerIndex={selectedOutcomeIndex}
         onBetPlaced={handleBetPlaced}
       />
+
+      {shareTarget && (
+        <ShareMarketModal
+          open={Boolean(shareTarget)}
+          onOpenChange={(open) => {
+            if (!open) setShareTarget(null);
+          }}
+          market={shareTarget}
+        />
+      )}
     </div>
   );
 };

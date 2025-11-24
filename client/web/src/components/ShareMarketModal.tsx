@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import type { UIMarket } from "@/solana/marketMapping";
 import { renderSharePreview, type SharePreviewResult } from "../share/renderSharePreview";
 import { SharePreviewMarketCard } from "@/components/share/SharePreviewMarketCard";
+import { Download, Copy, Share2 } from "lucide-react";
 
 type ShareMarketModalProps = {
   open: boolean;
@@ -158,87 +159,124 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="win95-window bg-background p-1 sm:max-w-lg share-market-dialog-content">
+      <DialogContent className="bg-white border-2 border-[#8b8b8b] rounded shadow-[4px_4px_0_rgba(0,0,0,0.3)] p-0 sm:max-w-lg overflow-hidden">
         {/* Hidden canonical share card */}
         <div ref={hiddenCardRef} className="share-image-hidden-root" aria-hidden="true">
           <SharePreviewMarketCard market={market} />
         </div>
-        <div className="bg-primary text-primary-foreground px-2 py-2 font-black text-sm tracking-tight">
-          share this market
+
+        {/* Header */}
+        <div className="bg-[#111] text-white px-4 py-3 flex items-center gap-2">
+          <Share2 className="w-4 h-4" />
+          <span className="font-black text-sm uppercase tracking-wide">Share This Market</span>
         </div>
-        <div className="win95-sunken bg-background p-4 space-y-4">
-          {/* Link section */}
-          <div className="space-y-1">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">link</div>
-            <Input readOnly value={shareUrl} className="font-mono text-xs" />
-            <div className="flex items-center gap-2">
-              <Button type="button" onClick={copyLink} className="text-sm font-bold">
-                {copied ? "copied!" : "copy link"}
-              </Button>
-              <Button variant="outline" type="button" onClick={() => onOpenChange(false)} className="text-sm font-bold">
-                close
-              </Button>
-            </div>
+
+        <div className="p-5 space-y-5 relative">
+          {/* Faint smiley watermark */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+            : )
           </div>
 
-          {/* Share image */}
-          <div className="share-section">
-            <div className="share-section-label">share image</div>
-            <div className="share-image-status">
-              {previewError ? (
-                <span className="share-image-error">{previewError}</span>
-              ) : isGeneratingPreview ? (
-                "generating image…"
-              ) : hasPreview ? (
-                "image ready"
-              ) : (
-                "waiting for image…"
-              )}
-            </div>
-            {hasPreview && preview?.dataUrl && (
-              <div className="share-market-image-wrapper">
-                <img
-                  src={preview.dataUrl}
-                  alt="Market share"
-                  className="share-market-image"
-                  style={{ maxWidth: "100%", height: "auto", display: "block" }}
-                />
+          <div className="relative z-10 space-y-5">
+            {/* Link section */}
+            <div className="space-y-2">
+              <div className="text-xs text-[#666] uppercase tracking-wide font-bold">Market Link</div>
+              <Input
+                readOnly
+                value={shareUrl}
+                className="font-mono text-xs border-2 border-[#8b8b8b] bg-white shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)] focus:border-[#111]"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={copyLink}
+                  className="font-bold shadow-md flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  {copied ? "Copied!" : "Copy Link"}
+                </Button>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="font-bold border-[#8b8b8b] hover:bg-[#e8e8e8]"
+                >
+                  Close
+                </Button>
               </div>
-            )}
-            <div className="share-image-actions">
-              <Button
-                type="button"
-                onClick={handleCopyImage}
-                disabled={buttonsDisabled}
-                className="text-sm font-bold"
-              >
-                copy image
-              </Button>
-              <Button
-                type="button"
-                onClick={handleDownloadImage}
-                disabled={buttonsDisabled}
-                className="text-sm font-bold"
-              >
-                download png
-              </Button>
             </div>
-          </div>
 
-          {/* Share to */}
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">share to</div>
-            <div className="flex items-center gap-2">
-              <Button asChild variant="secondary" type="button" className="text-sm font-bold">
-                <a href={twitterHref} target="_blank" rel="noreferrer">
-                  Twitter/X
-                </a>
-              </Button>
-              <Button asChild variant="secondary" type="button" className="text-sm font-bold">
-                <a href={telegramHref} target="_blank" rel="noreferrer">
-                  Telegram
-                </a>
-              </Button>
+            {/* Share image */}
+            <div className="space-y-2">
+              <div className="text-xs text-[#666] uppercase tracking-wide font-bold">Share Image</div>
+              <div className="text-xs font-semibold text-[#111] mb-2">
+                {previewError ? (
+                  <span className="text-red-600">{previewError}</span>
+                ) : isGeneratingPreview ? (
+                  "Generating image…"
+                ) : hasPreview ? (
+                  "✓ Image ready"
+                ) : (
+                  "Waiting for image…"
+                )}
+              </div>
+              {hasPreview && preview?.dataUrl && (
+                <div className="border-2 border-[#8b8b8b] rounded shadow-sm overflow-hidden bg-[#c0c0c0] p-3">
+                  <img
+                    src={preview.dataUrl}
+                    alt="Market share"
+                    className="w-full h-auto block rounded"
+                  />
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={handleCopyImage}
+                  disabled={buttonsDisabled}
+                  className="font-bold shadow-md flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy Image
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleDownloadImage}
+                  disabled={buttonsDisabled}
+                  variant="outline"
+                  className="font-bold border-[#8b8b8b] hover:bg-[#e8e8e8] flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PNG
+                </Button>
+              </div>
+            </div>
+
+            {/* Share to */}
+            <div className="space-y-2 pt-3 border-t-2 border-[#d3d3d3]">
+              <div className="text-xs text-[#666] uppercase tracking-wide font-bold">Share To</div>
+              <div className="flex items-center gap-2">
+                <Button
+                  asChild
+                  variant="secondary"
+                  type="button"
+                  className="font-bold shadow-sm"
+                >
+                  <a href={twitterHref} target="_blank" rel="noreferrer">
+                    𝕏 Twitter
+                  </a>
+                </Button>
+                <Button
+                  asChild
+                  variant="secondary"
+                  type="button"
+                  className="font-bold shadow-sm"
+                >
+                  <a href={telegramHref} target="_blank" rel="noreferrer">
+                    📱 Telegram
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
