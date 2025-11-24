@@ -124,6 +124,7 @@ export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, use
         creatorName,
         creatorUsername: meta.creator_name ?? undefined, // Set username from backend
         imageUrl: meta.image_url ?? m.imageUrl,
+        backendDescription: meta.description ?? undefined,
         outcomes,
         userOutcomeIndex,
         // Ensure volumeLamports always comes from on-chain (m.volumeLamports)
@@ -689,6 +690,7 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
         displayQuestion,
         creatorName,
         imageUrl: backendMeta.image_url ?? uiMarket.imageUrl,
+        backendDescription: backendMeta.description ?? undefined,
         outcomes,
         userOutcomeIndex,
         // Ensure volumeLamports always comes from on-chain
