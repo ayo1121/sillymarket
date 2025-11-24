@@ -906,7 +906,7 @@ const MarketDetails = () => {
                             <div className="flex flex-col">
                               <div className="text-sm font-bold text-[#111] dark:text-white">
                                 {item.username ? (
-                                  <span className="text-primary dark:text-primary-foreground mr-1">@{item.username}</span>
+                                  <span className="text-primary dark:text-white mr-1">@{item.username}</span>
                                 ) : (
                                   shortenWallet(item.wallet)
                                 )}
