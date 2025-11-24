@@ -14,7 +14,7 @@ import {
   OutcomeSeriesPoint,
   computeOutcomeSnapshotsFromHistory,
 } from "@/hooks/useMarketProbabilityHistory";
-import { Lock, CheckCircle, XCircle } from "lucide-react";
+import { Lock, CheckCircle, XCircle, Flame } from "lucide-react";
 
 export type MarketCardProps = {
   market: UIMarket;
@@ -44,14 +44,14 @@ export const MarketStatsRow: React.FC<MarketStatsRowProps> = ({
   winnerOutcomeIndex,
 }) => {
   return (
-    <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t border-border/30 mt-3">
+    <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/10 mt-auto">
       <div className="flex items-center gap-1.5">
-        <span className="font-bold uppercase tracking-wider opacity-60 text-[10px]">Vol</span>
-        <span className="font-mono font-bold text-foreground">{totalVolumeSol} SOL</span>
+        <span className="font-bold uppercase tracking-wider opacity-50 text-[10px]">Vol</span>
+        <span className="font-mono font-bold text-foreground opacity-80">{totalVolumeSol} SOL</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="font-bold uppercase tracking-wider opacity-60 text-[10px]">Ends</span>
-        <span className="font-bold text-foreground">{closesLabel}</span>
+        <span className="font-bold uppercase tracking-wider opacity-50 text-[10px]">Ends</span>
+        <span className="font-bold text-foreground opacity-80">{closesLabel}</span>
       </div>
     </div>
   );
@@ -93,23 +93,23 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
     <div
       className={cn(
         "relative overflow-hidden transition-all duration-200",
-        "bg-background border border-border/40 rounded-[3px]",
-        "hover:border-primary/50 hover:shadow-sm",
-        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]",
+        "bg-background border border-border/20 rounded-[4px]",
+        "hover:border-primary/40 hover:shadow-sm group",
+        disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer active:scale-[0.98]",
         compact ? "p-2" : "p-3"
       )}
       onClick={!disabled ? onClick : undefined}
     >
       {/* Background probability bar */}
       <div
-        className="absolute bottom-0 left-0 top-0 transition-all duration-500 opacity-10"
+        className="absolute bottom-0 left-0 top-0 transition-all duration-500 opacity-[0.08] group-hover:opacity-[0.12]"
         style={{ width: `${probDisplay}%`, backgroundColor: color }}
       />
 
       <div className="relative z-10 flex flex-col h-full justify-between gap-2">
         <div className="flex justify-between items-start">
-          <span className="font-bold text-sm uppercase tracking-tight leading-none">{label}</span>
-          <span className="font-mono text-xs font-bold opacity-60">{oddsDisplay}x</span>
+          <span className="font-bold text-sm uppercase tracking-tight leading-none text-foreground/90">{label}</span>
+          <span className="font-mono text-xs font-bold opacity-50 group-hover:opacity-80 transition-opacity">{oddsDisplay}x</span>
         </div>
 
         <div className="flex justify-between items-end">
@@ -117,7 +117,7 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
             {probDisplay}%
           </span>
           {safeSeries.length > 0 && (
-            <div className="w-12 h-6 opacity-60">
+            <div className="w-12 h-6 opacity-40 group-hover:opacity-60 transition-opacity">
               <MiniOutcomeSparkline series={safeSeries} stroke={color} />
             </div>
           )}
@@ -152,6 +152,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   const isResolved = market.state === "resolved";
   const isVoid = market.state === "void" || (isResolved && market.rawAccount?.winningIndex === -2);
   const isLocked = market.state === "locked" || (market.state === "open" && market.isLocked);
+  const isOpen = normalizedStatus === "open" && !isLocked && !isResolved && !isVoid;
 
   // Probability history hook
   const { series, loading: historyLoading } = useMarketProbabilityHistory(market);
@@ -160,16 +161,21 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   return (
     <div
       className={cn(
-        "win95-raised bg-background p-3 sm:p-4 flex flex-col h-full transition-transform hover:-translate-y-1 hover:shadow-lg cursor-pointer relative",
+        "market-card bg-background p-4 flex flex-col h-full transition-all duration-200 relative",
+        "border border-border/40 rounded-[4px] shadow-[0_2px_0_rgba(0,0,0,0.05)]",
+        "hover:-translate-y-[2px] hover:shadow-[0_4px_0_rgba(0,0,0,0.1)] hover:border-border/60",
+        isOpen && "border-l-4 border-l-green-500/50",
+        (isResolved || isVoid) && "opacity-85 grayscale-[0.1]",
+        isLocked && "market-card--locked bg-muted/5",
         className
       )}
       onClick={handleCardClick}
     >
       {/* Header: Image + Title */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-4 mb-5">
         {/* Image */}
         <div className="relative flex-shrink-0">
-          <div className="w-16 h-16 win95-sunken bg-input p-1">
+          <div className="w-14 h-14 rounded-[3px] overflow-hidden border border-border/20 bg-muted/10">
             <img
               src={imageUrl || lightbulbIcon}
               alt="market"
@@ -183,30 +189,43 @@ export const MarketCard: React.FC<MarketCardProps> = ({
 
         {/* Title & Meta */}
         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-          <h3 className="font-bold text-base sm:text-lg leading-tight line-clamp-2">
-            {market.displayQuestion}
-          </h3>
+          <div className="flex justify-between items-start gap-2">
+            <h3 className="font-bold text-lg leading-tight line-clamp-2 text-foreground/90">
+              {market.displayQuestion}
+            </h3>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-bold text-primary">
-              {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
+            {/* Status Badge (Top Right) */}
+            <div className="flex-shrink-0">
+              {isLocked && <Lock className="w-4 h-4 text-orange-500/70" />}
+              {isResolved && !isVoid && <CheckCircle className="w-4 h-4 text-green-600/70" />}
+              {isVoid && <XCircle className="w-4 h-4 text-muted-foreground/70" />}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/70 mt-1">
+            <span className="font-medium">
+              by {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
             </span>
-            <span>•</span>
+            <span className="opacity-40">•</span>
+            <span className="font-mono opacity-60">
+              {shortenWallet(market.pubkey, 4)}
+            </span>
+            <span className="opacity-40">•</span>
             <span className={cn(
-              "font-bold uppercase",
-              normalizedStatus === "open" && "text-green-600",
-              normalizedStatus === "locked" && "text-orange-500",
-              isResolved && !isVoid && "text-brand-yes",
+              "font-bold uppercase tracking-wider text-[10px]",
+              isOpen && "text-green-600/80",
+              isLocked && "text-orange-500/80",
+              isResolved && !isVoid && "text-brand-yes/80",
               isVoid && "text-muted-foreground"
             )}>
-              {isVoid ? "VOID" : isResolved ? "RESOLVED" : normalizedStatus}
+              {isVoid ? "VOID" : isResolved ? "RESOLVED" : isLocked ? "LOCKED" : "OPEN"}
             </span>
           </div>
         </div>
       </div>
 
       {/* Outcomes Grid */}
-      <div className="grid grid-cols-2 gap-2 mb-auto">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         {market.outcomes.map((outcome, idx) => {
           const color = getOutcomeColor(idx);
           const seriesPoints = outcomeSnapshots[idx]?.seriesPoints || [];
@@ -224,9 +243,9 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               odds={odds}
               color={color}
               series={seriesPoints}
-              disabled={normalizedStatus !== "open"}
+              disabled={!isOpen}
               onClick={() => {
-                if (normalizedStatus === "open" && onOutcomeClick) {
+                if (isOpen && onOutcomeClick) {
                   onOutcomeClick(idx);
                 }
               }}

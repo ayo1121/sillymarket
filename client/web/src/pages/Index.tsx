@@ -116,18 +116,18 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 mt-2">
           <div>
-            <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">Markets</h1>
-            <p className="text-muted-foreground font-medium">
-              Predict outcomes, trade positions, and earn rewards.
+            <h1 className="text-4xl font-black uppercase tracking-tighter mb-1">Markets</h1>
+            <p className="text-muted-foreground font-medium text-sm tracking-wide">
+              predict outcomes, trade positions, and earn rewards.
             </p>
           </div>
 
           <Button
             onClick={() => navigate("/create-market")}
             size="lg"
-            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all"
+            className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all bg-primary text-primary-foreground border-2 border-primary"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create Market
@@ -135,26 +135,30 @@ const Index = () => {
         </div>
 
         {/* Trending Strip */}
-        <TrendingStrip markets={markets.filter(m => m.state === 'open').sort((a, b) => b.volumeLamports - a.volumeLamports)} />
+        <div className="mb-10">
+          <TrendingStrip markets={markets.filter(m => m.state === 'open').sort((a, b) => b.volumeLamports - a.volumeLamports)} />
+        </div>
 
-        {/* Search & Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8 mt-8">
-          {/* Search */}
-          <div className="md:col-span-5 lg:col-span-6">
-            <MarketSearch
-              markets={markets}
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
-          </div>
+        {/* Unified Search & Filters Bar */}
+        <div className="win95-sunken bg-background/50 p-1.5 mb-8 rounded-[4px] border border-border/40">
+          <div className="flex flex-col md:flex-row gap-2">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search markets..."
+                className="pl-9 h-10 bg-background border-border/20 focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+              />
+            </div>
 
-          {/* Filters */}
-          <div className="md:col-span-7 lg:col-span-6 flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
+            {/* Filters Group */}
+            <div className="flex gap-2 w-full md:w-auto">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full win95-sunken bg-background font-bold">
+                <SelectTrigger className="w-[140px] h-10 bg-background border-border/20 font-bold">
                   <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
+                    <Filter className="w-3.5 h-3.5 opacity-60" />
                     <SelectValue placeholder="Status" />
                   </div>
                 </SelectTrigger>
@@ -164,11 +168,9 @@ const Index = () => {
                   <SelectItem value="closed">Closed / Resolved</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            <div className="flex-1">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full win95-sunken bg-background font-bold">
+                <SelectTrigger className="w-[160px] h-10 bg-background border-border/20 font-bold">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -183,14 +185,14 @@ const Index = () => {
 
         {/* Markets Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-[320px] bg-muted/10 rounded-md animate-pulse border border-border/30" />
+              <div key={i} className="h-[340px] bg-muted/5 rounded-[4px] animate-pulse border border-border/10" />
             ))}
           </div>
         ) : visibleMarkets.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {visibleMarkets.map((market) => (
                 <MarketCard
                   key={market.pubkey}
@@ -202,27 +204,33 @@ const Index = () => {
             </div>
 
             {visibleCount < filteredAndSortedMarkets.length && (
-              <div className="mt-12 flex justify-center">
+              <div className="mt-16 flex justify-center">
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="min-w-[200px] font-bold border-2 hover:bg-primary/5"
+                  className="min-w-[200px] font-bold border-2 hover:bg-primary/5 h-12 text-base"
                 >
-                  Load More
+                  Load More Markets
                 </Button>
               </div>
             )}
           </>
         ) : (
-          <div className="text-center py-20 bg-muted/10 rounded-lg border-2 border-dashed border-border/50">
-            <h3 className="text-xl font-bold mb-2">No markets found</h3>
-            <p className="text-muted-foreground mb-6">Try adjusting your search or filters</p>
-            <Button onClick={() => {
-              setSearchQuery("");
-              setStatusFilter("all");
-            }}>
-              Clear Filters
+          <div className="text-center py-24 bg-muted/5 rounded-[4px] border border-dashed border-border/20">
+            <h3 className="text-xl font-bold mb-2 opacity-80">No markets found</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              We couldn't find any markets matching your criteria. Try adjusting your filters or search terms.
+            </p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("all");
+              }}
+              className="font-bold"
+            >
+              Clear All Filters
             </Button>
           </div>
         )}
