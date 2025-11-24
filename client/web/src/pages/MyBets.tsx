@@ -100,7 +100,7 @@ const MyBets = () => {
             ? formatDistanceToNow(new Date(createdTs * 1000), { addSuffix: true })
             : "",
           imageUrl: market.imageUrl || undefined,
-          category: "market",
+          category: market.creatorUsername || `by ${market.creatorPubkey ? shortenWallet(market.creatorPubkey, 4, 4) : 'unknown'}`,
           marketAddress: shortenWallet(market.pubkey, 6, 4),
           creatorAddress: market.creatorPubkey ? shortenWallet(market.creatorPubkey, 6, 4) : "unknown",
           marketPubkey: market.pubkey,
@@ -112,7 +112,7 @@ const MyBets = () => {
   }, [positions, marketMap, publicKey]);
 
   const filteredBets = useMemo(() => {
-    return betsView.filter((bet) => {
+    const filtered = betsView.filter((bet) => {
       switch (statusFilter) {
         case "active":
           return bet.status === "active";
@@ -122,7 +122,16 @@ const MyBets = () => {
           return bet.status === "lost";
       }
     });
-  }, [betsView, statusFilter]);
+
+    // Sort by creation time (most recent first)
+    return filtered.sort((a, b) => {
+      const aMarket = marketMap.get(a.marketPubkey);
+      const bMarket = marketMap.get(b.marketPubkey);
+      const aTs = aMarket?.rawAccount?.createdTs?.toNumber?.() ?? aMarket?.rawAccount?.created_ts?.toNumber?.() ?? 0;
+      const bTs = bMarket?.rawAccount?.createdTs?.toNumber?.() ?? bMarket?.rawAccount?.created_ts?.toNumber?.() ?? 0;
+      return bTs - aTs; // Descending order (newest first)
+    });
+  }, [betsView, statusFilter, marketMap]);
 
   const totalBetLamports = betsView.reduce((sum, bet) => sum + bet.stakeLamports, 0n);
   const realizedPnlLamports = betsView
@@ -240,8 +249,8 @@ const MyBets = () => {
                       <div className="bg-primary/10 px-2 py-1 mb-2 flex items-center justify-between">
                         <span className="font-bold text-xs sm:text-sm">Bet Details</span>
                         <span className={`text-xs px-2 py-1 win95-sunken ${bet.status === "active" ? "bg-background" :
-                            bet.status === "won" ? "bg-brand-yes/20" :
-                              "bg-brand-no/20"
+                          bet.status === "won" ? "bg-brand-yes/20" :
+                            "bg-brand-no/20"
                           }`}>
                           {bet.status === "active" ? "Open" : bet.status === "won" ? "Won" : "Lost"}
                         </span>
@@ -257,13 +266,10 @@ const MyBets = () => {
                           <div className="flex-1 min-w-0">
                             <h3 className="text-base sm:text-lg font-black mb-2 leading-tight break-words">{bet.question}</h3>
                             <div className="space-y-1 text-xs sm:text-sm">
-                              <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                              <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
                                 <span className="font-bold">{bet.category}</span>
                                 <span className="hidden sm:inline">•</span>
-                                <span className="font-mono text-xs truncate">{bet.marketAddress}</span>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                                <span className="font-mono truncate">{bet.creatorAddress}</span>
+                                <span className="font-mono truncate">{bet.marketAddress}</span>
                                 <span className="hidden sm:inline">•</span>
                                 <span className="font-bold">{bet.createdAt}</span>
                               </div>
@@ -274,7 +280,10 @@ const MyBets = () => {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm win95-sunken bg-input p-2 sm:p-3">
                           <div>
                             <div className="text-muted-foreground mb-1 text-xs font-bold">prediction</div>
-                            <div className={`font-black ${bet.prediction === "yes" ? "text-brand-yes" : "text-brand-no"}`}>
+                            <div className={`font-black ${bet.status === "won" ? "text-brand-yes" :
+                              bet.status === "lost" ? "text-brand-no" :
+                                "text-foreground"
+                              }`}>
                               {bet.prediction} {bet.status === "won" ? ":)" : bet.status === "lost" ? ":(" : ":|"}
                             </div>
                           </div>
@@ -293,12 +302,12 @@ const MyBets = () => {
                             <div className="text-muted-foreground mb-1 text-xs font-bold">PNL</div>
                             <div
                               className={`font-black ${bet.realized
-                                  ? Number(bet.pnlLamports) / LAMPORTS_PER_SOL > 0
-                                    ? "text-brand-yes"
-                                    : Number(bet.pnlLamports) / LAMPORTS_PER_SOL < 0
-                                      ? "text-brand-no"
-                                      : ""
-                                  : "text-muted-foreground"
+                                ? Number(bet.pnlLamports) / LAMPORTS_PER_SOL > 0
+                                  ? "text-brand-yes"
+                                  : Number(bet.pnlLamports) / LAMPORTS_PER_SOL < 0
+                                    ? "text-brand-no"
+                                    : ""
+                                : "text-muted-foreground"
                                 }`}
                             >
                               {bet.realized
