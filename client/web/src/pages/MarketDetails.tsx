@@ -955,8 +955,7 @@ const MarketDetails = () => {
               </div>
             </div>
 
-            {/* Comments Section */}
-            <CommentsSection marketId={market.pubkey} />
+
           </div>
         </div>
       </main>

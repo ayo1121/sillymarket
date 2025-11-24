@@ -132,7 +132,7 @@ const CreateMarket = () => {
       const { txSig, marketPubkey } = await createMarket(wallet, {
         cutoffTs: cutoffTs,
         question: question.trim(),
-        answers: ["Yes", "No"], // Fixed to Yes/No for now as per UI simplification
+        answers: answers,
         imageUrl: finalImageUrl || null,
       });
 
@@ -149,7 +149,7 @@ const CreateMarket = () => {
         description: null,
         imageUrl: finalImageUrl || null,
         creatorName: username ?? null,
-        answers: ["Yes", "No"],
+        answers: answers,
         createdAt: createdAtIso,
       };
 
@@ -163,7 +163,7 @@ const CreateMarket = () => {
             creator_wallet: creatorWallet,
             creator_name: username ?? null,
             image_url: finalImageUrl || null,
-            answers: ["Yes", "No"],
+            answers: answers,
             description: null,
           });
 
@@ -249,34 +249,120 @@ const CreateMarket = () => {
                 </p>
               </div>
 
-              {/* Image URL Input */}
+              {/* Image Upload or URL */}
               <div className="space-y-3">
                 <label className="block text-sm font-black uppercase tracking-wide text-[#555] dark:text-[#c7c7c7]">
-                  Image URL (Optional)
+                  Market Image (Optional)
                 </label>
-                <div className="flex gap-4 items-start">
-                  <div className="flex-1">
-                    <Input
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="h-12 bg-[#fafafa] dark:bg-[#1a1a1a] border-2 border-[#d3d3d3] dark:border-[#333] focus:border-[#111] dark:focus:border-white rounded px-4 font-medium shadow-inner"
-                    />
-                    <p className="text-xs text-[#666] dark:text-[#999] mt-1.5">
-                      Provide a direct link to an image (JPG, PNG, GIF) to make your market stand out.
-                    </p>
-                  </div>
-                  {imageUrl && (
-                    <div className="w-20 h-20 border-2 border-[#d3d3d3] dark:border-[#333] rounded bg-[#f0f0f0] dark:bg-[#2a2a2a] flex-shrink-0 overflow-hidden">
+
+                <div className="flex flex-col gap-4">
+                  {/* Upload Tab / URL Tab Toggle could go here, but for now let's offer both or just the upload which populates the URL */}
+
+                  {!imagePreview ? (
+                    <div className="border-2 border-dashed border-[#d3d3d3] dark:border-[#333] rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-[#fafafa] dark:hover:bg-[#1a1a1a] transition-colors cursor-pointer relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <Upload className="w-8 h-8 text-[#999] mb-2" />
+                      <p className="text-sm font-bold text-[#555] dark:text-[#c7c7c7]">Click to upload image</p>
+                      <p className="text-xs text-[#999] mt-1">or drag and drop (max 5MB)</p>
+
+                      <div className="w-full flex items-center gap-2 mt-4">
+                        <div className="h-[1px] bg-[#e0e0e0] dark:bg-[#333] flex-1"></div>
+                        <span className="text-[10px] font-bold text-[#999] uppercase">OR</span>
+                        <div className="h-[1px] bg-[#e0e0e0] dark:bg-[#333] flex-1"></div>
+                      </div>
+
+                      <div className="w-full mt-3 relative z-10">
+                        <Input
+                          value={imageUrl}
+                          onChange={(e) => setImageUrl(e.target.value)}
+                          placeholder="Paste image URL directly..."
+                          className="h-10 bg-white dark:bg-[#2a2a2a] text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative w-full sm:w-64 h-48 bg-[#f0f0f0] dark:bg-[#1a1a1a] rounded-lg border-2 border-[#d3d3d3] dark:border-[#333] overflow-hidden group">
                       <img
-                        src={imageUrl}
+                        src={imagePreview}
                         alt="Preview"
                         className="w-full h-full object-cover"
-                        onError={(e) => (e.currentTarget.style.display = 'none')}
                       />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Answers Input */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-black uppercase tracking-wide text-[#555] dark:text-[#c7c7c7]">
+                    Outcomes (2-5)
+                  </label>
+                  <span className="text-xs text-[#999] font-bold">{answers.length}/5</span>
+                </div>
+
+                <div className="space-y-3">
+                  {answers.map((answer, index) => (
+                    <div key={index} className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#999]">
+                          #{index + 1}
+                        </div>
+                        <Input
+                          value={answer}
+                          onChange={(e) => {
+                            const newAnswers = [...answers];
+                            newAnswers[index] = e.target.value;
+                            setAnswers(newAnswers);
+                          }}
+                          placeholder={`Outcome ${index + 1}`}
+                          className="pl-8 h-11 font-bold bg-[#fafafa] dark:bg-[#1a1a1a] border-2 border-[#d3d3d3] dark:border-[#333] focus:border-[#111] dark:focus:border-white rounded shadow-sm"
+                          maxLength={64}
+                        />
+                      </div>
+                      {answers.length > 2 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (answers.length > 2) {
+                              setAnswers(answers.filter((_, i) => i !== index));
+                            }
+                          }}
+                          className="h-11 w-11 text-[#999] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded border-2 border-transparent hover:border-red-200 dark:hover:border-red-900/30"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {answers.length < 5 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setAnswers([...answers, ""])}
+                    className="w-full h-11 border-2 border-dashed border-[#d3d3d3] dark:border-[#333] text-[#999] hover:text-[#111] dark:hover:text-white hover:border-[#999] dark:hover:border-[#666] font-bold gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Outcome
+                  </Button>
+                )}
               </div>
 
               {/* Duration Selection */}
@@ -288,9 +374,9 @@ const CreateMarket = () => {
                 <div className="grid grid-cols-4 gap-3">
                   {[
                     { label: "1 Hour", value: 60 },
+                    { label: "12 Hours", value: 720 },
                     { label: "24 Hours", value: 1440 },
-                    { label: "3 Days", value: 4320 },
-                    { label: "7 Days", value: 10080 },
+                    { label: "48 Hours", value: 2880 },
                   ].map((option) => (
                     <button
                       key={option.value}
@@ -326,10 +412,13 @@ const CreateMarket = () => {
                     <Input
                       type="number"
                       min="5"
+                      max="2880"
                       value={durationMinutes}
                       onChange={(e) => {
                         setDurationType("custom");
-                        setDurationMinutes(parseInt(e.target.value) || 0);
+                        let val = parseInt(e.target.value) || 0;
+                        if (val > 2880) val = 2880;
+                        setDurationMinutes(val);
                       }}
                       className={`h-11 font-mono font-bold text-lg ${durationType === "custom"
                         ? "border-[#111] dark:border-white bg-white dark:bg-[#2a2a2a]"
