@@ -11,27 +11,29 @@ import CreateMarket from "./pages/CreateMarket";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import TermsOfService from "./pages/TermsOfService";
+import { Analytics } from "@vercel/analytics/react";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/my-bets" element={<MyBets />} />
-              <Route path="/market/:id" element={<MarketDetails />} />
-              <Route path="/create-market" element={<CreateMarket />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/my-bets" element={<MyBets />} />
+          <Route path="/market/:id" element={<MarketDetails />} />
+          <Route path="/create-market" element={<CreateMarket />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/admin" element={<AdminPanel />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+      <Analytics />
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
