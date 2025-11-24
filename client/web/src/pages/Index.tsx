@@ -125,7 +125,7 @@ const Index = () => {
           </div>
 
           <Button
-            onClick={() => navigate("/create")}
+            onClick={() => navigate("/create-market")}
             size="lg"
             className="font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all"
           >
