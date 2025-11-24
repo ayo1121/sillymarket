@@ -261,8 +261,16 @@ const MyBets = () => {
     }, 0);
 
     const feesCollectedLamports = creatorMarkets.reduce((sum, market) => {
-      const fees = Number(market.rawAccount?.feesAccruedCreator || 0);
-      return sum + fees;
+      // For resolved markets, fees are already distributed and reset to 0 on-chain.
+      // We estimate creator fees as ~1% of volume (50% of the 2% total fee).
+      if (market.isResolved) {
+        return sum + (Number(market.volumeLamports) * 0.01);
+      }
+
+      // For active markets, use the accrued total (which is the full 2% fee).
+      // We estimate the creator's potential share as 50% (1% total).
+      const rawFees = Number(market.rawAccount?.feesAccruedTotal ?? market.rawAccount?.fees_accrued_total ?? 0);
+      return sum + (rawFees * 0.5);
     }, 0);
 
     return {
