@@ -36,6 +36,7 @@ import ProbabilityChart from "@/components/ProbabilityChart";
 import { showErrorToast } from "@/lib/errorHandling";
 import type { MarketHistoryPoint } from "@/solana/marketMapping";
 import { useMarketActivity } from "@/hooks/useMarketActivity";
+import { FeeDecayInfo } from "@/components/FeeDecayInfo";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -495,6 +496,15 @@ const MarketDetails = () => {
             }
             return null;
           })()}
+
+          {/* Fee Decay Information (for creators after cutoff) */}
+          {market && publicKey && publicKey.toBase58() === market.creatorPubkey && (
+            <FeeDecayInfo
+              cutoffTs={market.closesAt}
+              isResolved={isResolved}
+              isCreator={true}
+            />
+          )}
 
           {/* Market Header */}
           <div className="win95-window bg-background p-1 mb-4 sm:mb-6">

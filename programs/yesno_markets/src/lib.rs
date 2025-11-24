@@ -41,6 +41,17 @@ pub const MARKET_POOL_CAP: u64 = 10_000_000 * 1_000_000_000; // 10M SOL cap
 
 pub const AUTO_VOID_GRACE_SECS: i64 = 7 * 24 * 60 * 60;
 
+// Fee decay time brackets (seconds after cutoff)
+pub const FEE_DECAY_BRACKET_1_SECS: i64 = 5 * 60;   // 5 minutes
+pub const FEE_DECAY_BRACKET_2_SECS: i64 = 10 * 60;  // 10 minutes
+pub const FEE_DECAY_BRACKET_3_SECS: i64 = 15 * 60;  // 15 minutes
+
+// Creator fee percentages (in basis points, out of 10,000)
+pub const CREATOR_FEE_BPS_BRACKET_0: u64 = 100; // 1.0% (50% of total 2%)
+pub const CREATOR_FEE_BPS_BRACKET_1: u64 = 50;  // 0.5% (25% of total 2%)
+pub const CREATOR_FEE_BPS_BRACKET_2: u64 = 25;  // 0.25% (12.5% of total 2%)
+pub const CREATOR_FEE_BPS_BRACKET_3: u64 = 0;   // 0% (0% of total 2%)
+
 pub const DISCRIMINATOR: usize = 8;
 
 // -----------------------------------------------------------------------------
@@ -442,59 +453,68 @@ pub mod yesno_markets {
         let available = available_lamports_above_rent(&m.to_account_info(), Market::SPACE)?;
         require!(available >= total_pool_recalc, ErrorCode::InsufficientFunds);
 
+        // Calculate creator fee based on resolution delay (time-based decay)
+        let creator_fee_bps = calculate_creator_fee_bps(m.cutoff_ts, now);
+        
         let mut fees_transferred: u64 = 0;
 
+        // ALWAYS collect fees (even for void markets)
+        // Split fees based on time-based creator percentage
+        let (creator_fee, platform_fee) = split_fee(m.fees_accrued_total, creator_fee_bps)?;
+
+        require!(ctx.accounts.platform_fee_wallet.owner == &system_program::ID, ErrorCode::BadParam);
+        require!(ctx.accounts.creator_wallet.owner == &system_program::ID, ErrorCode::BadParam);
+        require_keys_eq!(ctx.accounts.platform_fee_wallet.key(), m.platform_fee_wallet, ErrorCode::BadParam);
+        require_keys_eq!(ctx.accounts.creator_wallet.key(), m.creator, ErrorCode::BadParam);
+
+        // Transfer platform fee
+        if platform_fee > 0 {
+            pda_transfer_from_market(
+                &ctx.accounts.system_program,
+                m,
+                &ctx.accounts.platform_fee_wallet.to_account_info(),
+                platform_fee,
+                &[
+                    MARKET_SEED,
+                    m.creator.as_ref(),
+                    &m.cutoff_ts.to_le_bytes(),
+                    &m.question_hash,
+                    &[m.bump],
+                ],
+            )?;
+            fees_transferred = fees_transferred.checked_add(platform_fee).ok_or(ErrorCode::Overflow)?;
+        }
+        
+        // Transfer creator fee (may be 0 if resolved too late)
+        if creator_fee > 0 {
+            pda_transfer_from_market(
+                &ctx.accounts.system_program,
+                m,
+                &ctx.accounts.creator_wallet.to_account_info(),
+                creator_fee,
+                &[
+                    MARKET_SEED,
+                    m.creator.as_ref(),
+                    &m.cutoff_ts.to_le_bytes(),
+                    &m.question_hash,
+                    &[m.bump],
+                ],
+            )?;
+            fees_transferred = fees_transferred.checked_add(creator_fee).ok_or(ErrorCode::Overflow)?;
+        }
+
         if intended == WIN_VOID {
-            // VOID: refund gross; no fees; reset escrow
-            m.resolved_total_pool = total_pool_recalc;
-            m.resolved_total_pool_remaining = total_pool_recalc;
+            // VOID: refund NET amount (after fees)
+            let net_pool = total_pool_recalc.checked_sub(m.fees_accrued_total).ok_or(ErrorCode::Overflow)?;
+            m.resolved_total_pool = net_pool;
+            m.resolved_total_pool_remaining = net_pool;
             m.resolved_win_pool = 0;
             m.winning_index = WIN_VOID;
             m.state = STATE_RESOLVED;
             m.win_unclaimed = m.pos_counts.iter().take(oc).fold(0u32, |acc, &v| acc.saturating_add(v));
             m.fees_accrued_total = 0;
         } else {
-            // Non-VOID: collect fees atomically
-            let (creator_fee, platform_fee) = split_fee(m.fees_accrued_total);
-
-            require!(ctx.accounts.platform_fee_wallet.owner == &system_program::ID, ErrorCode::BadParam);
-            require!(ctx.accounts.creator_wallet.owner == &system_program::ID, ErrorCode::BadParam);
-            require_keys_eq!(ctx.accounts.platform_fee_wallet.key(), m.platform_fee_wallet, ErrorCode::BadParam);
-            require_keys_eq!(ctx.accounts.creator_wallet.key(), m.creator, ErrorCode::BadParam);
-
-            if platform_fee > 0 {
-                pda_transfer_from_market(
-                    &ctx.accounts.system_program,
-                    m,
-                    &ctx.accounts.platform_fee_wallet.to_account_info(),
-                    platform_fee,
-                    &[
-                        MARKET_SEED,
-                        m.creator.as_ref(),
-                        &m.cutoff_ts.to_le_bytes(),
-                        &m.question_hash,
-                        &[m.bump],
-                    ],
-                )?;
-                fees_transferred = fees_transferred.checked_add(platform_fee).ok_or(ErrorCode::Overflow)?;
-            }
-            if creator_fee > 0 {
-                pda_transfer_from_market(
-                    &ctx.accounts.system_program,
-                    m,
-                    &ctx.accounts.creator_wallet.to_account_info(),
-                    creator_fee,
-                    &[
-                        MARKET_SEED,
-                        m.creator.as_ref(),
-                        &m.cutoff_ts.to_le_bytes(),
-                        &m.question_hash,
-                        &[m.bump],
-                    ],
-                )?;
-                fees_transferred = fees_transferred.checked_add(creator_fee).ok_or(ErrorCode::Overflow)?;
-            }
-
+            // Non-VOID: normal resolution (fees already collected above)
             let claimable = total_pool_recalc.checked_sub(m.fees_accrued_total).ok_or(ErrorCode::Overflow)?;
             let w = intended as usize;
             let win_pool = m.pools[w];
@@ -535,8 +555,59 @@ pub mod yesno_markets {
         let available = available_lamports_above_rent(&m.to_account_info(), Market::SPACE)?;
         require!(available >= total_pool_recalc, ErrorCode::InsufficientFunds);
 
-        m.resolved_total_pool = total_pool_recalc;
-        m.resolved_total_pool_remaining = total_pool_recalc;
+        // Calculate creator fee based on auto-void time (after grace period)
+        let creator_fee_bps = calculate_creator_fee_bps(m.cutoff_ts, now);
+        
+        let mut fees_transferred: u64 = 0;
+
+        // ALWAYS collect fees (even for auto-void)
+        let (creator_fee, platform_fee) = split_fee(m.fees_accrued_total, creator_fee_bps)?;
+
+        require!(ctx.accounts.platform_fee_wallet.owner == &system_program::ID, ErrorCode::BadParam);
+        require!(ctx.accounts.creator_wallet.owner == &system_program::ID, ErrorCode::BadParam);
+        require_keys_eq!(ctx.accounts.platform_fee_wallet.key(), m.platform_fee_wallet, ErrorCode::BadParam);
+        require_keys_eq!(ctx.accounts.creator_wallet.key(), m.creator, ErrorCode::BadParam);
+
+        // Transfer platform fee
+        if platform_fee > 0 {
+            pda_transfer_from_market(
+                &ctx.accounts.system_program,
+                m,
+                &ctx.accounts.platform_fee_wallet.to_account_info(),
+                platform_fee,
+                &[
+                    MARKET_SEED,
+                    m.creator.as_ref(),
+                    &m.cutoff_ts.to_le_bytes(),
+                    &m.question_hash,
+                    &[m.bump],
+                ],
+            )?;
+            fees_transferred = fees_transferred.checked_add(platform_fee).ok_or(ErrorCode::Overflow)?;
+        }
+        
+        // Transfer creator fee (likely 0 since auto-void happens after 7 days)
+        if creator_fee > 0 {
+            pda_transfer_from_market(
+                &ctx.accounts.system_program,
+                m,
+                &ctx.accounts.creator_wallet.to_account_info(),
+                creator_fee,
+                &[
+                    MARKET_SEED,
+                    m.creator.as_ref(),
+                    &m.cutoff_ts.to_le_bytes(),
+                    &m.question_hash,
+                    &[m.bump],
+                ],
+            )?;
+            fees_transferred = fees_transferred.checked_add(creator_fee).ok_or(ErrorCode::Overflow)?;
+        }
+
+        // Refund NET amount (after fees)
+        let net_pool = total_pool_recalc.checked_sub(m.fees_accrued_total).ok_or(ErrorCode::Overflow)?;
+        m.resolved_total_pool = net_pool;
+        m.resolved_total_pool_remaining = net_pool;
         m.resolved_win_pool = 0;
         m.winning_index = WIN_VOID;
         m.state = STATE_RESOLVED;
@@ -549,7 +620,7 @@ pub mod yesno_markets {
             auto_void: true,
             resolved_total_pool: m.resolved_total_pool,
             resolved_win_pool: 0,
-            fees_transferred: 0
+            fees_transferred
         });
         Ok(())
     }
@@ -727,6 +798,12 @@ pub struct Resolve<'info> {
 pub struct VoidExpired<'info> {
     #[account(mut)]
     pub market: Account<'info, Market>,
+    /// CHECK: fee recipients; snapshot on market
+    #[account(mut, address = market.platform_fee_wallet)]
+    pub platform_fee_wallet: UncheckedAccount<'info>,
+    /// CHECK: creator as recipient of fee split
+    #[account(mut, address = market.creator)]
+    pub creator_wallet: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -784,12 +861,40 @@ pub struct SetFeeWallet<'info> {
 // Helpers
 // -----------------------------------------------------------------------------
 
+/// Calculate creator fee percentage based on resolution delay after cutoff
 #[inline]
-fn split_fee(total_fee: u64) -> (u64, u64) {
-    let creator = (total_fee + 1) / 2;
-    (creator, total_fee - creator)
+fn calculate_creator_fee_bps(cutoff_ts: i64, resolve_ts: i64) -> u64 {
+    let delay = resolve_ts.saturating_sub(cutoff_ts);
+    
+    if delay <= FEE_DECAY_BRACKET_1_SECS {
+        CREATOR_FEE_BPS_BRACKET_0  // 1.0% - resolved within 5 minutes
+    } else if delay <= FEE_DECAY_BRACKET_2_SECS {
+        CREATOR_FEE_BPS_BRACKET_1  // 0.5% - resolved within 10 minutes
+    } else if delay <= FEE_DECAY_BRACKET_3_SECS {
+        CREATOR_FEE_BPS_BRACKET_2  // 0.25% - resolved within 15 minutes
+    } else {
+        CREATOR_FEE_BPS_BRACKET_3  // 0% - resolved after 15 minutes
+    }
 }
 
+/// Split total fee between creator and platform based on creator's fee percentage
+/// Creator gets their percentage, platform gets the remainder
+#[inline]
+fn split_fee(total_fee: u64, creator_fee_bps: u64) -> Result<(u64, u64)> {
+    let creator_fee = mul_div_floor_u64(total_fee, creator_fee_bps, TOTAL_FEE_BPS)?;
+    let platform_fee = total_fee.saturating_sub(creator_fee);
+    Ok((creator_fee, platform_fee))
+}
+
+/// Multiply two u64s, divide by denominator, rounding down
+#[inline]
+fn mul_div_floor_u64(a: u64, b: u64, denom: u64) -> Result<u64> {
+    let num = (a as u128).checked_mul(b as u128).ok_or(ErrorCode::Overflow)?;
+    let res = num / (denom as u128);
+    u64::try_from(res).map_err(|_| error!(ErrorCode::Overflow))
+}
+
+/// Multiply two u64s, divide by denominator, rounding up
 #[inline]
 fn mul_div_ceil_u64(a: u64, b: u64, denom: u64) -> Result<u64> {
     let num = (a as u128).checked_mul(b as u128).ok_or(ErrorCode::Overflow)?;
