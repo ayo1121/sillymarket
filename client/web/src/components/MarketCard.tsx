@@ -158,6 +158,12 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   const { series, loading: historyLoading } = useMarketProbabilityHistory(market);
   const outcomeSnapshots = computeOutcomeSnapshotsFromHistory({ market, series });
 
+  const copyAddress = (e: React.MouseEvent, address: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(address);
+    // Could add a toast here if we had a toast hook easily accessible in this component
+  };
+
   return (
     <div
       className={cn(
@@ -166,7 +172,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
         "hover:-translate-y-[3px] hover:shadow-[0_8px_16px_rgba(0,0,0,0.2)] hover:bg-[#f0f0f0]",
         isOpen && "border-l-[3px] border-l-[#15a349]",
         (isResolved || isVoid) && "opacity-[0.9] grayscale-[0.2] border-l-0",
-        isLocked && "market-card--locked bg-[#e0e0e0]",
+        // Removed watermark class
         className
       )}
       onClick={handleCardClick}
@@ -194,25 +200,31 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               {market.displayQuestion}
             </h3>
 
-            {/* Status Badge (Top Right) */}
-            <div className="flex-shrink-0">
+            {/* Status Badge (Top Right) - Absolute positioning or separate row if needed, but flex-shrink-0 usually works. 
+                If cutting off, we can adjust min-width or wrap. Let's try wrapping if space is tight. */}
+            <div className="flex-shrink-0 flex gap-1 flex-wrap justify-end max-w-[80px]">
               {isLocked && <div className="bg-orange-100 border border-orange-200 rounded-full p-1"><Lock className="w-3 h-3 text-[#ff8a2a]" /></div>}
               {isResolved && !isVoid && <div className="bg-green-100 border border-green-200 rounded-full p-1"><CheckCircle className="w-3 h-3 text-[#15a349]" /></div>}
               {isVoid && <div className="bg-red-100 border border-red-200 rounded-full p-1"><XCircle className="w-3 h-3 text-[#e64545]" /></div>}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-[#5f5f5f] mt-1">
-            <span className="font-medium">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5f5f5f] mt-1">
+            <span className="font-medium whitespace-nowrap">
               by {market.creatorUsername || shortenWallet(market.creatorPubkey, 4)}
             </span>
             <span className="opacity-40">•</span>
-            <span className="font-mono opacity-60">
+            <button
+              onClick={(e) => copyAddress(e, market.pubkey)}
+              className="font-mono opacity-60 hover:opacity-100 hover:text-[#111] cursor-copy transition-opacity flex items-center gap-1"
+              title="Copy Market Address"
+            >
               {shortenWallet(market.pubkey, 4)}
-            </span>
+              <span className="sr-only">Copy</span>
+            </button>
             <span className="opacity-40">•</span>
             <span className={cn(
-              "font-bold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded-[2px] border",
+              "font-bold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded-[2px] border whitespace-nowrap",
               isOpen && "bg-green-50 text-[#15a349] border-green-100",
               isLocked && "bg-orange-50 text-[#ff8a2a] border-orange-100",
               isResolved && !isVoid && "bg-green-50 text-[#15a349] border-green-100",
@@ -235,8 +247,6 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           const total = Number(market.volumeLamports);
           const odds = pool > 0 ? total / pool : 0;
 
-          // Determine tint based on outcome index (0=Yes/Green, 1=No/Red usually)
-          // Using simple logic: idx 0 is usually YES (Green), idx 1 is NO (Red)
           const isYes = idx === 0;
           const tintClass = isYes
             ? "bg-[#f0fdf4] border-[#15a349]/20 text-[#15a349]"
@@ -252,7 +262,8 @@ export const MarketCard: React.FC<MarketCardProps> = ({
                 color={color}
                 series={seriesPoints}
                 disabled={!isOpen}
-                onClick={() => {
+                onClick={(e) => {
+                  e?.stopPropagation(); // Prevent card click
                   if (isOpen && onOutcomeClick) {
                     onOutcomeClick(idx);
                   }
