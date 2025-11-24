@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { useMarketsCtx, getBetStatus, computePnL, BetStatus, isPositionClaimable } from "@/hooks/marketsContext";
 import { formatSol, shortenWallet } from "@/utils/format";
 import { MarketCard } from "@/components/MarketCard";
+import { resolveMarket } from "@/solana/actions";
+import { fetchConfig } from "@/solana/read";
 
 interface BetView {
   id: string;
@@ -46,6 +48,15 @@ const MyBets = () => {
   const [claimingAll, setClaimingAll] = useState(false);
   const [viewMode, setViewMode] = useState<"bets" | "markets">("bets");
   const [marketFilter, setMarketFilter] = useState<"active" | "resolved">("active");
+  const [resolving, setResolving] = useState<Map<string, boolean>>(new Map());
+  const [config, setConfig] = useState<any>(null);
+
+  // Fetch config on mount
+  useEffect(() => {
+    if (program) {
+      fetchConfig(program as any).then(setConfig).catch(console.error);
+    }
+  }, [program]);
 
   const marketMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -237,6 +248,52 @@ const MyBets = () => {
       });
   }, [markets, publicKey, marketFilter]);
 
+  const handleResolveMarket = async (marketPubkey: string, winnerIndex: number) => {
+    if (!program || !publicKey || resolving.get(marketPubkey)) return;
+
+    const market = markets.find(m => m.pubkey === marketPubkey);
+    if (!market) return;
+
+    // Get fee wallet from config
+    const feeWallet = (config as any)?.feeWallet || (config as any)?.fee_wallet || (config as any)?.feeWalletAcc;
+    if (!feeWallet) {
+      toast.error("Config fee wallet not found");
+      return;
+    }
+
+    // Get creator wallet
+    const creatorWallet = (market.rawAccount as any)?.creator;
+    if (!creatorWallet) {
+      toast.error("Market creator wallet not found");
+      return;
+    }
+
+    const nextResolving = new Map(resolving);
+    nextResolving.set(marketPubkey, true);
+    setResolving(nextResolving);
+
+    try {
+      const marketPk = new PublicKey(marketPubkey);
+      const sig = await resolveMarket(program as any, {
+        market: marketPk,
+        signer: publicKey,
+        winnerIndex,
+        platformFeeWallet: new PublicKey(feeWallet),
+        creatorWallet: new PublicKey(creatorWallet),
+      });
+      toast.success(`Market resolved! Transaction: ${sig.slice(0, 8)}...`);
+      await refreshPositions();
+    } catch (error: any) {
+      console.error("Resolve error:", error);
+      const errorMsg = error?.message || "Failed to resolve market";
+      toast.error(errorMsg);
+    } finally {
+      const resetResolving = new Map(resolving);
+      resetResolving.set(marketPubkey, false);
+      setResolving(resetResolving);
+    }
+  };
+
   const loading = marketsLoading || positionsLoading;
 
   return <div className="min-h-screen bg-win95-teal">
@@ -245,7 +302,7 @@ const MyBets = () => {
     <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <div className="bg-background win95-raised p-1 sm:p-2 mb-4 sm:mb-8 max-w-4xl mx-auto">
         <div className="bg-primary px-2 py-1 flex items-center justify-between">
-          <span className="text-xs text-slate-50 font-bold sm:text-base">mybets.exe</span>
+          <span className="text-xs text-slate-50 font-bold sm:text-base">my profile</span>
           <Button
             size="sm"
             variant="secondary"
@@ -480,13 +537,52 @@ const MyBets = () => {
                   </Button>
                 </div>
               ) : (
-                myMarkets.map(market => (
-                  <MarketCard
-                    key={market.pubkey}
-                    market={market}
-                    disableNavigation={false}
-                  />
-                ))
+                myMarkets.map(market => {
+                  const canResolve = market.isLocked && !market.isResolved && !market.isVoid;
+                  const isResolving = resolving.get(market.pubkey);
+
+                  return (
+                    <div key={market.pubkey} className="space-y-2">
+                      <MarketCard
+                        market={market}
+                        disableNavigation={false}
+                      />
+                      {canResolve && (
+                        <div className="win95-window bg-background p-1">
+                          <div className="bg-primary text-primary-foreground px-2 py-2 mb-1">
+                            <span className="font-black text-xs sm:text-sm tracking-tight">resolve market</span>
+                          </div>
+                          <div className="win95-sunken bg-background p-3 space-y-2">
+                            <div className="text-xs text-muted-foreground mb-2">Select winning outcome:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {market.outcomes.slice(0, 5).map((outcome, i) => (
+                                <Button
+                                  key={i}
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleResolveMarket(market.pubkey, i)}
+                                  disabled={isResolving}
+                                  className="font-bold text-xs"
+                                >
+                                  {isResolving ? "Resolving..." : outcome.label}
+                                </Button>
+                              ))}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResolveMarket(market.pubkey, -1)}
+                                disabled={isResolving}
+                                className="font-bold text-xs"
+                              >
+                                {isResolving ? "Resolving..." : "Void"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
