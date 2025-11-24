@@ -23,7 +23,8 @@ export function getBetStatus(position: any, market: any): BetStatus {
   }
 
   if (winningIndex === WIN_VOID) {
-    return "active";
+    // Voided markets refund all bets, treat as "won" so they appear in won tab and show claim button
+    return "won";
   }
 
   if (outcomeIndex === winningIndex) {
@@ -105,7 +106,7 @@ const MarketsCtx = createContext<Ctx>({
   error: null,
   positions: [],
   positionsLoading: false,
-  refreshPositions: async () => {},
+  refreshPositions: async () => { },
   hasClaimablePositions: false,
   claimableCount: 0,
 });

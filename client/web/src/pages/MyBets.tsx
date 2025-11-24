@@ -129,7 +129,7 @@ const MyBets = () => {
   const filteredBets = useMemo(() => {
     const filtered = betsView.filter((bet) => {
       const market = marketMap.get(bet.marketPubkey);
-      const isVoid = market?.isVoid || market?.rawAccount?.winningIndex === -1;
+      const isVoid = market?.isVoid || market?.rawAccount?.winningIndex === -2;
 
       switch (statusFilter) {
         case "active":
