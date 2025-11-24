@@ -43,52 +43,81 @@ export const Header = () => {
     };
   }, [program, wallet.publicKey]);
 
-  return <header className="win95-window bg-background p-1 mb-8">
-    <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between mb-1">
-      <div className="flex items-center gap-2">
-        <span className="text-base font-black">sillymarket.fun</span>
-      </div>
-      <div className="flex gap-1">
-        <button className="w-4 h-4 win95-raised bg-background hover:win95-sunken flex items-center justify-center text-[8px] font-black text-neutral-950">
-          _
-        </button>
-        <button className="w-4 h-4 win95-raised bg-background hover:win95-sunken flex items-center justify-center font-black text-neutral-950 text-xs">
-          □
-        </button>
-        <button className="w-4 h-4 win95-raised bg-background hover:win95-sunken flex items-center justify-center font-black text-neutral-950 text-xs">
-          ×
-        </button>
-      </div>
-    </div>
+  return (
+    <header className="bg-[#b8b8b8] border-b-2 border-white/50 shadow-sm mb-8 sticky top-0 z-50">
+      <div className="max-w-[1240px] mx-auto px-4 py-3 flex items-center justify-between">
 
-    <div className="win95-sunken bg-background p-3 sm:p-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto">
-          <button onClick={() => navigate("/")} className="hover:opacity-80 transition-all cursor-pointer flex-shrink-0">
-            <div className="win95-sunken p-1 bg-input flex-shrink-0" style={{ borderColor: 'hsl(var(--primary))' }}>
-              <img src={logo} alt="sillymarket" className="w-14 h-14 sm:w-20 sm:h-20 object-cover" />
+        {/* Left: Brand Block */}
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate("/")} className="hover:opacity-90 transition-opacity flex-shrink-0 active:scale-95 duration-100">
+            <div className="win95-sunken p-[2px] bg-white border border-[#8a8a8a] shadow-sm">
+              <img src={logo} alt="sillymarket" className="w-10 h-10 object-cover" />
             </div>
           </button>
-          <div className="min-w-0">
-            <h1 className="text-3xl sm:text-5xl font-black mb-1 sm:mb-2 tracking-tight">sillymarket</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground font-bold tracking-wide">the silliest outcome is always the most likely</p>
+
+          {/* Vertical Separator */}
+          <div className="w-[2px] h-8 bg-[#8a8a8a]/30 rounded-full" />
+
+          <div className="flex flex-col justify-center">
+            <h1 className="text-xl font-black tracking-tighter leading-none text-[#111] mb-0.5">
+              sillymarket
+            </h1>
+            <p className="text-[10px] font-bold text-[#5f5f5f] tracking-wide uppercase">
+              the silliest outcome
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 justify-center w-full sm:w-auto">
-          <Button variant={location.pathname === "/" ? "primary" : "default"} onClick={() => navigate("/")} className="font-black flex items-center gap-2 text-sm sm:text-base">
-            <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
-            markets
-          </Button>
-          {isAdmin && (
-            <Button variant={location.pathname === "/admin" ? "primary" : "default"} onClick={() => navigate("/admin")} className="font-black flex items-center gap-2 text-sm sm:text-base">
-              <img src={lightbulbIcon} alt="" className="w-6 h-6 sm:w-7 sm:h-7" />
-              admin
+        {/* Right: Actions & Controls */}
+        <div className="flex items-center gap-3">
+          {/* Navigation Buttons */}
+          <div className="flex items-center gap-2 mr-2">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/")}
+              className={cn(
+                "h-9 px-4 font-bold text-sm border-2 transition-all win95-btn-press",
+                location.pathname === "/"
+                  ? "bg-[#d4d4d4] text-black border-[#8a8a8a] shadow-inner"
+                  : "bg-[#e0e0e0] text-[#111] border-white/60 hover:bg-white hover:border-white"
+              )}
+            >
+              Markets
             </Button>
-          )}
-          <ConnectWalletAndUsername claimableCount={claimableCount} />
+
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/admin")}
+                className="h-9 px-4 font-bold text-sm bg-[#e0e0e0] text-[#111] border-2 border-white/60 hover:bg-white hover:border-white win95-btn-press"
+              >
+                Admin
+              </Button>
+            )}
+
+            {/* Connect Wallet - Primary Action */}
+            <div className="win95-btn-press">
+              <ConnectWalletAndUsername claimableCount={claimableCount} />
+            </div>
+          </div>
+
+          {/* Window Controls (Visual Only) */}
+          <div className="flex gap-1 pl-3 border-l-2 border-[#8a8a8a]/20">
+            <button className="w-5 h-5 bg-[#d4d4d4] border border-[#8a8a8a] hover:bg-white flex items-center justify-center text-[8px] font-black text-[#111] shadow-sm active:translate-y-[1px]">
+              _
+            </button>
+            <button className="w-5 h-5 bg-[#d4d4d4] border border-[#8a8a8a] hover:bg-white flex items-center justify-center font-black text-[#111] text-[9px] shadow-sm active:translate-y-[1px]">
+              □
+            </button>
+            <button className="w-5 h-5 bg-[#e64545] border border-[#8a8a8a] hover:bg-[#ff6b6b] flex items-center justify-center font-black text-white text-[10px] shadow-sm active:translate-y-[1px]">
+              ×
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </header>;
+
+      {/* Bottom Divider Line */}
+      <div className="h-[1px] bg-[#8a8a8a] w-full opacity-30" />
+    </header>
+  );
 };
