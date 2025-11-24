@@ -159,7 +159,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-2 border-[#8b8b8b] rounded shadow-[4px_4px_0_rgba(0,0,0,0.3)] p-0 sm:max-w-lg overflow-hidden">
+      <DialogContent className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#333] rounded shadow-[4px_4px_0_rgba(0,0,0,0.3)] p-0 sm:max-w-lg overflow-hidden">
         {/* Hidden canonical share card */}
         <div ref={hiddenCardRef} className="share-image-hidden-root" aria-hidden="true">
           <SharePreviewMarketCard market={market} />
@@ -171,7 +171,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
           <span className="font-black text-sm uppercase tracking-wide">Share This Market</span>
         </div>
 
-        <div className="p-5 space-y-5 relative">
+        <div className="p-4 sm:p-5 space-y-5 relative">
           {/* Faint smiley watermark */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
             : )
@@ -180,17 +180,17 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
           <div className="relative z-10 space-y-5">
             {/* Link section */}
             <div className="space-y-2">
-              <div className="text-xs text-[#666] uppercase tracking-wide font-bold">Market Link</div>
+              <div className="text-xs text-[#666] dark:text-[#c7c7c7] uppercase tracking-wide font-bold">Market Link</div>
               <Input
                 readOnly
                 value={shareUrl}
-                className="font-mono text-xs border-2 border-[#8b8b8b] bg-white shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)] focus:border-[#111]"
+                className="font-mono text-xs border-2 border-[#8b8b8b] dark:border-[#3a3a3a] bg-white dark:bg-[#1f1f1f] text-foreground shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)] focus:border-[#111]"
               />
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <Button
                   type="button"
                   onClick={copyLink}
-                  className="font-bold shadow-md flex items-center gap-2"
+                  className="font-bold shadow-md flex items-center gap-2 w-full sm:w-auto"
                 >
                   <Copy className="w-4 h-4" />
                   {copied ? "Copied!" : "Copy Link"}
@@ -199,7 +199,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   variant="outline"
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="font-bold border-[#8b8b8b] hover:bg-[#e8e8e8]"
+                  className="font-bold border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-[#e8e8e8] dark:hover:bg-[#2a2a2a] w-full sm:w-auto"
                 >
                   Close
                 </Button>
@@ -208,8 +208,8 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
 
             {/* Share image */}
             <div className="space-y-2">
-              <div className="text-xs text-[#666] uppercase tracking-wide font-bold">Share Image</div>
-              <div className="text-xs font-semibold text-[#111] mb-2">
+              <div className="text-xs text-[#666] dark:text-[#c7c7c7] uppercase tracking-wide font-bold">Share Image</div>
+              <div className="text-xs font-semibold text-[#111] dark:text-white mb-2">
                 {previewError ? (
                   <span className="text-red-600">{previewError}</span>
                 ) : isGeneratingPreview ? (
@@ -221,7 +221,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                 )}
               </div>
               {hasPreview && preview?.dataUrl && (
-                <div className="border-2 border-[#8b8b8b] rounded shadow-sm overflow-hidden bg-[#c0c0c0] p-3">
+                <div className="border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-sm overflow-hidden bg-[#c0c0c0] dark:bg-[#1f1f1f] p-3">
                   <img
                     src={preview.dataUrl}
                     alt="Market share"
@@ -229,12 +229,12 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   />
                 </div>
               )}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <Button
                   type="button"
                   onClick={handleCopyImage}
                   disabled={buttonsDisabled}
-                  className="font-bold shadow-md flex items-center gap-2"
+                  className="font-bold shadow-md flex items-center gap-2 w-full sm:w-auto"
                 >
                   <Copy className="w-4 h-4" />
                   Copy Image
@@ -244,7 +244,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   onClick={handleDownloadImage}
                   disabled={buttonsDisabled}
                   variant="outline"
-                  className="font-bold border-[#8b8b8b] hover:bg-[#e8e8e8] flex items-center gap-2"
+                  className="font-bold border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-[#e8e8e8] dark:hover:bg-[#2a2a2a] flex items-center gap-2 w-full sm:w-auto"
                 >
                   <Download className="w-4 h-4" />
                   Download PNG
@@ -253,14 +253,14 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
             </div>
 
             {/* Share to */}
-            <div className="space-y-2 pt-3 border-t-2 border-[#d3d3d3]">
-              <div className="text-xs text-[#666] uppercase tracking-wide font-bold">Share To</div>
-              <div className="flex items-center gap-2">
+            <div className="space-y-2 pt-3 border-t-2 border-[#d3d3d3] dark:border-[#333]">
+              <div className="text-xs text-[#666] dark:text-[#c7c7c7] uppercase tracking-wide font-bold">Share To</div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <Button
                   asChild
                   variant="secondary"
                   type="button"
-                  className="font-bold shadow-sm"
+                  className="font-bold shadow-sm w-full sm:w-auto"
                 >
                   <a href={twitterHref} target="_blank" rel="noreferrer">
                     𝕏 Twitter
@@ -270,7 +270,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   asChild
                   variant="secondary"
                   type="button"
-                  className="font-bold shadow-sm"
+                  className="font-bold shadow-sm w-full sm:w-auto"
                 >
                   <a href={telegramHref} target="_blank" rel="noreferrer">
                     📱 Telegram

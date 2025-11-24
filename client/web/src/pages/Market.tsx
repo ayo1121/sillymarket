@@ -8,6 +8,7 @@ import { placeBet, claimWinnings, resolveMarket } from "../solana/actions";
 import { toast } from "sonner";
 import BN from "bn.js";
 import { showErrorToast } from "@/lib/errorHandling";
+import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 
 // Constants from Rust program
 const STATE_ACTIVE = 1;
@@ -152,7 +153,19 @@ export default function MarketPage() {
         outcomeIndex,
         amountLamports: lamports,
       });
-      toast.success(`Bet placed! Transaction: ${sig}`);
+      toast.success(
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Bet placed! Transaction: {sig}</span>
+          <a
+            href={getTxExplorerUrl(sig)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold text-xs"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
       await refreshMarket();
     } catch (error: any) {
       console.error("Anchor tx failed in Market (placeBet):", error);
@@ -193,7 +206,19 @@ export default function MarketPage() {
         market: marketPk,
         user: publicKey,
       });
-      toast.success(`Winnings claimed! Transaction: ${sig}`);
+      toast.success(
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Winnings claimed! Transaction: {sig}</span>
+          <a
+            href={getTxExplorerUrl(sig)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold text-xs"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
       await refreshMarket();
     } catch (error: any) {
       console.error("Error claiming winnings:", error);
@@ -247,7 +272,19 @@ export default function MarketPage() {
         platformFeeWallet: platformFeePk,
         creatorWallet: creatorPk,
       });
-      toast.success(`Market resolved! Transaction: ${sig}`);
+      toast.success(
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Market resolved! Transaction: {sig}</span>
+          <a
+            href={getTxExplorerUrl(sig)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold text-xs"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
       await refreshMarket();
     } catch (error: any) {
       console.error("Error resolving market:", error);

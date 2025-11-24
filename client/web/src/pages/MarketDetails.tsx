@@ -37,6 +37,7 @@ import { showErrorToast } from "@/lib/errorHandling";
 import type { MarketHistoryPoint } from "@/solana/marketMapping";
 import { useMarketActivity } from "@/hooks/useMarketActivity";
 import { FeeDecayInfo } from "@/components/FeeDecayInfo";
+import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -455,16 +456,16 @@ const MarketDetails = () => {
   const title = market.displayQuestion || `Market ${market.pubkey.slice(0, 4)}...`;
 
   return (
-    <div className="min-h-screen bg-[#c0c0c0]">
+    <div className="min-h-screen bg-background text-foreground transition-colors">
       <Header />
 
-      <main className="container mx-auto px-4 py-6 max-w-6xl">
+      <main className="container mx-auto px-3 sm:px-4 py-6 max-w-6xl space-y-6">
         {/* Top Navigation Bar - Retro Toolbar Style */}
-        <div className="bg-[#d4d0c8] border border-[#8b8b8b] rounded-sm shadow-[inset_1px_1px_0_rgba(255,255,255,0.8),inset_-1px_-1px_0_rgba(0,0,0,0.2)] mb-6 px-3 py-2">
+        <div className="bg-[#d4d0c8] dark:bg-[#242424] border border-[#8b8b8b] dark:border-[#3a3a3a] rounded-sm shadow-[inset_1px_1px_0_rgba(255,255,255,0.8),inset_-1px_-1px_0_rgba(0,0,0,0.2)] px-3 py-2">
           <Button
             variant="ghost"
             onClick={() => navigate("/")}
-            className="font-semibold text-sm hover:bg-[#e8e8e8] px-3 py-1 h-auto"
+            className="font-semibold text-sm hover:bg-[#e8e8e8] dark:hover:bg-[#323232] px-3 py-2 h-auto"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             Back to Markets
@@ -482,16 +483,16 @@ const MarketDetails = () => {
 
           if (canClaim) {
             return (
-              <div className="bg-[#fff9e6] border-2 border-[#ffc107] rounded p-4 mb-6 shadow-md">
-                <div className="font-black text-base mb-2 text-[#111]">🎉 You have unclaimed winnings!</div>
-                <div className="text-sm text-[#333]">
+              <div className="bg-[#fff9e6] dark:bg-[#332a00] border-2 border-[#ffc107] rounded p-4 shadow-md">
+                <div className="font-black text-base mb-2 text-[#111] dark:text-white">🎉 You have unclaimed winnings!</div>
+                <div className="text-sm text-[#333] dark:text-[#f1f1f1]">
                   Click the <strong>Claim Winnings</strong> button below to withdraw your earnings.
                 </div>
               </div>
             );
           } else if (market.isResolved && publicKey) {
             return (
-              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-3 mb-6 text-center text-sm text-muted-foreground">
+              <div className="bg-[#f5f5f5] dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-3 text-center text-sm text-muted-foreground">
                 Market resolved · no claimable position on this wallet.
               </div>
             );
@@ -509,15 +510,15 @@ const MarketDetails = () => {
         )}
 
         {/* Market Header Card - Enhanced */}
-        <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-6 mb-8 relative overflow-hidden">
+        <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-6 mb-4 sm:mb-6 relative overflow-hidden">
           {/* Faint smiley watermark */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[200px] font-black text-gray-400 select-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[120px] sm:text-[200px] font-black text-gray-400 select-none">
             : )
           </div>
 
           <div className="relative z-10">
             {/* Top Row: Status + Share Button */}
-            <div className="flex justify-between items-center mb-5">
+            <div className="flex justify-between items-center mb-4 sm:mb-5 gap-3 flex-wrap">
               <ResolutionPill
                 state={statsStatusLabel}
                 isVoid={isVoid}
@@ -528,18 +529,18 @@ const MarketDetails = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => handleOpenShare(market)}
-                className="font-semibold border-[#8b8b8b] hover:bg-[#e8e8e8] shadow-sm"
+                className="font-semibold border-[#8b8b8b] hover:bg-[#e8e8e8] shadow-sm h-8 sm:h-9 text-xs sm:text-sm"
               >
-                <Share2 className="w-4 h-4 mr-2" />
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Share
               </Button>
             </div>
 
             {/* Main Content Row */}
-            <div className="flex flex-col md:flex-row items-start gap-6">
+            <div className="flex flex-col md:flex-row items-start gap-4 sm:gap-6">
               {/* Market Image */}
               {imageUrl && (
-                <div className="flex-shrink-0 border-2 border-[#8b8b8b] rounded overflow-hidden w-full md:w-36 h-48 md:h-36 shadow-sm">
+                <div className="flex-shrink-0 border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded overflow-hidden w-full sm:w-24 sm:h-24 md:w-36 md:h-36 shadow-sm hidden sm:block">
                   <img
                     src={imageUrl}
                     alt={title}
@@ -550,29 +551,43 @@ const MarketDetails = () => {
               )}
 
               {/* Market Info */}
-              <div className="flex-1 min-w-0">
-                <h1 className="text-3xl md:text-4xl font-black mb-4 break-words leading-tight text-[#111]">{title}</h1>
+              <div className="flex-1 min-w-0 w-full">
+                <div className="flex gap-3 sm:hidden mb-3">
+                  {imageUrl && (
+                    <div className="flex-shrink-0 border border-[#8b8b8b] dark:border-[#3a3a3a] rounded overflow-hidden w-16 h-16 shadow-sm">
+                      <img
+                        src={imageUrl}
+                        alt={title}
+                        className="w-full h-full object-cover"
+                        crossOrigin="anonymous"
+                      />
+                    </div>
+                  )}
+                  <h1 className="text-xl font-black leading-tight text-[#111] dark:text-white line-clamp-3">{title}</h1>
+                </div>
+
+                <h1 className="hidden sm:block text-2xl sm:text-3xl md:text-4xl font-black mb-3 sm:mb-4 break-words leading-tight text-[#111] dark:text-white">{title}</h1>
 
                 {/* Creator & Market Info */}
-                <div className="flex flex-wrap items-center gap-2 text-sm text-[#555]">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm text-[#555] dark:text-[#c7c7c7]">
                   <button
                     type="button"
                     onClick={handleCopyCreator}
-                    className="font-semibold hover:text-[#111] transition-colors hover:underline"
+                    className="font-semibold hover:text-[#111] dark:hover:text-white transition-colors hover:underline flex items-center gap-1"
                     title="Copy creator address"
                   >
                     by {market.creatorUsername ?? market.creatorName ?? market.creatorLabel}
-                    {copiedCreator && <span className="ml-1 text-green-600 font-bold">✓ copied</span>}
+                    {copiedCreator && <span className="text-green-600 font-bold">✓</span>}
                   </button>
                   <span className="text-[#999]">•</span>
                   <button
                     type="button"
                     onClick={handleCopyAddress}
-                    className="font-mono text-xs hover:text-[#111] transition-colors hover:underline"
+                    className="font-mono text-[10px] sm:text-xs hover:text-[#111] dark:hover:text-white transition-colors hover:underline flex items-center gap-1"
                     title="Copy market address"
                   >
                     {shortenWallet(market.pubkey)}
-                    {copiedAddress && <span className="ml-1 text-green-600 font-bold">✓</span>}
+                    {copiedAddress && <span className="text-green-600 font-bold">✓</span>}
                   </button>
                   <span className="text-[#999]">•</span>
                   <span className={Number(totalVolumeLabel) > 0 ? "text-green-600 font-semibold" : ""}>
@@ -589,15 +604,15 @@ const MarketDetails = () => {
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Betting Panel */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6 order-2 lg:order-1">
             {/* Place Your Bet Panel */}
-            <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+            <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
                 : )
               </div>
 
               <div className="relative z-10">
-                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-4 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
                   Place Your Bet
                 </h2>
 
@@ -651,12 +666,12 @@ const MarketDetails = () => {
               return (
                 <>
                   {canResolve && (
-                    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5">
-                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                    <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5">
+                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-4 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
                         Resolve Market
                       </h2>
                       {market.isLocked && (
-                        <div className="text-xs text-muted-foreground mb-3 bg-[#fff9e6] border border-[#ffc107] rounded px-2 py-1">
+                        <div className="text-xs text-muted-foreground mb-3 bg-[#fff9e6] dark:bg-[#332a00] border border-[#ffc107] rounded px-2 py-1">
                           Status: Locked (cutoff passed)
                         </div>
                       )}
@@ -691,7 +706,19 @@ const MarketDetails = () => {
                                   platformFeeWallet: new PublicKey(feeWallet),
                                   creatorWallet: new PublicKey(creatorWallet),
                                 });
-                                toast.success(`Market resolved! Transaction: ${sig.slice(0, 8)}...`);
+                                toast.success(
+                                  <div className="flex flex-col gap-1 text-sm">
+                                    <span>Market resolved! Transaction: {sig.slice(0, 8)}...</span>
+                                    <a
+                                      href={getTxExplorerUrl(sig)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="underline font-semibold text-xs"
+                                    >
+                                      View on Explorer
+                                    </a>
+                                  </div>
+                                );
                                 await refreshMarket();
                               } catch (error: any) {
                                 console.error("Resolve error:", error);
@@ -733,7 +760,19 @@ const MarketDetails = () => {
                                 platformFeeWallet: new PublicKey(feeWallet),
                                 creatorWallet: new PublicKey(creatorWallet),
                               });
-                              toast.success(`Market voided! Transaction: ${sig.slice(0, 8)}...`);
+                              toast.success(
+                                <div className="flex flex-col gap-1 text-sm">
+                                  <span>Market voided! Transaction: {sig.slice(0, 8)}...</span>
+                                  <a
+                                    href={getTxExplorerUrl(sig)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="underline font-semibold text-xs"
+                                  >
+                                    View on Explorer
+                                  </a>
+                                </div>
+                              );
                               await refreshMarket();
                             } catch (error: any) {
                               console.error("Void error:", error);
@@ -755,8 +794,8 @@ const MarketDetails = () => {
                   )}
 
                   {market.isResolved && canClaim && (
-                    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5">
-                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                    <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5">
+                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-4 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
                         Claim Winnings
                       </h2>
                       <Button
@@ -770,7 +809,19 @@ const MarketDetails = () => {
                               market: marketPk,
                               user: publicKey,
                             });
-                            toast.success(`Winnings claimed! Transaction: ${sig.slice(0, 8)}...`);
+                            toast.success(
+                              <div className="flex flex-col gap-1 text-sm">
+                                <span>Winnings claimed! Transaction: {sig.slice(0, 8)}...</span>
+                                <a
+                                  href={getTxExplorerUrl(sig)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="underline font-semibold text-xs"
+                                >
+                                  View on Explorer
+                                </a>
+                              </div>
+                            );
                             await refreshMarket();
                           } catch (error: any) {
                             console.error("Claim error:", error);
@@ -788,8 +839,8 @@ const MarketDetails = () => {
                   )}
 
                   {market.isResolved && publicKey && !canClaim && (
-                    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5">
-                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-3 pb-2 border-b-2 border-[#d3d3d3]">
+                    <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5">
+                      <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-3 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
                         Claim Status
                       </h2>
                       <div className="text-xs text-muted-foreground">
@@ -802,115 +853,104 @@ const MarketDetails = () => {
             })()}
           </div>
 
-          {/* Right Column - Charts and Activity */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Right Column - Chart, Comments, Activity */}
+          <div className="lg:col-span-2 space-y-6 order-1 lg:order-2">
             {/* Probability Chart */}
-            <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+            <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
                 : )
               </div>
-
               <div className="relative z-10">
-                <div className="flex justify-between items-center mb-4 pb-2 border-b-2 border-[#d3d3d3]">
-                  <h2 className="text-xs uppercase font-black tracking-wider text-[#555]">
-                    Probability Over Time
-                  </h2>
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                      <span className="font-semibold text-[#555]">Yes</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
-                      <span className="font-semibold text-[#555]">No</span>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mb-4">Live odds snapshots as bets are placed</p>
-
-                <div className="h-64 bg-[#fafafa] border border-[#e0e0e0] rounded p-4">
-                  <ProbabilityChart market={market} history={probHistory} />
+                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-4 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
+                  Probability History
+                </h2>
+                <div className="h-[250px] sm:h-[300px] w-full">
+                  <ProbabilityChart
+                    history={probHistory}
+                    outcomes={market.outcomes}
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Recent Activity */}
-            <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+            {/* Comments Section */}
+            <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
                 : )
               </div>
-
               <div className="relative z-10">
-                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+                <CommentsSection marketId={marketId!} />
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
+                : )
+              </div>
+              <div className="relative z-10">
+                <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-4 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
                   Recent Activity
                 </h2>
+                <div className="space-y-0">
+                  {visibleActivity.length === 0 ? (
+                    <div className="text-center text-muted-foreground text-sm py-8">No recent activity</div>
+                  ) : (
+                    visibleActivity.map((item, i) => {
+                      const isBuy = item.kind === "bet";
+                      const isSell = false; // No sell event yet
+                      const isResolve = item.kind === "resolved";
 
-                {visibleActivity.length === 0 ? (
-                  <div className="text-center py-12 text-sm text-muted-foreground">
-                    no activity yet. be the first!
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-0.5">
-                      {visibleActivity.map((item, idx) => {
-                        const solscanUrl = item.txSig
-                          ? `https://solscan.io/tx/${item.txSig}?cluster=devnet`
-                          : undefined;
-                        const timeStr = new Date(item.ts).toLocaleTimeString();
-                        const displayName = item.username || shortenWallet(item.wallet);
+                      // Format time
+                      const timeLabel = formatTimeAgo(new Date(item.ts));
 
-                        let activityText = "";
-                        if (item.kind === "bet") {
-                          activityText = `bet ${item.outcomeLabel ?? "Unknown"}`;
-                        } else if (item.kind === "market_created") {
-                          activityText = "created market";
-                        } else if (item.kind === "resolved") {
-                          activityText = `resolved ${item.outcomeLabel ?? "Unknown"}`;
-                        }
-
-                        return (
-                          <button
-                            key={`${item.kind}-${item.ts}-${item.wallet}`}
-                            type="button"
-                            className={`w-full text-left px-3 py-2.5 text-xs rounded transition-colors ${idx % 2 === 0 ? 'bg-[#f9f9f9]' : 'bg-white'
-                              } ${item.txSig ? 'hover:bg-[#e8e8e8] cursor-pointer' : ''} border-b border-[#f0f0f0]`}
-                            onClick={() => {
-                              if (item.txSig && solscanUrl) {
-                                window.open(solscanUrl, "_blank", "noopener,noreferrer");
-                              }
-                            }}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-bold text-[#111]">{displayName}</div>
-                                <div className="text-[#666]">
-                                  {activityText}
-                                  {item.kind === "bet" && item.amountSol != null && ` • ${item.amountSol.toFixed(3)} SOL`}
-                                </div>
+                      return (
+                        <div key={i} className="flex items-center justify-between py-3 border-b border-[#f0f0f0] dark:border-[#333] last:border-0">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${isBuy ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" :
+                              isResolve ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" :
+                                "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
+                              }`}>
+                              {isBuy ? "BET" : isResolve ? "RES" : "UNK"}
+                            </div>
+                            <div className="flex flex-col">
+                              <div className="text-sm font-bold text-[#111] dark:text-white">
+                                {shortenWallet(item.wallet)}
+                                <span className="font-normal text-[#666] dark:text-[#999] mx-1">
+                                  {isBuy ? "bet on" : isResolve ? "resolved" : "acted on"}
+                                </span>
+                                <span className={`font-bold ${item.outcomeIndex !== undefined ? getOutcomeColor(item.outcomeIndex) : ""
+                                  }`}>
+                                  {item.outcomeLabel}
+                                </span>
                               </div>
-                              <div className="text-right ml-3">
-                                {item.kind === "bet" && item.amountSol != null && (
-                                  <div className="font-mono font-bold text-[#111]">{item.amountSol.toFixed(2)} SOL</div>
-                                )}
-                                <div className="text-[#999] text-[10px]">{timeStr}</div>
+                              <div className="text-xs text-[#999]">
+                                {timeLabel}
                               </div>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {hasMoreActivity && (
-                      <div className="mt-4 text-center pt-3 border-t-2 border-[#d3d3d3]">
-                        <button
-                          type="button"
-                          onClick={() => setShowAllActivity(v => !v)}
-                          className="text-xs text-primary hover:underline font-bold"
-                        >
-                          {showAllActivity ? "show less activity" : `show more activity (${filteredActivity.length - MAX_VISIBLE_RECENT} more)`}
-                        </button>
-                      </div>
-                    )}
-                  </>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-[#111] dark:text-white text-sm">
+                              {item.amountSol ? `${formatVolume(item.amountSol)} SOL` : "-"}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {hasMoreActivity && (
+                  <div className="mt-4 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAllActivity(!showAllActivity)}
+                      className="text-xs font-bold text-[#666] dark:text-[#999] hover:text-[#111] dark:hover:text-white"
+                    >
+                      {showAllActivity ? "Show Less" : "Show All Activity"}
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -920,6 +960,24 @@ const MarketDetails = () => {
           </div>
         </div>
       </main>
+
+      {market?.state === "open" && (
+        <div className="fixed bottom-4 left-0 right-0 px-4 md:hidden">
+          <div className="max-w-xl mx-auto bg-[#e0e0e0] dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#333] shadow-[2px_2px_0_rgba(0,0,0,0.25)] rounded-full flex items-center justify-between px-4 py-3">
+            <div className="flex flex-col">
+              <span className="text-xs uppercase font-black text-[#555] dark:text-[#c7c7c7]">Ready to bet?</span>
+              <span className="text-sm font-bold text-[#111] dark:text-white">{title}</span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => handleBetClick(selectedOutcomeIndex || 0)}
+              className="font-bold h-10 px-4 rounded-md shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
+            >
+              Place Bet
+            </Button>
+          </div>
+        </div>
+      )}
 
       <BettingModal
         open={modalOpen}

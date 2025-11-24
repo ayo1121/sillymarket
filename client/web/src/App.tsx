@@ -10,6 +10,7 @@ import MarketDetails from "./pages/MarketDetails";
 import CreateMarket from "./pages/CreateMarket";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
               <Route path="/my-bets" element={<MyBets />} />
               <Route path="/market/:id" element={<MarketDetails />} />
               <Route path="/create-market" element={<CreateMarket />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/admin" element={<AdminPanel />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

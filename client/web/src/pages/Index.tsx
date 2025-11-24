@@ -8,7 +8,7 @@ import { MarketCard } from "@/components/MarketCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MarketSearch } from "@/components/MarketSearch";
-import { Search, Filter, Plus, ExternalLink, Loader2 } from "lucide-react";
+import { Search, Filter, Plus, ExternalLink, Loader2, Info } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { UIMarket } from "@/solana/marketMapping";
 import { BettingModal } from "@/components/BettingModal";
@@ -114,31 +114,33 @@ const Index = () => {
     <div className="min-h-screen bg-background font-sans text-foreground">
       <Header />
 
-      <main className="container mx-auto px-4 py-8 max-w-[1240px]">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-[1240px] space-y-4 sm:space-y-8">
         {/* Header Section - Module Style */}
-        <div className="relative bg-[#d4d4d4] border border-white/40 shadow-sm rounded-[4px] p-6 mb-8 overflow-hidden">
+        <div className="relative bg-[#d4d4d4] dark:bg-[#222] border border-white/40 dark:border-[#3a3a3a] shadow-sm rounded-[6px] p-4 sm:p-6 overflow-hidden">
           {/* Subtle Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/5 via-transparent to-transparent dark:from-white/5 pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-              <h1 className="text-5xl font-black uppercase tracking-tighter mb-2 leading-none text-[#111] drop-shadow-sm">Markets</h1>
+            <div className="w-full md:w-auto">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2 leading-none text-[#111] dark:text-white drop-shadow-sm break-words">
+                Markets
+              </h1>
               <div className="flex flex-col gap-1.5">
-                <p className="text-[#444] font-bold text-sm tracking-wide">
+                <p className="text-[#444] dark:text-[#d7d7d7] font-bold text-xs sm:text-sm tracking-wide">
                   the silliest outcome is always the most likely
                 </p>
-                <p className="text-[11px] font-mono text-[#5f5f5f] uppercase tracking-wider font-semibold">
+                <p className="text-[10px] sm:text-[11px] font-mono text-[#5f5f5f] dark:text-[#c7c7c7] uppercase tracking-wider font-semibold">
                   {markets.length} markets · {(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000).toFixed(1)} SOL total volume
                 </p>
               </div>
               {/* Section Bar - Wider & Stronger Green */}
-              <div className="w-[120px] h-[4px] bg-[#15a349] mt-5 shadow-sm" />
+              <div className="w-[80px] sm:w-[120px] h-[3px] sm:h-[4px] bg-[#15a349] mt-3 sm:mt-5 shadow-sm" />
             </div>
 
             <Button
               onClick={() => navigate("/create-market")}
               size="lg"
-              className="font-bold shadow-[2px_2px_0px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000] active:translate-y-[2px] active:shadow-none transition-all bg-[#e8e8e8] text-black border-2 border-[#8b8b8b] hover:bg-white win95-btn-press h-10 px-6 mb-2"
+              className="w-full md:w-auto font-bold shadow-[2px_2px_0px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000] active:translate-y-[2px] active:shadow-none transition-all bg-[#e8e8e8] dark:bg-[#2b2b2b] text-black dark:text-white border-2 border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] win95-btn-press h-10 sm:h-11 px-6 mb-0 md:mb-2 rounded-md sm:rounded"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Market
@@ -147,30 +149,30 @@ const Index = () => {
         </div>
 
         {/* Trending Strip Panel - Darker & Card-like */}
-        <div className="mb-8 bg-[#d7d7d7] rounded-[4px] border border-[#8b8b8b] p-2 shadow-inner">
+        <div className="bg-[#d7d7d7] dark:bg-[#242424] rounded-[4px] border border-[#8b8b8b] dark:border-[#3a3a3a] p-2 shadow-inner overflow-x-auto">
           <TrendingStrip markets={markets.filter(m => m.state === 'open').sort((a, b) => b.volumeLamports - a.volumeLamports)} />
         </div>
 
         {/* Unified Search & Filters Bar - Solid Control Strip */}
-        <div className="bg-[#e8e8e8] p-2 mb-8 rounded-[2px] border border-[#8b8b8b] shadow-sm">
-          <div className="flex flex-col md:flex-row gap-3 h-auto md:h-10">
+        <div className="bg-[#e8e8e8] dark:bg-[#252525] p-2 sm:p-2 rounded-[2px] border border-[#8b8b8b] dark:border-[#3a3a3a] shadow-sm">
+          <div className="flex flex-col md:flex-row gap-2 sm:gap-3 h-auto md:h-10">
             {/* Search Input */}
-            <div className="relative flex-[2] h-10 md:h-full group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5f5f] group-focus-within:text-black transition-colors" />
+            <div className="relative w-full md:flex-[2] h-10 md:h-full group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5f5f] dark:text-[#c7c7c7] group-focus-within:text-black dark:group-focus-within:text-white transition-colors" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search markets..."
-                className="pl-9 h-full bg-white border-[#8b8b8b] focus-visible:ring-1 focus-visible:ring-[#15a349] font-bold text-[#111] rounded-[2px] placeholder:text-[#888]"
+                className="pl-9 h-full bg-white dark:bg-[#1d1d1d] border-[#8b8b8b] dark:border-[#3a3a3a] focus-visible:ring-1 focus-visible:ring-[#15a349] font-bold text-[#111] dark:text-white rounded-[2px] placeholder:text-[#888] dark:placeholder:text-[#9a9a9a] text-sm"
               />
             </div>
 
             {/* Filters Group */}
-            <div className="flex gap-3 w-full md:w-auto h-10 md:h-full">
+            <div className="flex flex-row gap-2 w-full md:w-auto h-10 md:h-full">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[160px] h-full bg-white border-[#8b8b8b] font-bold text-[#111] rounded-[2px] focus:ring-1 focus:ring-[#15a349]">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-3.5 h-3.5 text-[#5f5f5f]" />
+                <SelectTrigger className="flex-1 md:w-[160px] h-full bg-white dark:bg-[#1f1f1f] border-[#8b8b8b] dark:border-[#3a3a3a] font-bold text-[#111] dark:text-white rounded-[2px] focus:ring-1 focus:ring-[#15a349] text-xs sm:text-sm px-2 sm:px-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+                    <Filter className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#5f5f5f] dark:text-[#c7c7c7] flex-shrink-0" />
                     <SelectValue placeholder="Status" />
                   </div>
                 </SelectTrigger>
@@ -182,7 +184,7 @@ const Index = () => {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full md:w-[180px] h-full bg-white border-[#8b8b8b] font-bold text-[#111] rounded-[2px] focus:ring-1 focus:ring-[#15a349]">
+                <SelectTrigger className="flex-1 md:w-[180px] h-full bg-white dark:bg-[#1f1f1f] border-[#8b8b8b] dark:border-[#3a3a3a] font-bold text-[#111] dark:text-white rounded-[2px] focus:ring-1 focus:ring-[#15a349] text-xs sm:text-sm px-2 sm:px-3">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -216,12 +218,12 @@ const Index = () => {
             </div>
 
             {visibleCount < filteredAndSortedMarkets.length && (
-              <div className="mt-16 flex justify-center">
+              <div className="mt-12 sm:mt-16 flex justify-center">
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="min-w-[200px] font-bold border-2 hover:bg-primary/5 h-12 text-base"
+                  className="min-w-[200px] w-full sm:w-auto font-bold border-2 hover:bg-primary/5 h-12 text-base"
                 >
                   Load More Markets
                 </Button>
@@ -248,6 +250,17 @@ const Index = () => {
         )}
       </main>
 
+      {/* Floating TOS button */}
+      <button
+        type="button"
+        onClick={() => navigate("/terms-of-service")}
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-[#e0e0e0] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] shadow-[2px_2px_0px_0px_#000] px-3 py-2 text-xs font-bold text-[#111] dark:text-white hover:bg-white dark:hover:bg-[#3a3a3a] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000]"
+        aria-label="View Terms of Service"
+      >
+        <Info className="w-4 h-4" />
+        Terms
+      </button>
+
       {/* Modals */}
       {betState && (
         <BettingModal
@@ -262,7 +275,7 @@ const Index = () => {
 
       {shareMarket && (
         <ShareMarketModal
-          isOpen={!!shareMarket}
+          open={!!shareMarket}
           onClose={() => setShareMarket(null)}
           market={shareMarket}
         />

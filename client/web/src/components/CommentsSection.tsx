@@ -161,7 +161,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
   };
 
   return (
-    <div className="bg-white border-2 border-[#8b8b8b] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-5 relative overflow-hidden">
+    <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
       {/* Faint smiley watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[140px] font-black text-gray-400 select-none">
         : )
@@ -169,7 +169,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
 
       <div className="relative z-10">
         {/* Header */}
-        <h2 className="text-xs uppercase font-black tracking-wider text-[#555] mb-4 pb-2 border-b-2 border-[#d3d3d3]">
+        <h2 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-4 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">
           Comments ({comments.length})
         </h2>
 
@@ -180,12 +180,12 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="share your prediction..."
-                className="border-2 border-[#8b8b8b] rounded font-semibold resize-none focus:border-[#111] transition-colors bg-white shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)]"
+                className="border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded font-semibold resize-none focus:border-[#111] transition-colors bg-white dark:bg-[#1f1f1f] text-foreground dark:text-white shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)]"
                 rows={3}
                 maxLength={500}
               />
               <div className="flex justify-between items-center">
-                <span className="text-xs text-[#666] font-semibold">
+                <span className="text-xs text-[#666] dark:text-[#c7c7c7] font-semibold">
                   {newComment.length}/500
                 </span>
                 <Button
@@ -198,28 +198,28 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
               </div>
             </form>
           ) : (
-            <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-4 text-center shadow-sm">
-              <p className="text-sm font-semibold text-[#666]">
+            <div className="bg-[#f5f5f5] dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-4 text-center shadow-sm">
+              <p className="text-sm font-semibold text-[#666] dark:text-[#c7c7c7]">
                 Connect your wallet to comment
               </p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border-2 border-red-400 rounded p-3 text-center shadow-sm">
-              <p className="text-xs font-bold text-red-700">{error}</p>
+            <div className="bg-red-50 dark:bg-[#3a0c0c] border-2 border-red-400 dark:border-red-700 rounded p-3 text-center shadow-sm">
+              <p className="text-xs font-bold text-red-700 dark:text-red-200">{error}</p>
             </div>
           )}
 
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {fetchLoading && comments.length === 0 ? (
-              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-4 text-center shadow-sm">
-                <p className="text-sm font-semibold text-[#666]">loading comments...</p>
+              <div className="bg-[#f5f5f5] dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-4 text-center shadow-sm">
+                <p className="text-sm font-semibold text-[#666] dark:text-[#c7c7c7]">loading comments...</p>
               </div>
             ) : comments.length === 0 ? (
-              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded p-8 text-center shadow-sm">
+              <div className="bg-[#f5f5f5] dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-8 text-center shadow-sm">
                 <div className="text-4xl mb-2 opacity-20">💬</div>
-                <p className="text-sm font-semibold text-[#666]">
+                <p className="text-sm font-semibold text-[#666] dark:text-[#c7c7c7]">
                   no comments yet. be the first!
                 </p>
               </div>
@@ -227,18 +227,18 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
               comments.map((comment, idx) => (
                 <div
                   key={comment.id}
-                  className={`border border-[#e0e0e0] rounded p-3 shadow-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'
+                  className={`border border-[#e0e0e0] dark:border-[#333] rounded p-3 shadow-sm ${idx % 2 === 0 ? 'bg-white dark:bg-[#1f1f1f]' : 'bg-[#fafafa] dark:bg-[#1a1a1a]'
                     }`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="bg-[#f0f0f0] border border-[#d3d3d3] px-2 py-1 rounded font-mono text-xs font-bold text-[#111]">
+                    <span className="bg-[#f0f0f0] dark:bg-[#2a2a2a] border border-[#d3d3d3] dark:border-[#333] px-2 py-1 rounded font-mono text-xs font-bold text-[#111] dark:text-white">
                       {comment.username || shortenWallet(comment.walletAddress)}
                     </span>
-                    <span className="text-[10px] text-[#999] font-semibold">
+                    <span className="text-[10px] text-[#999] dark:text-[#c7c7c7] font-semibold">
                       {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="font-semibold text-sm text-[#111] leading-relaxed">{comment.commentText}</p>
+                  <p className="font-semibold text-sm text-[#111] dark:text-white leading-relaxed break-words">{comment.commentText}</p>
                 </div>
               ))
             )}

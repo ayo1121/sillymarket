@@ -9,6 +9,8 @@ import { useAnchorProgram } from "@/solana/program";
 import { fetchConfig } from "@/solana/read";
 import { useMarketsCtx } from "@/hooks/marketsContext";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/useTheme";
+import { Moon, SunMedium } from "lucide-react";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export const Header = () => {
   const wallet = useWallet();
   const program = useAnchorProgram();
   const { hasClaimablePositions, claimableCount } = useMarketsCtx();
+  const { theme, toggleTheme } = useTheme();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -45,42 +48,42 @@ export const Header = () => {
   }, [program, wallet.publicKey]);
 
   return (
-    <header className="bg-[#b8b8b8] border-b-2 border-white/50 shadow-sm mb-8 sticky top-0 z-50">
-      <div className="max-w-[1240px] mx-auto px-4 py-3 flex items-center justify-between">
+    <header className="bg-[#b8b8b8] dark:bg-[#1d1d1d] border-b-2 border-white/50 dark:border-[#2d2d2d] shadow-sm mb-6 sm:mb-8 sticky top-0 z-50 transition-colors">
+      <div className="max-w-[1240px] mx-auto px-3 sm:px-4 py-2 sm:py-3 flex flex-wrap items-center justify-between gap-y-2">
 
         {/* Left: Brand Block */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button onClick={() => navigate("/")} className="hover:opacity-90 transition-opacity flex-shrink-0 active:scale-95 duration-100">
             <div className="win95-sunken p-[2px] bg-white border border-[#8a8a8a] shadow-sm">
-              <img src={logo} alt="sillymarket" className="w-10 h-10 object-cover" />
+              <img src={logo} alt="sillymarket" className="w-8 h-8 sm:w-10 sm:h-10 object-cover" />
             </div>
           </button>
 
           {/* Vertical Separator */}
-          <div className="w-[2px] h-8 bg-[#8a8a8a]/30 rounded-full" />
+          <div className="w-[2px] h-6 sm:h-8 bg-[#8a8a8a]/30 rounded-full hidden sm:block" />
 
           <div className="flex flex-col justify-center">
-            <h1 className="text-xl font-black tracking-tighter leading-none text-[#111] mb-0.5">
+            <h1 className="text-lg sm:text-xl font-black tracking-tighter leading-none text-[#111] dark:text-white mb-0.5">
               sillymarket
             </h1>
-            <p className="text-[10px] font-bold text-[#5f5f5f] tracking-wide uppercase">
+            <p className="text-[9px] sm:text-[10px] font-bold text-[#5f5f5f] dark:text-[#cfcfcf] tracking-wide uppercase">
               silly bets, silly outcomes
             </p>
           </div>
         </div>
 
         {/* Right: Actions & Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           {/* Navigation Buttons */}
-          <div className="flex items-center gap-2 mr-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               onClick={() => navigate("/")}
               className={cn(
-                "h-9 px-4 font-bold text-sm border-2 transition-all win95-btn-press",
+                "h-8 sm:h-9 px-3 sm:px-4 font-bold text-xs sm:text-sm border-2 transition-all win95-btn-press",
                 location.pathname === "/"
-                  ? "bg-[#d4d4d4] text-black border-[#8a8a8a] shadow-inner"
-                  : "bg-[#e0e0e0] text-[#111] border-white/60 hover:bg-white hover:border-white"
+                  ? "bg-[#d4d4d4] dark:bg-[#2a2a2a] text-black dark:text-white border-[#8a8a8a] shadow-inner"
+                  : "bg-[#e0e0e0] dark:bg-[#2a2a2a] text-[#111] dark:text-white border-white/60 hover:bg-white dark:hover:bg-[#3a3a3a] hover:border-white"
               )}
             >
               Markets
@@ -90,7 +93,7 @@ export const Header = () => {
               <Button
                 variant="ghost"
                 onClick={() => navigate("/admin")}
-                className="h-9 px-4 font-bold text-sm bg-[#e0e0e0] text-[#111] border-2 border-white/60 hover:bg-white hover:border-white win95-btn-press"
+                className="h-8 sm:h-9 px-3 sm:px-4 font-bold text-xs sm:text-sm bg-[#e0e0e0] dark:bg-[#2a2a2a] text-[#111] dark:text-white border-2 border-white/60 hover:bg-white dark:hover:bg-[#3a3a3a] hover:border-white win95-btn-press"
               >
                 Admin
               </Button>
@@ -102,15 +105,25 @@ export const Header = () => {
             </div>
           </div>
 
-          {/* Window Controls (Visual Only) */}
-          <div className="flex gap-1 pl-3 border-l-2 border-[#8a8a8a]/20">
-            <button className="w-5 h-5 bg-[#d4d4d4] border border-[#8a8a8a] hover:bg-white flex items-center justify-center text-[8px] font-black text-[#111] shadow-sm active:translate-y-[1px]">
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="w-8 h-8 sm:w-10 sm:h-10 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[#111] dark:text-white shadow-sm active:translate-y-[1px] rounded-sm"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <SunMedium className="w-3 h-3 sm:w-4 sm:h-4" /> : <Moon className="w-3 h-3 sm:w-4 sm:h-4" />}
+          </button>
+
+          {/* Window Controls (Visual Only) - Hidden on mobile */}
+          <div className="hidden sm:flex gap-1 pl-3 border-l-2 border-[#8a8a8a]/20">
+            <button className="w-5 h-5 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[8px] font-black text-[#111] dark:text-white shadow-sm active:translate-y-[1px]">
               _
             </button>
-            <button className="w-5 h-5 bg-[#d4d4d4] border border-[#8a8a8a] hover:bg-white flex items-center justify-center font-black text-[#111] text-[9px] shadow-sm active:translate-y-[1px]">
+            <button className="w-5 h-5 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center font-black text-[#111] dark:text-white text-[9px] shadow-sm active:translate-y-[1px]">
               □
             </button>
-            <button className="w-5 h-5 bg-[#e64545] border border-[#8a8a8a] hover:bg-[#ff6b6b] flex items-center justify-center font-black text-white text-[10px] shadow-sm active:translate-y-[1px]">
+            <button className="w-5 h-5 bg-[#e64545] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-[#ff6b6b] flex items-center justify-center font-black text-white text-[10px] shadow-sm active:translate-y-[1px]">
               ×
             </button>
           </div>

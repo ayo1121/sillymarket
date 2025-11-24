@@ -3,7 +3,7 @@ import { api } from "@/lib/http";
 
 export default function UsernameModal({
   open, onOpenChange, onSubmitted
-}: { open: boolean; onOpenChange:(b:boolean)=>void; onSubmitted?: (u:string)=>void }) {
+}: { open: boolean; onOpenChange: (b: boolean) => void; onSubmitted?: (u: string) => void }) {
   const [draft, setDraft] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export default function UsernameModal({
       await api("/user/username", { method: "POST", body: JSON.stringify({ username: u }) });
       onOpenChange(false);
       onSubmitted?.(u);
-    } catch (e:any) {
+    } catch (e: any) {
       console.error("Username error:", e);
       if (e?.status === 409) {
         setErr("username taken");
@@ -34,26 +34,34 @@ export default function UsernameModal({
     }
   }
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60}}>
-      <div style={{width:360,background:"#fff",border:"1px solid #333",padding:16,borderRadius:8,fontFamily:"system-ui"}}>
-        <div style={{fontWeight:700,marginBottom:8}}>Choose a username</div>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="w-full max-w-[360px] bg-white dark:bg-[#1f1f1f] border border-[#333] dark:border-[#555] p-4 rounded-lg shadow-lg">
+        <div className="font-bold mb-2 text-foreground dark:text-white">Choose a username</div>
         <input
-          placeholder="e.g. ayotrader"
+          placeholder="e.g. ayo"
           value={draft}
           disabled={busy}
-          onChange={e=>{ setDraft(e.target.value); setErr(null); }}
+          onChange={e => { setDraft(e.target.value); setErr(null); }}
           maxLength={20}
-          style={{width:"100%",border:"1px solid #999",padding:"8px",borderRadius:6}}
+          className="w-full border border-[#999] dark:border-[#555] p-2 rounded-md bg-white dark:bg-[#2a2a2a] text-foreground dark:text-white placeholder:text-muted-foreground"
         />
-        <div style={{fontSize:12,opacity:.7,marginTop:6}}>3–20 chars, letters/numbers/_</div>
-        {err && <div style={{color:"#b00020",fontSize:12,marginTop:6}}>{err}</div>}
-        <div style={{display:"flex",gap:8,marginTop:12}}>
-          <button onClick={()=>onOpenChange(false)} style={{flex:1,padding:"8px"}} disabled={busy}>Cancel</button>
+        <div className="text-xs opacity-70 mt-1.5 text-foreground dark:text-[#ccc]">3–20 chars, letters/numbers/_</div>
+        {err && <div className="text-[#b00020] dark:text-red-400 text-xs mt-1.5">{err}</div>}
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="flex-1 p-2 rounded border border-transparent hover:bg-gray-100 dark:hover:bg-[#333] text-foreground dark:text-white transition-colors"
+            disabled={busy}
+          >
+            Cancel
+          </button>
           <button
             disabled={!okFmt || busy}
             onClick={submit}
-            style={{flex:1,padding:"8px",background:"#000",color:"#fff"}}
-          >{busy ? "Saving..." : "Continue"}</button>
+            className="flex-1 p-2 bg-black dark:bg-white text-white dark:text-black rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          >
+            {busy ? "Saving..." : "Continue"}
+          </button>
         </div>
       </div>
     </div>

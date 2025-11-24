@@ -27,11 +27,27 @@ import { solToLamports } from "@/solana/utils";
 import BN from "bn.js";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
 import { showErrorToast } from "@/lib/errorHandling";
+import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 
 const solFromLamports = (lamports: number | BN): number => {
   const num = typeof lamports === "object" ? lamports.toNumber() : lamports;
   return num / 1e9;
 };
+
+const successToastWithLink = (label: string, sig: string) =>
+  toast.success(
+    <div className="flex flex-col gap-1 text-sm">
+      <span>{label} Tx: {sig}</span>
+      <a
+        href={getTxExplorerUrl(sig)}
+        target="_blank"
+        rel="noreferrer"
+        className="underline font-semibold text-xs"
+      >
+        View on Explorer
+      </a>
+    </div>
+  );
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -152,7 +168,7 @@ const AdminPanel = () => {
     try {
       console.log("[AdminPanel] Initializing config...");
       const sig = await initializeConfig(program as any, publicKey);
-      toast.success(`Config initialized! Transaction: ${sig}`);
+      successToastWithLink("Config initialized!", sig);
 
       // Reload config after initialization
       setConfigLoading(true);
@@ -194,7 +210,7 @@ const AdminPanel = () => {
         maxBetLamports: solToLamports(parseFloat(initForm.maxBetLamports)),
         adminPreCutoff: initForm.adminPreCutoff,
       });
-      toast.success(`Config initialized! Tx: ${sig}`);
+      successToastWithLink("Config initialized!", sig);
       // Reload config
       const configData = await fetchConfig(program);
       setConfig(configData.account || configData);
@@ -217,7 +233,7 @@ const AdminPanel = () => {
         authority: publicKey,
         newAuthority: newAuthPk,
       });
-      toast.success(`Authority updated! Tx: ${sig}`);
+      successToastWithLink("Authority updated!", sig);
       // Reload config
       const configData = await fetchConfig(program);
       setConfig(configData.account || configData);
@@ -395,7 +411,7 @@ const AdminPanel = () => {
         platformFeeWallet: platformFeePk,
         creatorWallet: creatorPk,
       });
-      toast.success(`Market resolved! Tx: ${sig}`);
+      successToastWithLink("Market resolved!", sig);
 
       // Reload market data
       const marketData = await fetchMarket(program, marketPk);
@@ -417,7 +433,7 @@ const AdminPanel = () => {
     try {
       const marketPk = new PublicKey(voidForm.marketAddress);
       const sig = await voidExpired(program as any, { market: marketPk });
-      toast.success(`Market voided! Tx: ${sig}`);
+      successToastWithLink("Market voided!", sig);
     } catch (err: any) {
       console.error("Void expired error:", err);
       showErrorToast(err, "Failed to void market");
@@ -437,7 +453,7 @@ const AdminPanel = () => {
         user: userPk,
         market: marketPk,
       });
-      toast.success(`Position closed! Tx: ${sig}`);
+      successToastWithLink("Position closed!", sig);
     } catch (err: any) {
       console.error("Close position error:", err);
       showErrorToast(err, "Failed to close position");
@@ -504,7 +520,7 @@ const AdminPanel = () => {
 
       // 4) Success UI
       console.log("[AdminPanel] Created market + metadata", { txSig, marketPubkey });
-      toast.success(`Market created! Tx: ${txSig}`);
+      successToastWithLink("Market created!", txSig);
 
       // Reset form
       setCreateMarketForm({
@@ -540,7 +556,7 @@ const AdminPanel = () => {
         outcomeIndex: parseInt(placeBetForm.outcomeIndex),
         stakeLamports: solToLamports(parseFloat(placeBetForm.amount)),
       });
-      toast.success(`Bet placed! Tx: ${sig.txSig}`);
+      successToastWithLink("Bet placed!", sig.txSig);
     } catch (err: any) {
       console.error("Place bet error:", err);
       showErrorToast(err, "Failed to place bet", "placeBet");
@@ -595,7 +611,7 @@ const AdminPanel = () => {
         market: marketPk,
         user: userPk,
       });
-      toast.success(`Winnings claimed! Tx: ${sig}`);
+      successToastWithLink("Winnings claimed!", sig);
 
       // Reload position data
       const positions = await fetchUserPositions(program, userPk);
@@ -615,10 +631,10 @@ const AdminPanel = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-win95-teal">
+      <div className="min-h-screen bg-background text-foreground">
         <Header />
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="win95-window bg-background p-4 text-center">
+        <div className="win95-window bg-background p-4 text-center border border-[#8a8a8a] dark:border-[#333]">
             <p>Loading admin panel...</p>
             {!program && <p className="text-xs text-muted-foreground mt-2">Waiting for program to load...</p>}
             {!publicKey && <p className="text-xs text-muted-foreground mt-2">Waiting for wallet connection...</p>}
@@ -630,10 +646,10 @@ const AdminPanel = () => {
 
   if (!program || !publicKey) {
     return (
-      <div className="min-h-screen bg-win95-teal">
+      <div className="min-h-screen bg-background text-foreground">
         <Header />
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="win95-window bg-background p-4 text-center">
+        <div className="win95-window bg-background p-4 text-center border border-[#8a8a8a] dark:border-[#333]">
             <p className="text-red-600">⚠️ Connect your wallet to access admin panel</p>
             <div className="mt-4 text-xs text-muted-foreground space-y-1">
               <p>Program loaded: {program ? "✅" : "❌"}</p>
@@ -655,10 +671,10 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="min-h-screen bg-win95-teal">
+    <div className="min-h-screen bg-background text-foreground">
       <Header />
       <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        <div className="win95-window bg-background p-1 mb-4">
+        <div className="win95-window bg-background p-1 mb-4 border border-[#8a8a8a] dark:border-[#333]">
           <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-2 mb-1 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img src={lightbulbIcon} alt="" className="w-4 h-4 sm:w-5 sm:h-5 opacity-80" />

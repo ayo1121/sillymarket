@@ -16,6 +16,7 @@ import { formatSol, shortenWallet } from "@/utils/format";
 import { MarketCard } from "@/components/MarketCard";
 import { resolveMarket } from "@/solana/actions";
 import { fetchConfig } from "@/solana/read";
+import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 
 interface BetView {
   id: string;
@@ -199,7 +200,19 @@ const MyBets = () => {
         market: marketPk,
         user: publicKey,
       });
-      toast.success(`Winnings claimed! Transaction: ${sig.slice(0, 8)}...`);
+      toast.success(
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Winnings claimed! Transaction: {sig.slice(0, 8)}...</span>
+          <a
+            href={getTxExplorerUrl(sig)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold text-xs"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
       await refreshPositions();
     } catch (error: any) {
       console.error("Claim error:", error);
@@ -302,7 +315,19 @@ const MyBets = () => {
         platformFeeWallet: new PublicKey(feeWallet),
         creatorWallet: new PublicKey(creatorWallet),
       });
-      toast.success(`Market resolved! Transaction: ${sig.slice(0, 8)}...`);
+      toast.success(
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Market resolved! Transaction: {sig.slice(0, 8)}...</span>
+          <a
+            href={getTxExplorerUrl(sig)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold text-xs"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
       await refreshPositions();
     } catch (error: any) {
       console.error("Resolve error:", error);
@@ -317,27 +342,27 @@ const MyBets = () => {
 
   const loading = marketsLoading || positionsLoading;
 
-  return <div className="min-h-screen bg-win95-teal">
+  return <div className="min-h-screen bg-background text-foreground">
     <Header />
 
-    <main className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-6 mb-8 relative overflow-hidden">
+    <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-6xl">
+      <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-4 sm:p-6 mb-6 sm:mb-8 relative overflow-hidden">
         {/* Faint smiley watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] text-[120px] font-black text-gray-400 select-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] text-[120px] font-black text-gray-400 select-none">
           : )
         </div>
 
         <div className="relative z-10">
           {/* Header with toggle */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl md:text-4xl font-black">
+          <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black">
               {viewMode === "bets" ? "my bets :)" : "my markets :)"}
             </h1>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setViewMode(viewMode === "bets" ? "markets" : "bets")}
-              className="font-semibold border-[#8b8b8b] hover:bg-[#e8e8e8]"
+              className="font-semibold border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-[#e8e8e8] dark:hover:bg-[#2a2a2a]"
             >
               {viewMode === "bets" ? "My Markets" : "My Bets"}
             </Button>
@@ -350,13 +375,13 @@ const MyBets = () => {
             <>
               {/* Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div className="bg-white border border-[#e0e0e0] rounded-md p-5 shadow-sm">
-                  <div className="text-xs uppercase text-[#666] font-semibold mb-2 tracking-wide">Total Bet</div>
-                  <div className="text-2xl font-bold text-[#111]">{formatSol(totalBet, 2)} SOL</div>
+                <div className="bg-white dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded-md p-4 sm:p-5 shadow-sm">
+                  <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-2 tracking-wide">Total Bet</div>
+                  <div className="text-2xl font-bold text-[#111] dark:text-white">{formatSol(totalBet, 2)} SOL</div>
                 </div>
-                <div className="bg-white border border-[#e0e0e0] rounded-md p-5 shadow-sm">
+                <div className="bg-white dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded-md p-4 sm:p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs uppercase text-[#666] font-semibold tracking-wide">Realized PnL</div>
+                    <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold tracking-wide">Realized PnL</div>
                     {claimableBets.length > 0 && (
                       <Button
                         size="sm"
@@ -383,7 +408,7 @@ const MyBets = () => {
                     onClick={() => setStatusFilter(status)}
                     className={`px-4 py-2 rounded text-sm font-semibold transition-all ${statusFilter === status
                       ? "bg-[#111] text-white shadow-sm"
-                      : "bg-[#e8e8e8] text-[#111] hover:bg-[#d8d8d8] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]"
+                      : "bg-[#e8e8e8] dark:bg-[#2a2a2a] text-[#111] dark:text-white hover:bg-[#d8d8d8] dark:hover:bg-[#3a3a3a] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]"
                       }`}
                   >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -395,12 +420,12 @@ const MyBets = () => {
             <>
               {/* Market Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div className="bg-white border border-[#e0e0e0] rounded-md p-5 shadow-sm">
-                  <div className="text-xs uppercase text-[#666] font-semibold mb-2 tracking-wide">Total Volume</div>
-                  <div className="text-2xl font-bold text-[#111]">{formatSol(marketStats.totalVolume, 2)} SOL</div>
+                <div className="bg-white dark:bg-[#111] border border-[#e0e0e0] dark:border-[#2f2f2f] rounded-md p-4 sm:p-5 shadow-sm">
+                  <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-2 tracking-wide">Total Volume</div>
+                  <div className="text-2xl font-bold text-[#111] dark:text-white">{formatSol(marketStats.totalVolume, 2)} SOL</div>
                 </div>
-                <div className="bg-white border border-[#e0e0e0] rounded-md p-5 shadow-sm">
-                  <div className="text-xs uppercase text-[#666] font-semibold mb-2 tracking-wide">Fees Collected</div>
+                <div className="bg-white dark:bg-[#111] border border-[#e0e0e0] dark:border-[#2f2f2f] rounded-md p-4 sm:p-5 shadow-sm">
+                  <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-2 tracking-wide">Fees Collected</div>
                   <div className="text-2xl font-bold text-green-600">{formatSol(marketStats.feesCollected, 2)} SOL</div>
                 </div>
               </div>
@@ -413,7 +438,7 @@ const MyBets = () => {
                     onClick={() => setMarketFilter(filter)}
                     className={`px-4 py-2 rounded text-sm font-semibold transition-all ${marketFilter === filter
                       ? "bg-[#111] text-white shadow-sm"
-                      : "bg-[#e8e8e8] text-[#111] hover:bg-[#d8d8d8] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]"
+                      : "bg-[#e8e8e8] dark:bg-[#2a2a2a] text-[#111] dark:text-white hover:bg-[#d8d8d8] dark:hover:bg-[#3a3a3a] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]"
                       }`}
                   >
                     {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -452,11 +477,11 @@ const MyBets = () => {
               filteredBets.map(bet => <Tooltip key={bet.id}>
                 <TooltipTrigger asChild>
                   <div
-                    className="bg-[#f5f5f5] border border-[#d3d3d3] rounded-md shadow-sm p-5 cursor-pointer hover:shadow-md transition-all relative group overflow-hidden"
+                    className="bg-[#f5f5f5] dark:bg-[#181818] border border-[#d3d3d3] dark:border-[#333] rounded-md shadow-sm p-4 sm:p-5 cursor-pointer hover:shadow-md transition-all relative group overflow-hidden"
                     onClick={() => navigate(`/market/${bet.marketPubkey}`)}
                   >
                     {/* Faint smiley watermark */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] text-[80px] font-black text-gray-400 select-none">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] text-[80px] font-black text-gray-400 select-none">
                       : )
                     </div>
 
@@ -475,13 +500,13 @@ const MyBets = () => {
                       {/* Market Info */}
                       <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
                         {bet.imageUrl && (
-                          <div className="flex-shrink-0 border border-[#d3d3d3] rounded overflow-hidden w-full sm:w-20 h-32 sm:h-20">
+                          <div className="flex-shrink-0 border border-[#d3d3d3] dark:border-[#333] rounded overflow-hidden w-full sm:w-20 h-32 sm:h-20 bg-[#f0f0f0] dark:bg-[#1f1f1f]">
                             <img src={bet.imageUrl} alt={bet.question} className="w-full h-full object-cover" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold mb-2 leading-tight break-words">{bet.question}</h3>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <h3 className="text-lg font-bold mb-2 leading-tight break-words text-foreground dark:text-white">{bet.question}</h3>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground dark:text-[#c7c7c7]">
                             <span className="font-semibold">{bet.category}</span>
                             <span>•</span>
                             <span className="font-mono">{bet.marketAddress}</span>
@@ -492,29 +517,29 @@ const MyBets = () => {
                       </div>
 
                       {/* Bet Stats */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border border-[#e0e0e0] rounded p-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded p-3 sm:p-4">
                         <div>
-                          <div className="text-xs uppercase text-[#666] font-semibold mb-1 tracking-wide">Prediction</div>
+                          <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 tracking-wide">Prediction</div>
                           <div className={`font-bold ${bet.status === "won" ? "text-green-600" :
                             bet.status === "lost" ? "text-red-600" :
-                              "text-[#111]"
+                              "text-[#111] dark:text-white"
                             }`}>
                             {bet.prediction} {bet.status === "won" ? ":)" : bet.status === "lost" ? ":(" : ":|"}
                           </div>
                         </div>
 
                         <div>
-                          <div className="text-xs uppercase text-[#666] font-semibold mb-1 tracking-wide">Bet Amount</div>
-                          <div className="font-bold text-[#111]">{formatSol(bet.amount, 2)} SOL</div>
+                          <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 tracking-wide">Bet Amount</div>
+                          <div className="font-bold text-[#111] dark:text-white">{formatSol(bet.amount, 2)} SOL</div>
                         </div>
 
                         <div>
-                          <div className="text-xs uppercase text-[#666] font-semibold mb-1 tracking-wide">Odds</div>
-                          <div className="font-bold text-[#111]">{bet.odds}x</div>
+                          <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 tracking-wide">Odds</div>
+                          <div className="font-bold text-[#111] dark:text-white">{bet.odds}x</div>
                         </div>
 
                         <div>
-                          <div className="text-xs uppercase text-[#666] font-semibold mb-1 tracking-wide">PNL</div>
+                          <div className="text-xs uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 tracking-wide">PNL</div>
                           <div
                             className={`font-bold ${bet.realized
                               ? Number(bet.pnlLamports) / LAMPORTS_PER_SOL > 0
@@ -601,14 +626,14 @@ const MyBets = () => {
                     />
                   </div>
                   {canResolve && (
-                    <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-4 relative overflow-hidden flex flex-col justify-center">
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] text-[60px] font-black text-gray-400 select-none">
+                    <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 relative overflow-hidden flex flex-col justify-center">
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] text-[60px] font-black text-gray-400 select-none">
                         : )
                       </div>
 
                       <div className="relative z-10">
-                        <h3 className="text-xs uppercase font-bold tracking-wide text-[#666] mb-2">Resolve Market</h3>
-                        <div className="text-[10px] text-muted-foreground mb-2">Select outcome:</div>
+                        <h3 className="text-xs uppercase font-black tracking-wider text-[#555] dark:text-[#c7c7c7] mb-3 pb-2 border-b-2 border-[#d3d3d3] dark:border-[#333]">Resolve Market</h3>
+                        <div className="text-[10px] font-bold text-[#999] mb-2 uppercase">Select winning outcome:</div>
                         <div className="flex flex-col gap-2">
                           {market.outcomes.slice(0, 5).map((outcome, i) => (
                             <Button
@@ -617,7 +642,7 @@ const MyBets = () => {
                               size="sm"
                               onClick={() => handleResolveMarket(market.pubkey, i)}
                               disabled={isResolving}
-                              className="font-semibold text-xs border-[#8b8b8b] hover:bg-[#e8e8e8] w-full justify-start h-8"
+                              className="font-bold text-xs border-2 border-[#d3d3d3] dark:border-[#333] hover:border-[#111] dark:hover:border-white hover:bg-transparent w-full justify-start h-10"
                             >
                               {isResolving ? "Resolving..." : outcome.label}
                             </Button>
@@ -627,9 +652,9 @@ const MyBets = () => {
                             size="sm"
                             onClick={() => handleResolveMarket(market.pubkey, -2)}
                             disabled={isResolving}
-                            className="font-semibold text-xs border-[#8b8b8b] hover:bg-[#e8e8e8] w-full justify-start h-8"
+                            className="font-bold text-xs border-2 border-red-200 dark:border-red-900/30 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 w-full justify-start h-10 mt-2"
                           >
-                            {isResolving ? "Resolving..." : "Void"}
+                            {isResolving ? "Resolving..." : "Void Market (Refund All)"}
                           </Button>
                         </div>
                       </div>

@@ -172,21 +172,20 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   return (
     <div
       className={cn(
-        "market-card bg-[#e5e5e5] p-4 flex flex-col h-full transition-all duration-200 ease-out relative",
-        "border border-[#8a8a8a] rounded-[4px] shadow-[0_2px_4px_rgba(0,0,0,0.15)]",
-        "hover:-translate-y-[3px] hover:shadow-[0_8px_16px_rgba(0,0,0,0.2)] hover:bg-[#f0f0f0]",
+        "market-card bg-[#e5e5e5] dark:bg-[#1f1f1f] p-3 sm:p-4 flex flex-col h-full transition-all duration-200 ease-out relative",
+        "border border-[#8a8a8a] dark:border-[#3a3a3a] rounded-[4px] shadow-[0_2px_4px_rgba(0,0,0,0.15)]",
+        "hover:-translate-y-[3px] hover:shadow-[0_8px_16px_rgba(0,0,0,0.2)] hover:bg-[#f0f0f0] dark:hover:bg-[#262626]",
         isOpen && "border-l-[3px] border-l-[#15a349]",
         (isResolved || isVoid) && "opacity-[0.9] grayscale-[0.2] border-l-0",
-        // Removed watermark class
         className
       )}
       onClick={handleCardClick}
     >
       {/* Header: Image + Title */}
-      <div className="flex gap-4 mb-5">
+      <div className="flex gap-3 sm:gap-4 mb-4 sm:mb-5">
         {/* Image */}
         <div className="relative flex-shrink-0">
-          <div className="w-14 h-14 rounded-[3px] overflow-hidden border border-[#8a8a8a] bg-white">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[3px] overflow-hidden border border-[#8a8a8a] bg-white">
             <img
               src={imageUrl || lightbulbIcon}
               alt="market"
@@ -201,7 +200,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
         {/* Title & Meta */}
         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
           <div className="flex justify-between items-start gap-2">
-            <h3 className="font-bold text-[1.15rem] leading-tight line-clamp-2 text-[#111] tracking-tight">
+            <h3 className="font-bold text-base sm:text-[1.15rem] leading-tight line-clamp-2 text-[#111] dark:text-white tracking-tight">
               {market.displayQuestion}
             </h3>
 
@@ -213,14 +212,14 @@ export const MarketCard: React.FC<MarketCardProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5f5f5f] mt-1">
-            <span className="font-medium whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] sm:text-xs text-[#5f5f5f] dark:text-[#c7c7c7] mt-1">
+            <span className="font-medium whitespace-nowrap truncate max-w-[120px]">
               by {market.creatorUsername || market.creatorPubkey}
             </span>
             <span className="opacity-40">•</span>
             <button
               onClick={(e) => copyAddress(e, market.pubkey)}
-              className="font-mono opacity-60 hover:opacity-100 hover:text-[#111] cursor-copy transition-opacity flex items-center gap-1"
+              className="font-mono opacity-60 hover:opacity-100 hover:text-[#111] dark:hover:text-white cursor-copy transition-opacity flex items-center gap-1"
               title="Copy Market Address"
             >
               {shortenWallet(market.pubkey, 4)}
@@ -228,11 +227,11 @@ export const MarketCard: React.FC<MarketCardProps> = ({
             </button>
             <span className="opacity-40">•</span>
             <span className={cn(
-              "font-bold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded-[2px] border whitespace-nowrap",
-              isOpen && "bg-green-50 text-[#15a349] border-green-100",
-              isLocked && "bg-orange-50 text-[#ff8a2a] border-orange-100",
-              isResolved && !isVoid && "bg-green-50 text-[#15a349] border-green-100",
-              isVoid && "bg-red-50 text-[#e64545] border-red-100"
+              "font-bold uppercase tracking-wider text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-[2px] border whitespace-nowrap",
+              isOpen && "bg-green-50 text-[#15a349] border-green-100 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800",
+              isLocked && "bg-orange-50 text-[#ff8a2a] border-orange-100 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-800",
+              isResolved && !isVoid && "bg-green-50 text-[#15a349] border-green-100 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800",
+              isVoid && "bg-red-50 text-[#e64545] border-red-100 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800"
             )}>
               {isVoid ? "VOID" : isResolved ? "RESOLVED" : isLocked ? "LOCKED" : "OPEN"}
             </span>
@@ -241,7 +240,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       </div>
 
       {/* Outcomes Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4 flex-1">
         {market.outcomes.map((outcome, idx) => {
           const color = getOutcomeColor(idx);
           const seriesPoints = outcomeSnapshots[idx]?.seriesPoints || [];
@@ -259,7 +258,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               key={idx}
               className={cn(
                 "rounded-[4px] p-0.5 transition-all", // p-0.5 for slight gap if needed, or just rely on OutcomeCard
-                isLastAndOdd ? "col-span-2" : ""
+                isLastAndOdd ? "col-span-1 sm:col-span-2" : ""
               )}
             >
               <OutcomeCard
@@ -277,6 +276,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
                     onOutcomeClick(idx);
                   }
                 }}
+                compact
               />
             </div>
           );
@@ -284,7 +284,7 @@ export const MarketCard: React.FC<MarketCardProps> = ({
       </div>
 
       {/* Footer Stats */}
-      <div className="border-t border-[#d4d4d4] pt-3 mt-auto">
+      <div className="border-t border-[#d4d4d4] dark:border-[#3a3a3a] pt-2 sm:pt-3 mt-auto">
         <MarketStatsRow
           totalVolumeSol={totalVolumeSol}
           closesLabel={timeRemainingLabel}

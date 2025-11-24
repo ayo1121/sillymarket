@@ -13,6 +13,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useWalletIdentity } from "@/auth/walletIdentity";
 import { getOutcomeTheme } from "@/solana/outcomeTheme";
 import { showErrorToast } from "@/lib/errorHandling";
+import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 
 export type BetPlacedPayload = {
   marketPubkey: string;
@@ -228,7 +229,19 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
         });
       }
 
-      toast.success(`Bet placed! Transaction: ${txSig.slice(0, 8)}...`);
+      toast.success(
+        <div className="flex flex-col gap-1 text-sm">
+          <span>Bet placed! Transaction: {txSig.slice(0, 8)}...</span>
+          <a
+            href={getTxExplorerUrl(txSig)}
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold text-xs"
+          >
+            View on Explorer
+          </a>
+        </div>
+      );
 
       // Refresh markets if program is available
       if (program) {
@@ -292,36 +305,36 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#f5f5f5] p-0 max-w-[560px] border border-[#d3d3d3] rounded shadow-[0_2px_8px_rgba(0,0,0,0.08)] overflow-hidden">
+      <DialogContent className="bg-[#f5f5f5] dark:bg-[#1b1b1b] p-0 max-w-[560px] w-[95vw] border border-[#d3d3d3] dark:border-[#333] rounded shadow-[0_2px_8px_rgba(0,0,0,0.08)] overflow-hidden">
         {/* Faint smiley watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] text-[120px] font-black text-gray-400 select-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] text-[80px] sm:text-[120px] font-black text-gray-400 select-none">
           : )
         </div>
 
         {/* Header Bar - Windows95 style */}
-        <div className="relative bg-[#ececec] px-4 py-3 flex items-center justify-between border-b border-[#d3d3d3] shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)]">
-          <span className="font-bold text-[#111] text-sm uppercase tracking-wide">Place Bet</span>
+        <div className="relative bg-[#ececec] dark:bg-[#242424] px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-[#d3d3d3] dark:border-[#333] shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)]">
+          <span className="font-bold text-[#111] dark:text-white text-xs sm:text-sm uppercase tracking-wide">Place Bet</span>
           <button
             onClick={() => onOpenChange(false)}
-            className="w-6 h-6 border border-[#111] bg-white flex items-center justify-center text-[#111] text-base font-bold hover:bg-[#111] hover:text-white transition-colors rounded-sm"
+            className="w-5 h-5 sm:w-6 sm:h-6 border border-[#111] dark:border-white bg-white dark:bg-[#2a2a2a] flex items-center justify-center text-[#111] dark:text-white text-sm sm:text-base font-bold hover:bg-[#111] hover:text-white dark:hover:bg-white dark:hover:text-[#111] transition-colors rounded-sm"
           >
             ✖
           </button>
         </div>
 
         {/* Modal Content */}
-        <div className="relative p-8 space-y-6">
+        <div className="relative p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-h-[85vh] overflow-y-auto">
           {/* Market Info Box */}
-          <div className="bg-[#fafafa] border border-[#e0e0e0] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
-            <div className="text-[11px] uppercase text-[#666] font-semibold mb-1 tracking-wide">Market</div>
-            <div className="text-sm font-bold text-[#111]">{market.displayQuestion}</div>
+          <div className="bg-[#fafafa] dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+            <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 tracking-wide">Market</div>
+            <div className="text-sm sm:text-base font-bold text-[#111] dark:text-white break-words leading-tight">{market.displayQuestion}</div>
           </div>
 
           {/* Outcome selection (if multiple outcomes) */}
           {market.outcomes.length > 2 && (
-            <div className="space-y-3">
-              <label className="text-[13px] uppercase text-[#666] font-semibold tracking-wide">Select Outcome</label>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[11px] sm:text-[13px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold tracking-wide">Select Outcome</label>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {market.outcomes.map((outcome) => {
                   const isSelected = answerIndex === outcome.index;
                   const theme = getOutcomeTheme(outcome.index);
@@ -330,12 +343,12 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
                       key={outcome.index}
                       type="button"
                       onClick={() => handleSelectOutcome(outcome.index)}
-                      className={`w-full bg-white border border-[#d3d3d3] rounded p-3 text-left cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-[#111] shadow-md' : ''
+                      className={`w-full bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-2 sm:p-3 text-left cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-[#111] shadow-md' : ''
                         }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                          <div className={`font-bold text-sm truncate ${theme.text}`}>
+                          <div className={`font-bold text-xs sm:text-sm truncate ${theme.text} dark:text-white`}>
                             {outcome.label}
                           </div>
                         </div>
@@ -348,33 +361,33 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
           )}
 
           {/* Betting On & Payout Boxes */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-[#fafafa] border border-[#e0e0e0] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
-              <div className="text-[11px] uppercase text-[#666] font-semibold mb-2 tracking-wide">Betting On</div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-[#fafafa] dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded p-2 sm:p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+              <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 sm:mb-2 tracking-wide">Betting On</div>
               <div
-                className={`text-base font-bold px-3 py-1.5 rounded inline-block ${answerIndex === 0
-                    ? 'bg-green-500/15 text-green-900'
-                    : 'bg-red-500/15 text-red-900'
+                className={`text-sm sm:text-base font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded inline-block ${answerIndex === 0
+                  ? 'bg-green-500/15 text-green-900'
+                  : 'bg-red-500/15 text-red-900'
                   } shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]`}
               >
                 {selectedLabel}
               </div>
             </div>
-            <div className="bg-[#fafafa] border border-[#e0e0e0] rounded p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
-              <div className="text-[11px] uppercase text-[#666] font-semibold mb-2 tracking-wide">Payout</div>
-              <div className="text-base font-bold text-[#111]">{odds}</div>
+            <div className="bg-[#fafafa] dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded p-2 sm:p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+              <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 sm:mb-2 tracking-wide">Payout</div>
+              <div className="text-sm sm:text-base font-bold text-[#111] dark:text-white">{odds}</div>
             </div>
           </div>
 
           {/* Input Field */}
-          <div className="space-y-3">
-            <label className="text-[13px] uppercase text-[#666] font-semibold tracking-wide">Bet Amount (SOL)</label>
+          <div className="space-y-2 sm:space-y-3">
+            <label className="text-[11px] sm:text-[13px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold tracking-wide">Bet Amount (SOL)</label>
             <Input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="h-12 text-base font-semibold bg-white border border-[#d3d3d3] rounded shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] placeholder:text-[#999] focus:ring-2 focus:ring-[#111] focus:border-[#111]"
+              className="h-10 sm:h-12 text-base font-semibold bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] placeholder:text-[#999] dark:placeholder:text-[#8c8c8c] focus:ring-2 focus:ring-[#111] focus:border-[#111]"
               step="0.01"
               min="0"
               disabled={isSubmitting}
@@ -387,8 +400,8 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
                   : null;
 
               return existingOutcomeLabel ? (
-                <p className="text-xs text-[#666] mt-2 leading-relaxed">
-                  You already have a position on: <strong className="text-[#111]">{existingOutcomeLabel}</strong>.
+                <p className="text-[10px] sm:text-xs text-[#666] dark:text-[#c7c7c7] mt-2 leading-relaxed">
+                  You already have a position on: <strong className="text-[#111] dark:text-white">{existingOutcomeLabel}</strong>.
                   The program only allows adding to that outcome; betting on another side
                   may fail with an error.
                 </p>
@@ -398,16 +411,16 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
 
           {/* Potential Return Box */}
           {simulation && (
-            <div className="bg-white border border-[#d3d3d3] rounded p-4 shadow-sm relative overflow-hidden">
+            <div className="bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-3 sm:p-4 shadow-sm relative overflow-hidden">
               {/* Green gradient highlight at top */}
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-green-400 to-green-600"></div>
 
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="font-semibold text-[#111]">Potential Return</span>
-                  <span className="font-mono font-bold text-[#111]">{expectedPayoutSol} SOL</span>
+                  <span className="font-semibold text-[#111] dark:text-white">Potential Return</span>
+                  <span className="font-mono font-bold text-[#111] dark:text-white">{expectedPayoutSol} SOL</span>
                 </div>
-                <div className="flex justify-between items-center text-xs text-[#666]">
+                <div className="flex justify-between items-center text-xs text-[#666] dark:text-[#c7c7c7]">
                   <span>Implied Odds</span>
                   <span className="font-mono">{(simulation.impliedOdds * 100).toFixed(1)}%</span>
                 </div>
@@ -416,11 +429,11 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
           )}
 
           {/* Buttons */}
-          <div className="flex gap-4 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1 h-11 bg-[#f0f0f0] border border-[#111] text-[#111] font-normal rounded hover:bg-[#e0e0e0] shadow-none"
+              className="flex-1 h-10 sm:h-11 bg-[#f0f0f0] dark:bg-[#1f1f1f] border border-[#111] dark:border-[#444] text-[#111] dark:text-white font-normal rounded hover:bg-[#e0e0e0] dark:hover:bg-[#2a2a2a] shadow-none"
               disabled={isSubmitting}
             >
               Cancel
@@ -428,7 +441,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
             <Button
               onClick={handleSubmit}
               disabled={!amount || parseFloat(amount) <= 0 || isSubmitting || !wallet.connected}
-              className="flex-1 h-11 bg-[#111] text-white border border-white/20 font-semibold rounded hover:bg-white hover:text-[#111] hover:border-[#111] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#111] disabled:hover:text-white"
+              className="flex-1 h-10 sm:h-11 bg-[#111] text-white border border-white/20 font-semibold rounded hover:bg-white hover:text-[#111] hover:border-[#111] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#111] disabled:hover:text-white"
             >
               {isSubmitting ? "Placing..." : "Confirm Bet"}
             </Button>

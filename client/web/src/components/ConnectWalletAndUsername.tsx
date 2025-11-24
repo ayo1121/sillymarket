@@ -413,15 +413,9 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
       </Button>
 
       {connected && menuOpen && (
-        <div
-          style={{
-            position: "absolute", right: 0, top: "110%", zIndex: 60, minWidth: 240,
-            background: "#fff", border: "1px solid #ddd", borderRadius: 8,
-            boxShadow: "0 6px 24px rgba(0,0,0,.15)"
-          }}
-        >
+        <div className="absolute right-0 top-[110%] z-60 min-w-[200px] sm:min-w-[240px] bg-white dark:bg-[#1f1f1f] border border-[#ddd] dark:border-[#3a3a3a] rounded-lg shadow-[0_6px_24px_rgba(0,0,0,0.15)] overflow-hidden">
           {username && (
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid #eee", fontSize: 14, fontWeight: 500 }}>
+            <div className="px-3 py-2.5 border-b border-[#eee] dark:border-[#2a2a2a] text-sm font-semibold text-foreground break-all">
               @{username}
             </div>
           )}
@@ -431,7 +425,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
               setMenuOpen(false);
               navigate("/my-bets");
             }}
-            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee", fontWeight: 600 }}
+            className="w-full text-left px-3 py-2.5 border-b border-[#eee] dark:border-[#2a2a2a] font-semibold hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] text-sm sm:text-base"
           >
             my profile
           </button>
@@ -440,7 +434,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
             <>
               <button
                 onClick={() => { setMenuOpen(false); setAskUsername(true); setHasPrompted(true); }}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee" }}
+                className="w-full text-left px-3 py-2.5 border-b border-[#eee] dark:border-[#2a2a2a] hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] text-sm sm:text-base"
               >
                 set username
               </button>
@@ -454,7 +448,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
                     console.error("Manual sign-in failed", e);
                   }
                 }}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #eee", color: "blue" }}
+                className="w-full text-left px-3 py-2.5 border-b border-[#eee] dark:border-[#2a2a2a] text-blue-600 dark:text-blue-300 hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] text-sm sm:text-base"
               >
                 sign in (fix stuck)
               </button>
@@ -462,7 +456,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
           )}
 
           {available.length > 1 && (
-            <div style={{ borderBottom: "1px solid #eee", padding: "6px 12px", fontSize: 12, opacity: .7 }}>
+            <div className="px-3 py-1.5 text-[10px] sm:text-[12px] opacity-70 border-b border-[#eee] dark:border-[#2a2a2a]">
               switch wallet
             </div>
           )}
@@ -476,13 +470,13 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
                 try { select(w.adapter.name); } catch { /* Ignore selection errors */ }
                 try { setVisible(true); } catch { /* Ignore modal errors */ }
               }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px" }}
+              className="w-full text-left px-3 py-2.5 hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] text-sm sm:text-base"
             >
               {w.adapter.name}
             </button>
           ))}
 
-          <div style={{ borderTop: "1px solid #eee" }} />
+          <div className="border-t border-[#eee] dark:border-[#2a2a2a]" />
           <button
             onClick={async () => {
               setMenuOpen(false);
@@ -504,7 +498,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
               await api("/auth/logout", { method: "POST" }).catch(() => { });
               setHasPrompted(false); // Reset prompt flag
             }}
-            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", color: "#b00020" }}
+            className="w-full text-left px-3 py-2.5 text-[#b00020] dark:text-red-300 hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] text-sm sm:text-base"
           >
             disconnect
           </button>
