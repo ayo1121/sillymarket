@@ -270,8 +270,8 @@ export const MarketCard: React.FC<MarketCardProps> = ({
           <img src={lightbulbIcon} alt="" className="w-6 h-6 opacity-90 flex-shrink-0" />
           <span className="font-black tracking-tight text-base truncate">{market.displayQuestion}</span>
         </div>
-        <div className="flex gap-2 flex-shrink-0 items-center">
-          <span className={`px-2 py-[2px] border rounded-full text-xs font-bold uppercase ${statusPill.className}`}>
+        <div className="flex gap-2 flex-shrink-0 items-center min-w-0">
+          <span className={`px-2 py-[2px] border rounded-full text-xs font-bold uppercase truncate max-w-[120px] ${statusPill.className}`}>
             {statusPill.label}
           </span>
         </div>

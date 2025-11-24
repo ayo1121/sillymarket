@@ -85,7 +85,7 @@ const ResolutionPill: React.FC<ResolutionPillProps> = ({ state, isVoid, winnerOu
   return (
     <div className={`market-resolution-pill market-stat-box--status-${variant}`}>
       <span
-        className={`market-stat-pill ${outcomeColorClass}`}
+        className={`market-stat-pill ${outcomeColorClass} truncate max-w-[150px]`}
         style={hasWinnerColor ? { color: '#ffffff', fontWeight: 'bold' } : undefined}
       >
         {text}
