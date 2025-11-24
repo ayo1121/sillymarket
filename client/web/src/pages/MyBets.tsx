@@ -605,7 +605,7 @@ const MyBets = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleResolveMarket(market.pubkey, -1)}
+                                onClick={() => handleResolveMarket(market.pubkey, -2)}
                                 disabled={isResolving}
                                 className="font-bold text-xs"
                               >
