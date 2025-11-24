@@ -122,6 +122,7 @@ export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, use
         ...m,
         displayQuestion,
         creatorName,
+        creatorUsername: meta.creator_name ?? undefined, // Set username from backend
         imageUrl: meta.image_url ?? m.imageUrl,
         outcomes,
         userOutcomeIndex,
