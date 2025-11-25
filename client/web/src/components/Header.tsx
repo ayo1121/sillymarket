@@ -82,7 +82,7 @@ export const Header = () => {
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
             {/* Wallet Connect Button */}
-            <ConnectWalletAndUsername className="hidden sm:flex" />
+            <ConnectWalletAndUsername />
 
             {/* MOBILE: Touch target optimized - min 44px height */}
             <Button
