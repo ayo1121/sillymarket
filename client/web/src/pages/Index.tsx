@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAnchorProgram } from "@/solana/program";
 import { fetchAllMarkets } from "@/solana/read";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MarketCard } from "@/components/MarketCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,12 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { ShareMarketModal } from "@/components/ShareMarketModal";
 import { TrendingStrip } from "@/components/TrendingStrip";
 import { cn } from "@/lib/utils";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleton";
+import { useQuery } from "@tanstack/react-query";
+import { useLiveMarketUpdates } from "@/hooks/useLiveMarketUpdates";
+import { queryKeys } from "@/lib/queryKeys";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -24,50 +30,68 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
-  const [markets, setMarkets] = useState<UIMarket[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(15);
 
   // Bet modal state
   const [betState, setBetState] = useState<{ market: UIMarket; answerIndex: number } | null>(null);
   const [shareMarket, setShareMarket] = useState<UIMarket | null>(null);
 
-  const openBetModal = (market: UIMarket, answerIndex: number) => {
-    setBetState({ market, answerIndex });
+  // Helper functions for bet modal
+  const handleOpenBet = (market: UIMarket, outcomeIndex: number) => {
+    setBetState({ market, answerIndex: outcomeIndex });
   };
 
   const closeBetModal = () => {
     setBetState(null);
   };
 
-  const handleOpenBet = (market: UIMarket, outcomeIndex: number) => {
-    setBetState({ market, answerIndex: outcomeIndex });
-  };
+  // REACT QUERY: Fetch markets with stale-while-revalidate
+  // Shows cached data instantly, refetches in background
+  const {
+    data: markets = [],
+    isLoading,
+    isRefetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.markets.all,
+    queryFn: async () => {
+      if (!program) return [];
+      console.log('[Index] Fetching markets...');
+      return fetchAllMarkets(program, wallet.publicKey ?? null);
+    },
+    enabled: !!program,
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  // Fetch real markets from blockchain
-  useEffect(() => {
-    (async () => {
-      if (!program) {
-        setMarkets([]);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        // fetchAllMarkets now returns UIMarket[] directly
-        const uiMarkets = await fetchAllMarkets(program, wallet.publicKey ?? null);
-        setMarkets(uiMarkets);
-        setVisibleCount(15);
-      } catch (e: any) {
-        console.error("Error fetching markets:", e);
-        setError(e?.message || String(e));
-        setMarkets([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [program, wallet.publicKey]);
+  // REAL-TIME UPDATES: Subscribe to bet updates
+  // Automatically invalidates cache when new bets are placed
+  const { isConnected: isLiveConnected } = useLiveMarketUpdates(true);
+
+  // MOBILE FEATURE: Pull-to-refresh for markets list
+  // Triggers refetch when user pulls down on mobile
+  const { isPulling, pullDistance, isRefreshing: isPullRefreshing } = usePullToRefresh(async () => {
+    await refetch();
+  });
+
+  // MOBILE FEATURE: Swipe gestures for status filter navigation
+  // Allows swiping left/right to change between All/Active/Closed filters on mobile
+  const statusFilters = ["all", "active", "closed"];
+  const currentFilterIndex = statusFilters.indexOf(statusFilter);
+
+  useSwipeGesture(
+    () => {
+      // Swipe left - next filter
+      const nextIndex = (currentFilterIndex + 1) % statusFilters.length;
+      setStatusFilter(statusFilters[nextIndex]);
+    },
+    () => {
+      // Swipe right - previous filter
+      const prevIndex = (currentFilterIndex - 1 + statusFilters.length) % statusFilters.length;
+      setStatusFilter(statusFilters[prevIndex]);
+    }
+  );
 
   // Filter and sort markets
   const filteredAndSortedMarkets = markets.filter(market => {
@@ -111,10 +135,45 @@ const Index = () => {
   const visibleMarkets = filteredAndSortedMarkets.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground">
+    <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
       <Header />
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-[1240px] space-y-4 sm:space-y-8">
+      {/* Live indicator */}
+      {isLiveConnected && (
+        <div className="fixed top-20 right-4 z-40">
+          <div className="bg-green-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            Live
+          </div>
+        </div>
+      )}
+
+      {/* Pull-to-refresh indicator */}
+      {(isPulling || isPullRefreshing) && (
+        <div
+          className={cn(
+            "pull-to-refresh-indicator",
+            !isPulling && !isPullRefreshing && "pull-to-refresh-indicator--hidden"
+          )}
+          style={{
+            transform: `translateX(-50%) translateY(${Math.min(pullDistance, 80)}px)`,
+          }}
+        >
+          <div className="bg-[#e8e8e8] dark:bg-[#2a2a2a] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded-full p-2 shadow-lg">
+            <Loader2 className={cn("w-5 h-5 text-[#111] dark:text-white", isPullRefreshing && "animate-spin")} />
+          </div>
+        </div>
+      )}
+
+      {/* Refetching indicator */}
+      {isRefetching && (
+        <div className="fixed bottom-24 right-4 z-40 bg-blue-600 text-white text-xs px-3 py-2 rounded-full shadow-lg flex items-center gap-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Updating...
+        </div>
+      )}
+
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-[1240px] space-y-4 sm:space-y-8" data-pull-to-refresh>
         {/* Header Section - Module Style */}
         <div className="relative bg-[#d4d4d4] dark:bg-[#222] border border-white/40 dark:border-[#3a3a3a] shadow-sm rounded-[6px] p-4 sm:p-6 overflow-hidden">
           {/* Subtle Gradient Background */}
@@ -137,10 +196,11 @@ const Index = () => {
               <div className="w-[80px] sm:w-[120px] h-[3px] sm:h-[4px] bg-[#15a349] mt-3 sm:mt-5 shadow-sm" />
             </div>
 
+            {/* MOBILE: Touch target optimized - min 44px height */}
             <Button
               onClick={() => navigate("/create-market")}
               size="lg"
-              className="w-full md:w-auto font-bold shadow-[2px_2px_0px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000] active:translate-y-[2px] active:shadow-none transition-all bg-[#e8e8e8] dark:bg-[#2b2b2b] text-black dark:text-white border-2 border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] win95-btn-press h-10 sm:h-11 px-6 mb-0 md:mb-2 rounded-md sm:rounded"
+              className="w-full md:w-auto font-bold shadow-[2px_2px_0px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000] active:translate-y-[2px] active:shadow-none transition-all bg-[#e8e8e8] dark:bg-[#2b2b2b] text-black dark:text-white border-2 border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] win95-btn-press min-h-[44px] px-6 mb-0 md:mb-2 rounded-md sm:rounded"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Market
@@ -168,9 +228,13 @@ const Index = () => {
             </div>
 
             {/* Filters Group */}
-            <div className="flex flex-row gap-2 w-full md:w-auto h-10 md:h-full">
+            {/* MOBILE: Touch target optimized filters - min 44px height */}
+            <div className="flex flex-row gap-2 w-full md:w-auto min-h-[44px]">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="flex-1 md:w-[160px] h-full bg-white dark:bg-[#1f1f1f] border-[#8b8b8b] dark:border-[#3a3a3a] font-bold text-[#111] dark:text-white rounded-[2px] focus:ring-1 focus:ring-[#15a349] text-xs sm:text-sm px-2 sm:px-3">
+                <SelectTrigger
+                  className="flex-1 md:w-[160px] min-h-[44px] bg-white dark:bg-[#1f1f1f] border-[#8b8b8b] dark:border-[#3a3a3a] font-bold text-[#111] dark:text-white rounded-[2px] focus:ring-1 focus:ring-[#15a349] text-xs sm:text-sm px-2 sm:px-3"
+                  aria-label="Filter markets by status"
+                >
                   <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
                     <Filter className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#5f5f5f] dark:text-[#c7c7c7] flex-shrink-0" />
                     <SelectValue placeholder="Status" />
@@ -184,7 +248,10 @@ const Index = () => {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="flex-1 md:w-[180px] h-full bg-white dark:bg-[#1f1f1f] border-[#8b8b8b] dark:border-[#3a3a3a] font-bold text-[#111] dark:text-white rounded-[2px] focus:ring-1 focus:ring-[#15a349] text-xs sm:text-sm px-2 sm:px-3">
+                <SelectTrigger
+                  className="flex-1 md:w-[180px] min-h-[44px] bg-white dark:bg-[#1f1f1f] border-[#8b8b8b] dark:border-[#3a3a3a] font-bold text-[#111] dark:text-white rounded-[2px] focus:ring-1 focus:ring-[#15a349] text-xs sm:text-sm px-2 sm:px-3"
+                  aria-label="Sort markets by"
+                >
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -197,13 +264,9 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Markets Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-[340px] bg-muted/5 rounded-[4px] animate-pulse border border-border/10" />
-            ))}
-          </div>
+        {/* Markets Grid - SKELETON LOADING: Show skeletons only on initial load, preserve data during refresh */}
+        {isLoading ? (
+          <MarketCardSkeletonGrid count={8} />
         ) : visibleMarkets.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">

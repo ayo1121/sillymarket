@@ -11,6 +11,7 @@ import { useMarketsCtx } from "@/hooks/marketsContext";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, SunMedium } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -53,9 +54,13 @@ export const Header = () => {
 
         {/* Left: Brand Block */}
         <div className="flex items-center gap-2 sm:gap-4">
-          <button onClick={() => navigate("/")} className="hover:opacity-90 transition-opacity flex-shrink-0 active:scale-95 duration-100">
+          <button
+            onClick={() => navigate("/")}
+            className="hover:opacity-90 transition-opacity flex-shrink-0 active:scale-95 duration-100"
+            aria-label="Go to home page"
+          >
             <div className="win95-sunken p-[2px] bg-white border border-[#8a8a8a] shadow-sm">
-              <img src={logo} alt="sillymarket" className="w-8 h-8 sm:w-10 sm:h-10 object-cover" />
+              <img src={logo} alt="sillymarket logo" className="w-8 h-8 sm:w-10 sm:h-10 object-cover" />
             </div>
           </button>
 
@@ -76,15 +81,18 @@ export const Header = () => {
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
+            {/* MOBILE: Touch target optimized - min 44px height */}
             <Button
               variant="ghost"
               onClick={() => navigate("/")}
               className={cn(
-                "h-8 sm:h-9 px-3 sm:px-4 font-bold text-xs sm:text-sm border-2 transition-all win95-btn-press",
+                "min-h-[44px] px-3 sm:px-4 font-bold text-xs sm:text-sm border-2 transition-all win95-btn-press",
                 location.pathname === "/"
                   ? "bg-[#d4d4d4] dark:bg-[#2a2a2a] text-black dark:text-white border-[#8a8a8a] shadow-inner"
                   : "bg-[#e0e0e0] dark:bg-[#2a2a2a] text-[#111] dark:text-white border-white/60 hover:bg-white dark:hover:bg-[#3a3a3a] hover:border-white"
               )}
+              aria-label="View all markets"
+              aria-current={location.pathname === "/" ? "page" : undefined}
             >
               Markets
             </Button>
@@ -93,26 +101,19 @@ export const Header = () => {
               <Button
                 variant="ghost"
                 onClick={() => navigate("/admin")}
-                className="h-8 sm:h-9 px-3 sm:px-4 font-bold text-xs sm:text-sm bg-[#e0e0e0] dark:bg-[#2a2a2a] text-[#111] dark:text-white border-2 border-white/60 hover:bg-white dark:hover:bg-[#3a3a3a] hover:border-white win95-btn-press"
+                className="min-h-[44px] px-3 sm:px-4 font-bold text-xs sm:text-sm bg-[#e0e0e0] dark:bg-[#2a2a2a] text-[#111] dark:text-white border-2 border-white/60 hover:bg-white dark:hover:bg-[#3a3a3a] hover:border-white win95-btn-press"
+                aria-label="Admin panel"
               >
                 Admin
               </Button>
             )}
 
-            {/* Connect Wallet - Primary Action */}
-            <div className="win95-btn-press">
-              <ConnectWalletAndUsername claimableCount={claimableCount} />
-            </div>
-          </div>
-
-          {/* Theme toggle */}
-          <button
             type="button"
             onClick={toggleTheme}
-            className="w-8 h-8 sm:w-10 sm:h-10 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[#111] dark:text-white shadow-sm active:translate-y-[1px] rounded-sm"
+            className="min-w-[44px] min-h-[44px] bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[#111] dark:text-white shadow-sm active:translate-y-[1px] rounded-sm"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? <SunMedium className="w-3 h-3 sm:w-4 sm:h-4" /> : <Moon className="w-3 h-3 sm:w-4 sm:h-4" />}
+            {theme === "dark" ? <SunMedium className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
           {/* Window Controls (Visual Only) - Hidden on mobile */}

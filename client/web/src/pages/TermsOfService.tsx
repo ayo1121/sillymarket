@@ -82,7 +82,7 @@ const sections = [
 
 const TermsOfService = () => {
   const navigate = useNavigate();
-  const lastUpdated = "January 5, 2025";
+  const lastUpdated = "November 25, 2025";
 
   return (
     <div className="min-h-screen bg-background text-foreground">

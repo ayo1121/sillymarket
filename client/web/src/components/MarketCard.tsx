@@ -84,6 +84,16 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
   const probDisplay = probPct !== null ? Math.round(probPct) : 0;
   const oddsDisplay = odds !== null ? odds.toFixed(2) : "1.00";
 
+  // ACCESSIBILITY: Keyboard handler for Enter/Space activation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!disabled && onClick) {
+        onClick();
+      }
+    }
+  };
+
   // Ensure series data is in the correct format for sparkline
   const safeSeries = Array.isArray(series)
     ? series.map((p: any) => ({ value: p.value ?? p.prob ?? 0 }))
@@ -103,6 +113,11 @@ export const OutcomeCard: React.FC<OutcomeCardProps> = ({
         backgroundColor: `${color}08` // 3% opacity bg
       }}
       onClick={!disabled ? onClick : undefined}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={`Bet on ${label} - ${probDisplay}% probability, ${oddsDisplay}x odds`}
+      aria-disabled={disabled}
     >
       {/* Background probability bar */}
       <div
@@ -224,10 +239,12 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               by {market.creatorUsername || market.creatorPubkey}
             </span>
             <span className="opacity-40">•</span>
+            {/* MOBILE: Touch target optimized copy button - min 44px */}
             <button
               onClick={(e) => copyAddress(e, market.pubkey)}
-              className="font-mono opacity-60 hover:opacity-100 hover:text-[#111] dark:hover:text-white cursor-copy transition-opacity flex items-center gap-1"
+              className="font-mono opacity-60 hover:opacity-100 hover:text-[#111] dark:hover:text-white cursor-copy transition-opacity flex items-center gap-1 min-h-[44px] py-2 -my-2"
               title="Copy Market Address"
+              aria-label="Copy market address to clipboard"
             >
               {shortenWallet(market.pubkey, 4)}
               <span className="sr-only">Copy</span>

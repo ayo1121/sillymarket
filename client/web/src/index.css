@@ -89,6 +89,53 @@ All colors MUST be HSL.
     --win95-light: 210 7% 22%;
     --win95-dark: 210 6% 6%;
   }
+
+  /* ACCESSIBILITY: Spacing system - 4px/8px grid */
+  :root {
+    --spacing-1: 0.25rem;
+    /* 4px */
+    --spacing-2: 0.5rem;
+    /* 8px */
+    --spacing-3: 0.75rem;
+    /* 12px */
+    --spacing-4: 1rem;
+    /* 16px */
+    --spacing-5: 1.25rem;
+    /* 20px */
+    --spacing-6: 1.5rem;
+    /* 24px */
+    --spacing-8: 2rem;
+    /* 32px */
+    --spacing-10: 2.5rem;
+    /* 40px */
+    --spacing-12: 3rem;
+    /* 48px */
+  }
+
+  /* ACCESSIBILITY: State colors for consistent error/success/warning */
+  :root {
+    --color-error: 0 84% 60%;
+    /* #dc2626 */
+    --color-error-bg: 0 86% 97%;
+    /* #fee2e2 */
+    --color-success: 142 76% 36%;
+    /* #16a34a */
+    --color-success-bg: 142 76% 94%;
+    /* #dcfce7 */
+    --color-warning: 25 95% 53%;
+    /* #f97316 */
+    --color-warning-bg: 34 100% 92%;
+    /* #ffedd5 */
+  }
+
+  :root.dark {
+    --color-error-bg: 0 86% 15%;
+    /* #450a0a */
+    --color-success-bg: 142 76% 10%;
+    /* #052e16 */
+    --color-warning-bg: 25 95% 15%;
+    /* #431407 */
+  }
 }
 
 @layer base {
@@ -777,6 +824,130 @@ All colors MUST be HSL.
   .win95-btn-press:active {
     box-shadow: inset 2px 2px 0 #000, inset -2px -2px 0 #fff;
     transform: translateY(2px);
+  }
+
+  /* MOBILE FEATURE: Pull-to-refresh indicator */
+  .pull-to-refresh-indicator {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    transition: opacity 0.2s ease, transform 0.3s ease;
+  }
+
+  .pull-to-refresh-indicator--hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%);
+  }
+
+  /* MOBILE FEATURE: Touch target optimization */
+  @media (max-width: 768px) {
+    .mobile-touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    .mobile-touch-padding {
+      padding: 12px 16px;
+    }
+  }
+
+  /* MOBILE FEATURE: Swipe gesture transition */
+  .swipe-transition {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* SKELETON LOADING: Shimmer animation for skeleton screens */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg,
+        #e0e0e0 0%,
+        #f0f0f0 50%,
+        #e0e0e0 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+  }
+
+  .dark .skeleton {
+    background: linear-gradient(90deg,
+        #2a2a2a 0%,
+        #3a3a3a 50%,
+        #2a2a2a 100%);
+  }
+
+  .skeleton-text {
+    height: 1em;
+    border-radius: 2px;
+  }
+
+  .skeleton-circle {
+    border-radius: 50%;
+  }
+
+  /* ACCESSIBILITY: Win95-style focus indicators for keyboard navigation */
+  /* Remove default focus outline */
+  *:focus {
+    outline: none;
+  }
+
+  /* Win95-style dotted outline for keyboard navigation only */
+  *:focus-visible {
+    outline: 2px dotted #000;
+    outline-offset: 2px;
+  }
+
+  .dark *:focus-visible {
+    outline-color: #fff;
+  }
+
+  /* Button focus states with Win95 aesthetic */
+  button:focus-visible,
+  .win95-btn:focus-visible,
+  .win95-btn-press:focus-visible {
+    outline: 2px dotted #000;
+    outline-offset: 2px;
+  }
+
+  .dark button:focus-visible,
+  .dark .win95-btn:focus-visible,
+  .dark .win95-btn-press:focus-visible {
+    outline-color: #fff;
+  }
+
+  /* Input focus states - solid outline for form fields */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid #111;
+    outline-offset: 1px;
+  }
+
+  .dark input:focus-visible,
+  .dark textarea:focus-visible,
+  .dark select:focus-visible {
+    outline-color: #fff;
+  }
+
+  /* Interactive card focus (for clickable cards) */
+  [role="button"]:focus-visible,
+  [tabindex="0"]:focus-visible {
+    outline: 2px dotted #000;
+    outline-offset: 2px;
+  }
+
+  .dark [role="button"]:focus-visible,
+  .dark [tabindex="0"]:focus-visible {
+    outline-color: #fff;
   }
 }
 

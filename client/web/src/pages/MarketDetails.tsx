@@ -38,6 +38,7 @@ import type { MarketHistoryPoint } from "@/solana/marketMapping";
 import { useMarketActivity } from "@/hooks/useMarketActivity";
 import { FeeDecayInfo } from "@/components/FeeDecayInfo";
 import { getTxExplorerUrl } from "@/utils/solanaExplorer";
+import { MarketDetailsSkeleton } from "@/components/skeletons/MarketDetailsSkeleton";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -368,15 +369,9 @@ const MarketDetails = () => {
     };
   }, [marketId, refreshMarket]);
 
+  // SKELETON LOADING: Show skeleton on initial load instead of generic text
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#c0c0c0]">
-        <Header />
-        <main className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="text-center text-muted-foreground">Loading market...</div>
-        </main>
-      </div>
-    );
+    return <MarketDetailsSkeleton />;
   }
 
   if (error || !market) {

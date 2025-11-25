@@ -123,3 +123,86 @@ export function showErrorToast(error: unknown, fallbackMessage?: string, context
 export function showSuccessToast(message: string) {
     toast.success(message);
 }
+
+/**
+ * Map common Solana/wallet errors to user-friendly messages
+ * 
+ * Handles:
+ * - Wallet rejections
+ * - Insufficient funds
+ * - RPC errors (rate limits, timeouts)
+ * - Simulation failures
+ * - Network errors
+ */
+export function mapSolanaError(error: unknown): string {
+    const raw = (error as any)?.message ?? String(error ?? "Unknown error");
+    const message = typeof raw === "string" ? raw : String(raw);
+
+    // Wallet rejection
+    if (message.includes("User rejected") || message.includes("User denied") || message.includes("rejected the request")) {
+        return "Transaction cancelled by user";
+    }
+
+    // Insufficient funds
+    if (message.includes("Insufficient funds") || message.includes("insufficient lamports") || message.includes("Attempt to debit an account but found no record of a prior credit")) {
+        return "Insufficient SOL balance for this transaction";
+    }
+
+    // RPC errors
+    if (message.includes("429") || message.includes("Too many requests")) {
+        return "Network busy. Please try again in a moment";
+    }
+
+    if (message.includes("timeout") || message.includes("timed out")) {
+        return "Network timeout. Please check your connection and try again";
+    }
+
+    if (message.includes("blockhash not found")) {
+        return "Transaction expired. Please try again";
+    }
+
+    // Simulation errors
+    if (message.includes("Transaction simulation failed")) {
+        // Try to extract specific reason
+        if (message.includes("insufficient funds")) {
+            return "Insufficient SOL balance";
+        }
+        if (message.includes("custom program error")) {
+            return "Transaction would fail. Please check your inputs";
+        }
+        return "Transaction simulation failed. Please try again";
+    }
+
+    // Signature verification
+    if (message.includes("Signature verification failed")) {
+        return "Transaction signature invalid. Please try again";
+    }
+
+    // Network errors
+    if (message.includes("Failed to fetch") || message.includes("NetworkError") || message.includes("Network request failed")) {
+        return "Network error. Please check your connection";
+    }
+
+    // Anchor program errors (already handled by normalizeAnchorErrorMessage)
+    if (message.includes("Anchor error")) {
+        return normalizeAnchorErrorMessage(error);
+    }
+
+    // Generic fallback
+    return sanitizeErrorMessage(error);
+}
+
+/**
+ * Handle Solana transaction errors with user-friendly toast
+ * 
+ * @param error - The error from Solana transaction
+ * @param context - Optional context (e.g., "Place bet", "Create market")
+ */
+export function handleSolanaError(error: unknown, context?: string) {
+    const message = mapSolanaError(error);
+    const prefix = context ? `${context}: ` : "";
+    toast.error(prefix + message);
+
+    // Log full error for debugging
+    console.error("[Solana Error]", { context, error });
+}

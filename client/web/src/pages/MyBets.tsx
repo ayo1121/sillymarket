@@ -17,6 +17,9 @@ import { MarketCard } from "@/components/MarketCard";
 import { resolveMarket } from "@/solana/actions";
 import { fetchConfig } from "@/solana/read";
 import { getTxExplorerUrl } from "@/utils/solanaExplorer";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { BetCardSkeletonList } from "@/components/skeletons/BetCardSkeleton";
+import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleton";
 
 interface BetView {
   id: string;
@@ -58,6 +61,50 @@ const MyBets = () => {
       fetchConfig(program as any).then(setConfig).catch(console.error);
     }
   }, [program]);
+
+  // MOBILE FEATURE: Swipe gestures for bet status tab navigation
+  // Allows swiping left/right to change between Active/Won/Lost tabs on mobile
+  const betStatusFilters: ("active" | "won" | "lost")[] = ["active", "won", "lost"];
+  const currentBetStatusIndex = betStatusFilters.indexOf(statusFilter);
+
+  useSwipeGesture(
+    () => {
+      // Swipe left - next status (only in bets view)
+      if (viewMode === "bets") {
+        const nextIndex = (currentBetStatusIndex + 1) % betStatusFilters.length;
+        setStatusFilter(betStatusFilters[nextIndex]);
+      }
+    },
+    () => {
+      // Swipe right - previous status (only in bets view)
+      if (viewMode === "bets") {
+        const prevIndex = (currentBetStatusIndex - 1 + betStatusFilters.length) % betStatusFilters.length;
+        setStatusFilter(betStatusFilters[prevIndex]);
+      }
+    }
+  );
+
+  // MOBILE FEATURE: Swipe gestures for market filter tab navigation
+  // Allows swiping left/right to change between Active/Resolved tabs on mobile
+  const marketFilters: ("active" | "resolved")[] = ["active", "resolved"];
+  const currentMarketFilterIndex = marketFilters.indexOf(marketFilter);
+
+  useSwipeGesture(
+    () => {
+      // Swipe left - next filter (only in markets view)
+      if (viewMode === "markets") {
+        const nextIndex = (currentMarketFilterIndex + 1) % marketFilters.length;
+        setMarketFilter(marketFilters[nextIndex]);
+      }
+    },
+    () => {
+      // Swipe right - previous filter (only in markets view)
+      if (viewMode === "markets") {
+        const prevIndex = (currentMarketFilterIndex - 1 + marketFilters.length) % marketFilters.length;
+        setMarketFilter(marketFilters[prevIndex]);
+      }
+    }
+  );
 
   const marketMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -400,16 +447,19 @@ const MyBets = () => {
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div className="flex flex-wrap gap-3 mb-6">
+              {/* MOBILE: Touch target optimized tabs - min 44px height */}
+              <div className="flex flex-wrap gap-3 mb-6" role="tablist">
                 {(["active", "won", "lost"] as const).map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
-                    className={`px-4 py-2 rounded text-sm font-semibold transition-all ${statusFilter === status
+                    className={`px-4 py-2 rounded text-sm font-semibold transition-all min-h-[44px] ${statusFilter === status
                       ? "bg-[#111] text-white shadow-sm"
                       : "bg-[#e8e8e8] dark:bg-[#2a2a2a] text-[#111] dark:text-white hover:bg-[#d8d8d8] dark:hover:bg-[#3a3a3a] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]"
                       }`}
+                    role="tab"
+                    aria-selected={statusFilter === status}
+                    aria-label={`${status.charAt(0).toUpperCase() + status.slice(1)} bets`}
                   >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
                   </button>
@@ -430,16 +480,19 @@ const MyBets = () => {
                 </div>
               </div>
 
-              {/* Market Tabs */}
-              <div className="flex flex-wrap gap-3 mb-6">
+              {/* MOBILE: Touch target optimized market tabs - min 44px height */}
+              <div className="flex flex-wrap gap-3 mb-6" role="tablist">
                 {(["active", "resolved"] as const).map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setMarketFilter(filter)}
-                    className={`px-4 py-2 rounded text-sm font-semibold transition-all ${marketFilter === filter
+                    className={`px-4 py-2 rounded text-sm font-semibold transition-all min-h-[44px] ${marketFilter === filter
                       ? "bg-[#111] text-white shadow-sm"
                       : "bg-[#e8e8e8] dark:bg-[#2a2a2a] text-[#111] dark:text-white hover:bg-[#d8d8d8] dark:hover:bg-[#3a3a3a] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]"
                       }`}
+                    role="tab"
+                    aria-selected={marketFilter === filter}
+                    aria-label={`${filter.charAt(0).toUpperCase() + filter.slice(1)} markets`}
                   >
                     {filter.charAt(0).toUpperCase() + filter.slice(1)}
                   </button>
@@ -454,10 +507,9 @@ const MyBets = () => {
       {viewMode === "bets" ? (
         <TooltipProvider>
           <div className="space-y-4">
+            {/* SKELETON LOADING: Show bet card skeletons instead of generic text */}
             {loading ? (
-              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
-                <div className="text-muted-foreground">Loading your bets...</div>
-              </div>
+              <BetCardSkeletonList count={5} />
             ) : !program || !publicKey ? (
               <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
                 <div className="text-6xl mb-4 opacity-20">:(</div>
@@ -591,10 +643,9 @@ const MyBets = () => {
       ) : (
         // Markets View
         <div className="space-y-4">
+          {/* SKELETON LOADING: Show market card skeletons instead of generic text */}
           {loading ? (
-            <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
-              <div className="text-muted-foreground">Loading your markets...</div>
-            </div>
+            <MarketCardSkeletonGrid count={6} />
           ) : !program || !publicKey ? (
             <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
               <div className="text-6xl mb-4 opacity-20">:(</div>
