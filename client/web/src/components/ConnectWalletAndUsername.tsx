@@ -399,7 +399,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
       <Button
         variant="default"
         onClick={onPrimaryClick}
-        className={`font-black flex items-center gap-2 text-sm sm:text-base relative ${className || ""}`}
+        className={`font-black flex items-center gap-2 text-sm sm:text-base relative text-white ${className || ""}`}
         disabled={connecting}
         aria-busy={connecting}
       >

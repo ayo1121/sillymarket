@@ -140,8 +140,8 @@ const Index = () => {
 
       {/* Live indicator */}
       {isLiveConnected && (
-        <div className="fixed top-20 right-4 z-40">
-          <div className="bg-green-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+        <div className="fixed top-24 right-4 z-[60]">
+          <div className="bg-green-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
             Live
           </div>
