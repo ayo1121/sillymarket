@@ -17,7 +17,31 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'og-default.png', 'favicon.png'],
-      manifest: false, // Use public/manifest.json instead
+      manifest: {
+        name: 'sillymarket - Prediction Markets',
+        short_name: 'sillymarket',
+        description: 'Prediction markets on Solana - the silliest outcome is always the most likely',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#c0c0c0',
+        theme_color: '#15a349',
+        orientation: 'portrait-primary',
+        icons: [
+          {
+            src: '/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            src: '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ],
+        categories: ['finance', 'entertainment']
+      },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
