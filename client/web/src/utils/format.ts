@@ -45,12 +45,21 @@ export function formatProbability(prob: number): string {
 }
 
 /**
- * Format SOL values with a fixed decimal precision and trim unnecessary zeros.
+ * Format SOL values with intelligent decimal precision.
+ * Shows up to specified decimals but removes trailing zeros for cleaner display.
+ * Examples: 1.5 SOL, 0.0001 SOL, 1234.56 SOL
  */
-export function formatSol(value: number, decimals: number = 2): string {
+export function formatSol(value: number, maxDecimals: number = 2): string {
   if (!Number.isFinite(value)) return "0";
-  const fixed = value.toFixed(decimals);
-  const num = Number.parseFloat(fixed);
-  if (!Number.isFinite(num)) return "0";
-  return num.toString();
+
+  // For very small values, show more precision
+  if (value > 0 && value < 0.0001) {
+    return value.toFixed(6).replace(/\.?0+$/, "");
+  }
+
+  // For normal values, use specified decimals and remove trailing zeros
+  const fixed = value.toFixed(maxDecimals);
+  const trimmed = fixed.replace(/\.?0+$/, "");
+
+  return trimmed;
 }

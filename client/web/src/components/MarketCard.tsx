@@ -212,6 +212,8 @@ export const MarketCard: React.FC<MarketCardProps> = ({
               src={imageUrl || lightbulbIcon}
               alt="market"
               className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = lightbulbIcon;
               }}

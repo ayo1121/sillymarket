@@ -1,15 +1,16 @@
 import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useAnchorProgram } from '@/solana/program';
 import { fetchUserPositions, fetchMarketsBatch } from '@/solana/read';
 import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { shortenWallet, formatSol } from '@/utils/format';
-import { Trophy, TrendingUp, Activity, DollarSign, ArrowLeft } from 'lucide-react';
+import { Trophy, TrendingUp, Activity, DollarSign, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 /**
  * User Profile Page
@@ -32,6 +33,18 @@ import { cn } from '@/lib/utils';
 export default function UserProfile() {
     const { wallet } = useParams<{ wallet: string }>();
     const program = useAnchorProgram();
+    const navigate = useNavigate();
+    const { publicKey } = useWallet();
+
+    // Generate username from wallet address
+    const username = useMemo(() => {
+        if (!wallet) return 'Unknown';
+        // Create a readable username from first 8 chars
+        return wallet.slice(0, 8);
+    }, [wallet]);
+
+    // Check if viewing own profile
+    const isOwnProfile = publicKey?.toBase58() === wallet;
 
     // Fetch user positions and associated market data
     const { data: profileData, isLoading } = useQuery({
@@ -211,25 +224,33 @@ export default function UserProfile() {
             <Header />
             <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
-                    {/* Back Button */}
-                    <Link to="/">
-                        <Button variant="outline" size="sm" className="mb-4">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Markets
-                        </Button>
-                    </Link>
+                    {/* Navigation Buttons */}
+                    <div className="flex gap-2 mb-4">
+                        <Link to="/">
+                            <Button variant="outline" size="sm">
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                Back to Markets
+                            </Button>
+                        </Link>
+                        {isOwnProfile && (
+                            <Button variant="outline" size="sm" onClick={() => navigate('/my-bets')}>
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                My Bets
+                            </Button>
+                        )}
+                    </div>
 
                     {/* Profile Header */}
                     <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded p-6 mb-6 shadow-sm">
                         <div className="flex items-center gap-4">
                             <div className="w-16 h-16 bg-gradient-to-br from-[#15a349] to-[#0d7a35] rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md">
-                                {wallet?.slice(0, 2).toUpperCase()}
+                                {username.slice(0, 2).toUpperCase()}
                             </div>
                             <div className="flex-1">
                                 <h1 className="text-2xl font-black text-[#111] dark:text-white">
-                                    {shortenWallet(wallet || '')}
+                                    {username}
                                 </h1>
-                                <p className="text-sm text-muted-foreground font-mono break-all">
+                                <p className="text-xs text-muted-foreground font-mono break-all">
                                     {wallet}
                                 </p>
                             </div>
@@ -254,20 +275,20 @@ export default function UserProfile() {
                         <StatCard
                             icon={<DollarSign className="w-5 h-5" />}
                             label="Total Volume"
-                            value={formatSol(stats.totalVolume)}
+                            value={formatSol(stats.totalVolume, 4)}
                             color="text-green-600"
                         />
                         <StatCard
                             icon={<TrendingUp className="w-5 h-5" />}
                             label="Realized PnL"
-                            value={formatSol(Math.abs(stats.realizedPnL))}
+                            value={formatSol(Math.abs(stats.realizedPnL), 4)}
                             valuePrefix={stats.realizedPnL >= 0 ? '+' : '-'}
                             color={stats.realizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}
                         />
                         <StatCard
                             icon={<Activity className="w-5 h-5" />}
                             label="Open Exposure"
-                            value={formatSol(stats.openExposure)}
+                            value={formatSol(stats.openExposure, 4)}
                             subtitle={stats.activeCount > 0 ? `${stats.activeCount} active` : undefined}
                             color="text-purple-600"
                         />
