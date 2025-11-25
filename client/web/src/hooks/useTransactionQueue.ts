@@ -26,11 +26,9 @@ export const useTransactionQueue = () => {
         loadTransactions();
 
         // Subscribe to changes
-        const unsubscribe = transactionQueue.subscribe(() => {
+        return transactionQueue.subscribe(() => {
             loadTransactions();
         });
-
-        return unsubscribe;
     }, []);
 
     const pendingCount = transactions.filter(tx => tx.status === 'pending').length;
