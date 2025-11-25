@@ -26,13 +26,35 @@ export const MarketSearch: React.FC<MarketSearchProps> = ({
     useEffect(() => {
         if (value.trim().length > 0) {
             const lowerValue = value.toLowerCase();
-            const matches = markets
-                .filter(m =>
-                    m.displayQuestion.toLowerCase().includes(lowerValue) ||
-                    m.pubkey.toLowerCase().includes(lowerValue)
-                )
-                .slice(0, 5); // Limit to 5 suggestions
-            setSuggestions(matches);
+
+            // Check if input looks like a Solana address (base58, 32-44 chars)
+            const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value.trim());
+
+            let matches = markets.filter(m => {
+                // Search by market question
+                if (m.displayQuestion.toLowerCase().includes(lowerValue)) {
+                    return true;
+                }
+
+                // Search by market pubkey
+                if (m.pubkey.toLowerCase().includes(lowerValue)) {
+                    return true;
+                }
+
+                // ADVANCED SEARCH: Search by creator address
+                if (isSolanaAddress && m.creatorPubkey) {
+                    return m.creatorPubkey.toLowerCase() === value.trim().toLowerCase();
+                }
+
+                // Search by creator label/username
+                if (m.creatorLabel && m.creatorLabel.toLowerCase().includes(lowerValue)) {
+                    return true;
+                }
+
+                return false;
+            });
+
+            setSuggestions(matches.slice(0, 5)); // Limit to 5 suggestions
             setIsOpen(matches.length > 0);
         } else {
             setSuggestions([]);

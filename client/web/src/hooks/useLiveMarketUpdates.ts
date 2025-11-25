@@ -79,12 +79,14 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
     const startFallbackPolling = () => {
         if (fallbackIntervalRef.current) return; // Already polling
 
-        console.log('[LiveUpdates] Starting fallback polling (60s interval)');
+        // Only log in development
+        if (import.meta.env.DEV) {
+            console.log('[LiveUpdates] Fallback polling enabled');
+        }
 
         const poll = () => {
             // Only poll if page is visible
             if (document.visibilityState === 'visible') {
-                console.log('[LiveUpdates] Fallback poll - invalidating markets');
                 queryClient.invalidateQueries({ queryKey: queryKeys.markets.all });
             }
         };
@@ -96,7 +98,6 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
     // Stop fallback polling
     const stopFallbackPolling = () => {
         if (fallbackIntervalRef.current) {
-            console.log('[LiveUpdates] Stopping fallback polling');
             clearInterval(fallbackIntervalRef.current);
             fallbackIntervalRef.current = null;
         }
@@ -105,7 +106,9 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
     useEffect(() => {
         if (!enabled) return;
 
-        console.log('[LiveUpdates] Initializing Supabase realtime subscription');
+        if (import.meta.env.DEV) {
+            console.log('[LiveUpdates] Initializing Supabase realtime');
+        }
 
         // Supabase realtime subscription for bet updates
         const channel = supabaseClient
@@ -118,7 +121,9 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
                     table: 'bets',
                 },
                 async (payload) => {
-                    console.log('[LiveUpdates] New bet detected:', payload.new);
+                    if (import.meta.env.DEV) {
+                        console.log('[LiveUpdates] New bet:', payload.new);
+                    }
 
                     // Invalidate markets query to trigger refetch
                     queryClient.invalidateQueries({ queryKey: queryKeys.markets.all });
@@ -133,7 +138,9 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
                 }
             )
             .subscribe((status) => {
-                console.log('[LiveUpdates] Subscription status:', status);
+                if (import.meta.env.DEV) {
+                    console.log('[LiveUpdates] Status:', status);
+                }
 
                 if (status === 'SUBSCRIBED') {
                     setIsConnected(true);
@@ -150,7 +157,9 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
 
         // Cleanup
         return () => {
-            console.log('[LiveUpdates] Cleaning up subscription');
+            if (import.meta.env.DEV) {
+                console.log('[LiveUpdates] Cleanup');
+            }
             channel.unsubscribe();
             stopFallbackPolling();
         };
@@ -162,10 +171,8 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden' && fallbackIntervalRef.current) {
-                console.log('[LiveUpdates] Page hidden - pausing fallback polling');
                 stopFallbackPolling();
             } else if (document.visibilityState === 'visible' && !isConnected) {
-                console.log('[LiveUpdates] Page visible - resuming fallback polling');
                 startFallbackPolling();
             }
         };

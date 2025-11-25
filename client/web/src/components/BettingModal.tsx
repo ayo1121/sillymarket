@@ -243,6 +243,11 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
         </div>
       );
 
+      // MICRO-INTERACTION: Haptic feedback on successful bet (mobile only)
+      if (navigator.vibrate) {
+        navigator.vibrate([50, 100, 50]); // Short-long-short pattern
+      }
+
       // Refresh markets if program is available
       if (program) {
         try {

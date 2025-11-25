@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, TrendingUp, BarChart3, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 /**
  * MOBILE FEATURE: Bottom Navigation Bar
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 export const BottomNav = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { publicKey } = useWallet();
 
     const navItems = [
         {
@@ -37,8 +39,8 @@ export const BottomNav = () => {
         {
             label: 'Profile',
             icon: User,
-            path: '/my-bets',
-            isActive: false, // Profile doesn't have a dedicated page yet
+            path: publicKey ? `/profile/${publicKey.toBase58()}` : '/my-bets',
+            isActive: location.pathname.startsWith('/profile/'),
         },
     ];
 

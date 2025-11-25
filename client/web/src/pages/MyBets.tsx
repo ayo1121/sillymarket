@@ -20,6 +20,7 @@ import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { BetCardSkeletonList } from "@/components/skeletons/BetCardSkeleton";
 import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleton";
+import confetti from "canvas-confetti";
 
 interface BetView {
   id: string;
@@ -260,6 +261,19 @@ const MyBets = () => {
           </a>
         </div>
       );
+
+      // MICRO-INTERACTION: Confetti celebration on successful claim
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+
+      // MICRO-INTERACTION: Haptic feedback (mobile only)
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200]);
+      }
+
       await refreshPositions();
     } catch (error: any) {
       console.error("Claim error:", error);

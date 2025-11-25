@@ -900,50 +900,24 @@ All colors MUST be HSL.
     outline: none;
   }
 
-  /* Win95-style dotted outline for keyboard navigation only */
-  *:focus-visible {
-    outline: 2px dotted #000;
-    outline-offset: 2px;
-  }
-
-  .dark *:focus-visible {
-    outline-color: #fff;
-  }
-
-  /* Button focus states with Win95 aesthetic */
+  /* Win95-style focus outline for interactive elements */
   button:focus-visible,
-  .win95-btn:focus-visible,
-  .win95-btn-press:focus-visible {
-    outline: 2px dotted #000;
-    outline-offset: 2px;
-  }
-
-  .dark button:focus-visible,
-  .dark .win95-btn:focus-visible,
-  .dark .win95-btn-press:focus-visible {
-    outline-color: #fff;
-  }
-
-  /* Input focus states - solid outline for form fields */
+  a:focus-visible,
   input:focus-visible,
   textarea:focus-visible,
-  select:focus-visible {
-    outline: 2px solid #111;
-    outline-offset: 1px;
-  }
-
-  .dark input:focus-visible,
-  .dark textarea:focus-visible,
-  .dark select:focus-visible {
-    outline-color: #fff;
-  }
-
-  /* Interactive card focus (for clickable cards) */
+  select:focus-visible,
   [role="button"]:focus-visible,
-  [tabindex="0"]:focus-visible {
+  [role="tab"]:focus-visible,
+  [tabindex]:focus-visible {
     outline: 2px dotted #000;
     outline-offset: 2px;
   }
+
+  /* Dark mode focus outline */
+  .dark button:focus-visible,
+  .dark a:focus-visible,
+  .dark input:focus-visible,
+  .dark textarea:focus-visible,
 
   .dark [role="button"]:focus-visible,
   .dark [tabindex="0"]:focus-visible {

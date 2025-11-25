@@ -39,6 +39,9 @@ import { useMarketActivity } from "@/hooks/useMarketActivity";
 import { FeeDecayInfo } from "@/components/FeeDecayInfo";
 import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 import { MarketDetailsSkeleton } from "@/components/skeletons/MarketDetailsSkeleton";
+import confetti from "canvas-confetti";
+import { SEO } from "@/components/SEO";
+import { MarketStructuredData } from "@/components/StructuredData";
 
 type ResolutionPillProps = {
   state: string | null | undefined;
@@ -452,6 +455,27 @@ const MarketDetails = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors">
+      {/* SEO: Dynamic meta tags for market page */}
+      <SEO
+        title={market.displayQuestion}
+        description={market.backendDescription || `Prediction market: ${market.displayQuestion}. Created by ${market.creatorLabel}. ${market.outcomes.map((o, i) => `${o.label}: ${(poolProbabilities[i] * 100).toFixed(1)}%`).join(', ')}`}
+        image={imageUrl}
+        url={`/market/${market.pubkey}`}
+        type="article"
+      />
+
+      {/* Structured Data: JSON-LD for rich snippets */}
+      <MarketStructuredData
+        market={{
+          displayQuestion: market.displayQuestion,
+          description: market.backendDescription,
+          createdAt: market.createdAt,
+          closesAt: market.closesAt,
+          creatorLabel: market.creatorLabel,
+          pubkey: market.pubkey,
+        }}
+      />
+
       <Header />
 
       <main className="container mx-auto px-3 sm:px-4 py-6 max-w-6xl space-y-6">
@@ -826,6 +850,19 @@ const MarketDetails = () => {
                                 </a>
                               </div>
                             );
+
+                            // MICRO-INTERACTION: Confetti celebration on successful claim
+                            confetti({
+                              particleCount: 100,
+                              spread: 70,
+                              origin: { y: 0.6 }
+                            });
+
+                            // MICRO-INTERACTION: Haptic feedback (mobile only)
+                            if (navigator.vibrate) {
+                              navigator.vibrate([100, 50, 100, 50, 200]);
+                            }
+
                             await refreshMarket();
                           } catch (error: any) {
                             console.error("Claim error:", error);
