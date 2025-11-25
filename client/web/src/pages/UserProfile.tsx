@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useAnchorProgram } from '@/solana/program';
+import { fetchUserPositions, fetchMarket } from '@/solana/read';
 import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { shortenWallet, formatSol } from '@/utils/format';
@@ -31,19 +32,53 @@ export default function UserProfile() {
     const { wallet } = useParams<{ wallet: string }>();
     const program = useAnchorProgram();
 
-    // Fetch user positions (reusing existing API)
+    // Fetch user positions and associated market data
     const { data: positions = [], isLoading } = useQuery({
         queryKey: queryKeys.positions.user(wallet || ''),
         queryFn: async () => {
             if (!program || !wallet) return [];
             try {
                 const pubkey = new PublicKey(wallet);
-                // TODO: Replace with actual fetchUserPositions when available
-                // For now, return empty array as placeholder
                 console.log('[UserProfile] Fetching positions for:', wallet);
-                return [];
+
+                // 1. Fetch raw positions from on-chain
+                const rawPositions = await fetchUserPositions(program, pubkey);
+
+                // 2. Fetch market data for each position to get details
+                const positionsWithDetails = await Promise.all(
+                    rawPositions.map(async (p: any) => {
+                        const marketPubkey = p.account.market;
+                        const marketPubkeyStr = marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
+
+                        // Fetch market details (this uses caching internally if implemented, or we rely on React Query's deduping if we used useQuery hooks, but here we are in an async fn)
+                        // We use fetchMarket from read.ts which handles metadata fetching
+                        const market = await fetchMarket(program, marketPubkeyStr);
+
+                        const outcomeIndex = p.account.outcomeIndex ?? p.account.outcome_index;
+                        const outcomeLabel = market?.outcomes?.[outcomeIndex]?.label || `Outcome ${outcomeIndex}`;
+                        const marketQuestion = market?.displayQuestion || "Unknown Market";
+
+                        // Check if claimable (market resolved to this outcome)
+                        // This is a simplified check. Real check needs market state.
+                        const isResolved = market?.status === 'resolved'; // You might need to check the enum/string value from your IDL mapping
+                        const winningOutcomeIndex = market?.winningOutcomeIndex;
+                        const canClaim = isResolved && winningOutcomeIndex === outcomeIndex && !p.account.claimed;
+
+                        return {
+                            marketPubkey: marketPubkeyStr,
+                            marketQuestion,
+                            outcomeLabel,
+                            outcomeIndex,
+                            amountLamports: p.account.amount?.toNumber() || 0,
+                            canClaim,
+                            claimed: p.account.claimed
+                        };
+                    })
+                );
+
+                return positionsWithDetails;
             } catch (error) {
-                console.error('Invalid wallet address:', error);
+                console.error('Error fetching user profile data:', error);
                 return [];
             }
         },
