@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useAnchorProgram } from '@/solana/program';
-import { fetchUserPositions, fetchMarket } from '@/solana/read';
+import { fetchUserPositions, fetchMarketsBatch } from '@/solana/read';
 import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { shortenWallet, formatSol } from '@/utils/format';
@@ -39,41 +39,71 @@ export default function UserProfile() {
             if (!program || !wallet) return [];
             try {
                 const pubkey = new PublicKey(wallet);
-                console.log('[UserProfile] Fetching positions for:', wallet);
 
-                // 1. Fetch raw positions from on-chain
+                if (import.meta.env.DEV) {
+                    console.log('[UserProfile] Fetching positions for:', wallet);
+                }
+
+                // 1. Fetch raw positions from on-chain (1 RPC call)
                 const rawPositions = await fetchUserPositions(program as any, pubkey);
 
-                // 2. Fetch market data for each position to get details
-                const positionsWithDetails = await Promise.all(
-                    rawPositions.map(async (p: any) => {
-                        const marketPubkey = p.account.market;
-                        const marketPubkeyStr = marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
+                if (rawPositions.length === 0) {
+                    return [];
+                }
 
-                        // Fetch market details (this uses caching internally if implemented, or we rely on React Query's deduping if we used useQuery hooks, but here we are in an async fn)
-                        // We use fetchMarket from read.ts which handles metadata fetching
-                        const market = await fetchMarket(program as any, marketPubkeyStr);
+                // 2. Extract all unique market pubkeys
+                const marketPubkeys = rawPositions.map((p: any) => {
+                    const marketPubkey = p.account.market;
+                    return marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
+                });
 
-                        const outcomeIndex = p.account.outcomeIndex ?? p.account.outcome_index;
-                        const outcomeLabel = market?.outcomes?.[outcomeIndex]?.label || `Outcome ${outcomeIndex}`;
-                        const marketQuestion = market?.displayQuestion || "Unknown Market";
+                if (import.meta.env.DEV) {
+                    console.log(`[UserProfile] Batch fetching ${marketPubkeys.length} markets`);
+                }
 
-                        // Check if claimable (market resolved to this outcome)
-                        const isResolved = market?.state === 'resolved';
-                        const winningOutcomeIndex = market?.winningOutcomeIndex;
-                        const canClaim = isResolved && winningOutcomeIndex === outcomeIndex && !p.account.claimed;
+                // 3. Batch fetch all markets in ONE RPC call (instead of N calls)
+                const marketsMap = await fetchMarketsBatch(program as any, marketPubkeys);
 
-                        return {
-                            marketPubkey: marketPubkeyStr,
-                            marketQuestion,
-                            outcomeLabel,
-                            outcomeIndex,
-                            amountLamports: p.account.amount?.toNumber() || 0,
-                            canClaim,
-                            claimed: p.account.claimed
-                        };
-                    })
-                );
+                if (import.meta.env.DEV) {
+                    console.log(`[UserProfile] Fetched ${marketsMap.size} markets`);
+                }
+
+                // 4. Map positions to market data
+                const positionsWithDetails = rawPositions.map((p: any) => {
+                    const marketPubkey = p.account.market;
+                    const marketPubkeyStr = marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
+
+                    // Get market from batch-fetched map
+                    const market = marketsMap.get(marketPubkeyStr);
+
+                    if (!market) {
+                        console.warn(`[UserProfile] Market not found in batch: ${marketPubkeyStr}`);
+                        return null;
+                    }
+
+                    const outcomeIndex = p.account.outcomeIndex ?? p.account.outcome_index;
+                    const outcomeLabel = market.outcomes?.[outcomeIndex]?.label || `Outcome ${outcomeIndex}`;
+                    const marketQuestion = market.displayQuestion || "Unknown Market";
+
+                    // Check if claimable (market resolved to this outcome)
+                    const isResolved = market.state === 'resolved';
+                    const winningOutcomeIndex = market.winningOutcomeIndex;
+                    const canClaim = isResolved && winningOutcomeIndex === outcomeIndex && !p.account.claimed;
+
+                    return {
+                        marketPubkey: marketPubkeyStr,
+                        marketQuestion,
+                        outcomeLabel,
+                        outcomeIndex,
+                        amountLamports: p.account.amount?.toNumber() || 0,
+                        canClaim,
+                        claimed: p.account.claimed
+                    };
+                }).filter((bet): bet is NonNullable<typeof bet> => bet !== null);
+
+                if (import.meta.env.DEV) {
+                    console.log(`[UserProfile] Processed ${positionsWithDetails.length} positions`);
+                }
 
                 return positionsWithDetails;
             } catch (error) {
@@ -82,6 +112,7 @@ export default function UserProfile() {
             }
         },
         enabled: !!program && !!wallet,
+        staleTime: 60_000, // 1 minute - reduce refetch frequency
     });
 
     // Calculate stats from positions

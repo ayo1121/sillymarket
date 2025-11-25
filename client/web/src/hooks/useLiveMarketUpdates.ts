@@ -91,8 +91,8 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
             }
         };
 
-        // Poll every 60 seconds (less aggressive than real-time)
-        fallbackIntervalRef.current = setInterval(poll, 60 * 1000);
+        // Poll every 120 seconds (reduced from 60s to minimize RPC load)
+        fallbackIntervalRef.current = setInterval(poll, 120 * 1000);
     };
 
     // Stop fallback polling

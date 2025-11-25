@@ -16,6 +16,7 @@ import { shortenWallet } from "../utils/format";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BetRow } from "../supabase/bets";
 import { supabase } from "../integrations/supabase/client";
+import { getConnection } from "./connection";
 
 /**
  * Type helpers for IDL account types
@@ -734,6 +735,114 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
   }
 }
 
+/**
+ * Batch fetch multiple markets efficiently
+ * 
+ * This reduces RPC calls from N (one per market) to 1 (fetch all at once).
+ * Critical for profile page optimization where we need to fetch many markets.
+ * 
+ * @param program - Anchor program instance
+ * @param pubkeys - Array of market pubkeys to fetch
+ * @param userWallet - Optional user wallet for position data
+ * @returns Map of pubkey -> UIMarket
+ */
+export async function fetchMarketsBatch(
+  program: Program<YesnoMarkets> | null,
+  pubkeys: string[],
+  userWallet?: PublicKey | null
+): Promise<Map<string, UIMarket>> {
+  const result = new Map<string, UIMarket>();
+
+  if (!program || pubkeys.length === 0) {
+    return result;
+  }
+
+  try {
+    // Deduplicate pubkeys
+    const uniquePubkeys = Array.from(new Set(pubkeys));
+
+    if (import.meta.env.DEV) {
+      console.log(`[RPC] Batch fetching ${uniquePubkeys.length} markets`);
+    }
+
+    // Fetch all markets in one RPC call
+    const publicKeys = uniquePubkeys.map(pk => new web3.PublicKey(pk));
+    const rawMarkets = await program.account.market.fetchMultiple(publicKeys);
+
+    // Fetch backend metadata for all markets in one call
+    const backendMetaArray = await fetchMarketsMetadataByPubkeys(uniquePubkeys);
+    const backendMetaMap = new Map<string, RemoteMarketMetadata>();
+    backendMetaArray.forEach(meta => {
+      backendMetaMap.set(meta.market_pubkey, meta);
+    });
+
+    // Map to UI format
+    for (let i = 0; i < uniquePubkeys.length; i++) {
+      const pubkey = uniquePubkeys[i];
+      const rawMarket = rawMarkets[i];
+
+      if (!rawMarket) {
+        console.warn(`[RPC] Market not found: ${pubkey}`);
+        continue;
+      }
+
+      // Map to UI format
+      let uiMarket = mapRawMarketToUi({
+        publicKey: publicKeys[i],
+        account: rawMarket,
+      });
+
+      // Merge backend metadata
+      const backendMeta = backendMetaMap.get(pubkey);
+      if (backendMeta) {
+        let displayQuestion = uiMarket.displayQuestion;
+        let creatorName: string | undefined = uiMarket.creatorName;
+
+        if (backendMeta.question) {
+          displayQuestion = backendMeta.question;
+        }
+
+        if (backendMeta.creator_name) {
+          creatorName = backendMeta.creator_name;
+        }
+
+        // Outcome labels
+        let outcomes = uiMarket.outcomes;
+        if (backendMeta.answers && backendMeta.answers.length > 0) {
+          outcomes = outcomes.map((outcome, idx) => {
+            const label = backendMeta.answers![idx];
+            if (label && label.trim().length > 0) {
+              return { ...outcome, label: label.trim() };
+            }
+            return outcome;
+          });
+        }
+
+        uiMarket = {
+          ...uiMarket,
+          displayQuestion,
+          creatorName,
+          imageUrl: backendMeta.image_url ?? uiMarket.imageUrl,
+          backendDescription: backendMeta.description ?? undefined,
+          outcomes,
+          volumeLamports: uiMarket.volumeLamports, // Always from on-chain
+        };
+      }
+
+      result.set(pubkey, uiMarket);
+    }
+
+    if (import.meta.env.DEV) {
+      console.log(`[RPC] Batch fetched ${result.size} markets successfully`);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[RPC] Batch fetch markets failed:', error);
+    return result;
+  }
+}
+
 export async function fetchUserPositions(program: Program<YesnoMarkets> | null, owner: string | PublicKey) {
   if (!program) {
     console.warn("[yesno] fetchUserPositions: program not ready");
@@ -928,8 +1037,7 @@ export function canClaimPosition(args: {
  */
 async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null> {
   try {
-    const { RPC_URL } = await import("./env");
-    const connection = new Connection(RPC_URL, "confirmed");
+    const connection = getConnection();
 
     // Create a dummy wallet for readonly access
     const dummyWallet = {

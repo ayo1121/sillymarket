@@ -4,7 +4,7 @@ import * as anchor from "@coral-xyz/anchor";
 import type { Idl } from "@coral-xyz/anchor";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { WalletContextState, useWallet } from "@solana/wallet-adapter-react";
-import { RPC_URL } from "./env";
+import { getConnection } from "./connection";
 import rawIdl from "../idl/yesno_markets.json";
 
 // Create a mutable copy of the IDL for patching
@@ -13,7 +13,7 @@ const idl = JSON.parse(JSON.stringify(rawIdl)) as anchor.Idl;
 // Normalize IDL: attach type information to accounts if missing
 function normalizeIdl(raw: any): anchor.Idl {
   const normalized: any = { ...raw };
-  
+
   // If accounts exist but don't have type, attach from types array
   if (Array.isArray(normalized.accounts) && Array.isArray(normalized.types)) {
     const typeMap = new Map<string, any>();
@@ -22,7 +22,7 @@ function normalizeIdl(raw: any): anchor.Idl {
         typeMap.set(t.name, t);
       }
     }
-    
+
     normalized.accounts = normalized.accounts.map((acc: any) => {
       if (!acc || acc.type) return acc; // Already has type
       const typeDef = typeMap.get(acc.name);
@@ -33,7 +33,7 @@ function normalizeIdl(raw: any): anchor.Idl {
       return { ...acc, type: { defined: acc.name } };
     });
   }
-  
+
   return normalized as anchor.Idl;
 }
 
@@ -46,7 +46,7 @@ const PROGRAM_ID = new PublicKey(
 );
 
 export function getAnchorProgram(wallet: WalletContextState) {
-  const connection = new Connection(RPC_URL, "confirmed");
+  const connection = getConnection();
 
   const hasPk = !!wallet.publicKey;
   const hasSigner = !!wallet.signTransaction;
@@ -82,10 +82,10 @@ export function getAnchorProgram(wallet: WalletContextState) {
   // Create AnchorWallet wrapper that matches Anchor's expected interface
   const anchorWallet: anchor.Wallet = hasPk && hasSigner && hasSignAll
     ? {
-        publicKey: wallet.publicKey!,
-        signTransaction: wallet.signTransaction!,
-        signAllTransactions: wallet.signAllTransactions!,
-      }
+      publicKey: wallet.publicKey!,
+      signTransaction: wallet.signTransaction!,
+      signAllTransactions: wallet.signAllTransactions!,
+    }
     : readOnlyWallet;
 
   const provider = new anchor.AnchorProvider(
@@ -95,7 +95,7 @@ export function getAnchorProgram(wallet: WalletContextState) {
   );
 
   // Debug log to verify signer mapping
-  if (provider && wallet.publicKey && hasPk && hasSigner && hasSignAll) {
+  if (import.meta.env.DEV && provider && wallet.publicKey && hasPk && hasSigner && hasSignAll) {
     console.log("[yesno] getAnchorProgram: signer debug", {
       walletPubkey: wallet.publicKey.toBase58(),
       providerWallet: provider.wallet.publicKey?.toBase58?.(),
@@ -121,28 +121,32 @@ export function getAnchorProgram(wallet: WalletContextState) {
     const accountsCount = Array.isArray((normalizedIdl as any).accounts)
       ? (normalizedIdl as any).accounts.length
       : 0;
-    
-    console.log("[yesno] getAnchorProgram: IDL summary", {
-      keys: Object.keys(normalizedIdl),
-      hasAccounts: Array.isArray((normalizedIdl as any).accounts),
-      accountsCount,
-      hasTypes: Array.isArray((normalizedIdl as any).types),
-      typesCount: Array.isArray((normalizedIdl as any).types)
-        ? (normalizedIdl as any).types.length
-        : 0,
-      accountsWithType,
-      allAccountsHaveType: accountsCount > 0 && accountsWithType === accountsCount,
-    });
-    
+    if (import.meta.env.DEV) {
+      console.log("[yesno] getAnchorProgram: IDL summary", {
+        keys: Object.keys(normalizedIdl),
+        hasAccounts: Array.isArray((normalizedIdl as any).accounts),
+        accountsCount,
+        hasTypes: Array.isArray((normalizedIdl as any).types),
+        typesCount: Array.isArray((normalizedIdl as any).types)
+          ? (normalizedIdl as any).types.length
+          : 0,
+        accountsWithType,
+        allAccountsHaveType: accountsCount > 0 && accountsWithType === accountsCount,
+      });
+    }
+
     // Test coder creation to verify accounts can be processed
     try {
       const testCoder = new anchor.BorshCoder(normalizedIdl);
       const hasAccountsCoder = !!(testCoder as any).accounts;
-      console.log("[yesno] BorshCoder test:", {
-        hasAccountsCoder,
-        accountsKeys: hasAccountsCoder ? Object.keys((testCoder as any).accounts || {}) : [],
-      });
-      
+
+      if (import.meta.env.DEV) {
+        console.log("[yesno] BorshCoder test:", {
+          hasAccountsCoder,
+          accountsKeys: hasAccountsCoder ? Object.keys((testCoder as any).accounts || {}) : [],
+        });
+      }
+
       if (!hasAccountsCoder) {
         console.error("[yesno] BorshCoder.accounts is undefined - this will cause AccountClient errors");
         throw new Error("BorshCoder.accounts is undefined - IDL accounts missing type information");
@@ -151,20 +155,21 @@ export function getAnchorProgram(wallet: WalletContextState) {
       console.error("[yesno] Failed to create BorshCoder:", coderErr);
       throw coderErr;
     }
-    
+
     // Program constructor: (idl, provider) uses idl.address
     const program = new anchor.Program(normalizedIdl as anchor.Idl, provider);
-    
+
     // Verify program has account namespace
     if (!(program as any).account) {
       console.warn("[yesno] Program.account namespace missing");
     }
-    
-    console.log("[yesno] ✅ Program initialized", {
-      programId: program.programId.toBase58(),
-      hasAccountNamespace: !!(program as any).account,
-    });
-    
+    if (import.meta.env.DEV) {
+      console.log("[yesno] ✅ Program initialized", {
+        programId: program.programId.toBase58(),
+        hasAccountNamespace: !!(program as any).account,
+      });
+    }
+
     return program;
   } catch (err: any) {
     console.error("[yesno] ❌ Failed to init Anchor program", {
@@ -200,7 +205,7 @@ export function getAnchorProgramWithProvider(wallet: WalletContextState): {
   }
   const program = getAnchorProgram(wallet);
   if (!program) return null;
-  
+
   const provider = program.provider as anchor.AnchorProvider;
   return { program, provider };
 }
@@ -226,8 +231,8 @@ export function getWritableProgram(
 
   const authority = wallet.publicKey;
 
-  // Use centralized RPC URL
-  const connection = new Connection(RPC_URL, "confirmed");
+  // Use shared connection instance
+  const connection = getConnection();
 
   // AnchorWallet wrapper over the wallet-adapter wallet
   const anchorWallet = {
@@ -236,7 +241,7 @@ export function getWritableProgram(
     signAllTransactions: wallet.signAllTransactions
       ? wallet.signAllTransactions.bind(wallet)
       : async (txs: Transaction[]) =>
-          Promise.all(txs.map((tx) => wallet.signTransaction!(tx))),
+        Promise.all(txs.map((tx) => wallet.signTransaction!(tx))),
   } as anchor.Wallet;
 
   const provider = new anchor.AnchorProvider(connection, anchorWallet, {
@@ -257,7 +262,7 @@ export function getWritableProgram(
 
 export function useAnchorProgram() {
   const wallet = useWallet();
-  
+
   return useMemo(() => {
     return getAnchorProgram(wallet);
   }, [wallet?.publicKey?.toBase58(), wallet?.signTransaction]);

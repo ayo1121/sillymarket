@@ -30,26 +30,41 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 /**
  * React Query Configuration
  * 
- * Stale-While-Revalidate Strategy:
- * - Show cached data instantly (staleTime: 30s)
- * - Keep data in cache for 5 minutes
- * - Refetch on window focus and reconnect
+ * Stale-While-Revalidate Strategy (Optimized for RPC Rate Limiting):
+ * - Show cached data instantly (staleTime: 60s - increased from 30s)
+ * - Keep data in cache for 10 minutes (increased from 5min)
+ * - Disable refetch on window focus to reduce RPC spikes
+ * - Refetch on reconnect (network recovery)
+ * - Smart retry logic: don't retry on 429 errors
  * - No automatic polling (use real-time updates instead)
  */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Stale-while-revalidate: show cached data instantly
-      staleTime: 30 * 1000, // 30 seconds - data considered fresh
-      gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache (formerly cacheTime)
+      staleTime: 60 * 1000, // 60 seconds - increased to reduce refetch frequency
+      gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache longer
 
-      // Refetch strategies
-      refetchOnWindowFocus: true, // Refetch when user returns to tab
+      // Refetch strategies (optimized to reduce RPC load)
+      refetchOnWindowFocus: false, // Disabled to prevent RPC spikes when switching tabs
       refetchOnReconnect: true, // Refetch when network reconnects
       refetchInterval: false, // Disable automatic polling (use real-time instead)
 
-      // Retry configuration
-      retry: 1, // Retry failed requests once
+      // Retry configuration (smart 429 handling)
+      retry: (failureCount, error) => {
+        // Don't retry on rate limit errors
+        const errorMessage = (error as any)?.message?.toLowerCase() || '';
+        if (
+          errorMessage.includes('429') ||
+          errorMessage.includes('rate limit') ||
+          errorMessage.includes('too many requests')
+        ) {
+          return false; // Stop retrying immediately
+        }
+
+        // Retry other errors up to 2 times
+        return failureCount < 2;
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
   },
