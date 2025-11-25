@@ -22,6 +22,8 @@ export const queryKeys = {
             ['markets', 'list', filters] as const,
         detail: (marketId: string) =>
             ['markets', 'detail', marketId] as const,
+        creator: (wallet: string) =>
+            ['markets', 'creator', wallet] as const,
     },
 
     // User positions

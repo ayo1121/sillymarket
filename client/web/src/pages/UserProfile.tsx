@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useAnchorProgram } from '@/solana/program';
@@ -33,10 +34,10 @@ export default function UserProfile() {
     const program = useAnchorProgram();
 
     // Fetch user positions and associated market data
-    const { data: positions = [], isLoading } = useQuery({
+    const { data: profileData, isLoading } = useQuery({
         queryKey: queryKeys.positions.user(wallet || ''),
         queryFn: async () => {
-            if (!program || !wallet) return [];
+            if (!program || !wallet) return { positions: [], marketsMap: new Map() };
             try {
                 const pubkey = new PublicKey(wallet);
 
@@ -48,7 +49,7 @@ export default function UserProfile() {
                 const rawPositions = await fetchUserPositions(program as any, pubkey);
 
                 if (rawPositions.length === 0) {
-                    return [];
+                    return { positions: [], marketsMap: new Map() };
                 }
 
                 // 2. Extract all unique market pubkeys
@@ -68,7 +69,7 @@ export default function UserProfile() {
                     console.log(`[UserProfile] Fetched ${marketsMap.size} markets`);
                 }
 
-                // 4. Map positions to market data
+                // 4. Map positions to market data with enhanced details
                 const positionsWithDetails = rawPositions.map((p: any) => {
                     const marketPubkey = p.account.market;
                     const marketPubkeyStr = marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
@@ -84,20 +85,45 @@ export default function UserProfile() {
                     const outcomeIndex = p.account.outcomeIndex ?? p.account.outcome_index;
                     const outcomeLabel = market.outcomes?.[outcomeIndex]?.label || `Outcome ${outcomeIndex}`;
                     const marketQuestion = market.displayQuestion || "Unknown Market";
+                    const stakeLamports = p.account.amount?.toNumber() || 0;
 
-                    // Check if claimable (market resolved to this outcome)
+                    // Market state
                     const isResolved = market.state === 'resolved';
+                    const isVoid = market.winningOutcomeIndex === -2;
                     const winningOutcomeIndex = market.winningOutcomeIndex;
-                    const canClaim = isResolved && winningOutcomeIndex === outcomeIndex && !p.account.claimed;
+
+                    // Check if user won
+                    const didWin = isResolved && !isVoid && winningOutcomeIndex === outcomeIndex;
+                    const didLose = isResolved && !isVoid && winningOutcomeIndex !== outcomeIndex;
+                    const canClaim = didWin && !p.account.claimed;
+
+                    // Calculate payout for won positions
+                    let payoutLamports = 0;
+                    if (didWin) {
+                        const totalPool = Number(market.volumeLamports || 0);
+                        const winningPool = Number(market.outcomes[winningOutcomeIndex]?.poolLamports || 1);
+                        payoutLamports = totalPool > 0 && winningPool > 0
+                            ? Math.floor((stakeLamports * totalPool) / winningPool)
+                            : stakeLamports;
+                    } else if (isVoid) {
+                        // Voided markets return stake
+                        payoutLamports = stakeLamports;
+                    }
 
                     return {
                         marketPubkey: marketPubkeyStr,
                         marketQuestion,
                         outcomeLabel,
                         outcomeIndex,
-                        amountLamports: p.account.amount?.toNumber() || 0,
+                        stakeLamports,
+                        payoutLamports,
+                        isResolved,
+                        isVoid,
+                        didWin,
+                        didLose,
                         canClaim,
-                        claimed: p.account.claimed
+                        claimed: p.account.claimed,
+                        market, // Include full market for stats calculation
                     };
                 }).filter((bet): bet is NonNullable<typeof bet> => bet !== null);
 
@@ -105,25 +131,80 @@ export default function UserProfile() {
                     console.log(`[UserProfile] Processed ${positionsWithDetails.length} positions`);
                 }
 
-                return positionsWithDetails;
+                return { positions: positionsWithDetails, marketsMap };
             } catch (error) {
                 console.error('Error fetching user profile data:', error);
-                return [];
+                return { positions: [], marketsMap: new Map() };
             }
         },
         enabled: !!program && !!wallet,
         staleTime: 60_000, // 1 minute - reduce refetch frequency
     });
 
-    // Calculate stats from positions
-    const stats = {
-        marketsPlayed: positions.length,
-        totalVolume: positions.reduce((sum: number, pos: any) => sum + (pos.amountLamports || 0), 0),
-        winningPositions: positions.filter((pos: any) => pos.canClaim).length,
-        winRate: positions.length > 0
-            ? ((positions.filter((pos: any) => pos.canClaim).length / positions.length) * 100).toFixed(1)
-            : '0.0',
-    };
+    const positions = profileData?.positions || [];
+    const marketsMap = profileData?.marketsMap || new Map();
+
+    // Calculate enhanced stats from positions
+    const stats = useMemo(() => {
+        if (positions.length === 0) {
+            return {
+                totalMarkets: 0,
+                totalVolume: 0,
+                realizedPnL: 0,
+                openExposure: 0,
+                winRate: 0,
+                resolvedCount: 0,
+                wonCount: 0,
+                lostCount: 0,
+                activeCount: 0,
+            };
+        }
+
+        let totalStaked = 0;
+        let totalWinnings = 0;
+        let openExposure = 0;
+        let resolvedCount = 0;
+        let wonCount = 0;
+        let activeCount = 0;
+
+        positions.forEach((position: any) => {
+            const stake = position.stakeLamports || 0;
+            totalStaked += stake;
+
+            if (position.isResolved) {
+                resolvedCount++;
+
+                if (position.didWin) {
+                    wonCount++;
+                    totalWinnings += position.payoutLamports || 0;
+                } else if (position.isVoid) {
+                    // Voided markets return stake
+                    totalWinnings += stake;
+                }
+                // If lost, winnings = 0 (stake already counted in totalStaked)
+            } else {
+                // Market still active/locked
+                activeCount++;
+                openExposure += stake;
+            }
+        });
+
+        const lostCount = resolvedCount - wonCount;
+        const realizedPnL = totalWinnings - (totalStaked - openExposure);
+        const winRate = resolvedCount > 0 ? (wonCount / resolvedCount) * 100 : 0;
+
+        return {
+            totalMarkets: positions.length,
+            totalVolume: totalStaked,
+            realizedPnL,
+            openExposure,
+            winRate,
+            resolvedCount,
+            wonCount,
+            lostCount,
+            activeCount,
+        };
+    }, [positions]);
 
     return (
         <>
@@ -155,18 +236,19 @@ export default function UserProfile() {
                         </div>
                     </div>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    {/* Stats Grid - Enhanced with 6 metrics */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                         <StatCard
                             icon={<Activity className="w-5 h-5" />}
-                            label="Markets Played"
-                            value={stats.marketsPlayed}
+                            label="Markets Bet"
+                            value={stats.totalMarkets}
                             color="text-blue-600"
                         />
                         <StatCard
                             icon={<Trophy className="w-5 h-5" />}
                             label="Win Rate"
-                            value={`${stats.winRate}%`}
+                            value={`${stats.winRate.toFixed(1)}%`}
+                            subtitle={stats.resolvedCount > 0 ? `${stats.wonCount}/${stats.resolvedCount}` : undefined}
                             color="text-yellow-600"
                         />
                         <StatCard
@@ -177,9 +259,23 @@ export default function UserProfile() {
                         />
                         <StatCard
                             icon={<TrendingUp className="w-5 h-5" />}
-                            label="Winning Bets"
-                            value={stats.winningPositions}
+                            label="Realized PnL"
+                            value={formatSol(Math.abs(stats.realizedPnL))}
+                            valuePrefix={stats.realizedPnL >= 0 ? '+' : '-'}
+                            color={stats.realizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}
+                        />
+                        <StatCard
+                            icon={<Activity className="w-5 h-5" />}
+                            label="Open Exposure"
+                            value={formatSol(stats.openExposure)}
+                            subtitle={stats.activeCount > 0 ? `${stats.activeCount} active` : undefined}
                             color="text-purple-600"
+                        />
+                        <StatCard
+                            icon={<Trophy className="w-5 h-5" />}
+                            label="Resolved"
+                            value={`${stats.wonCount}W / ${stats.lostCount}L`}
+                            color="text-gray-600"
                         />
                     </div>
 
@@ -242,10 +338,12 @@ interface StatCardProps {
     icon: React.ReactNode;
     label: string;
     value: string | number;
+    subtitle?: string;
+    valuePrefix?: string;
     color?: string;
 }
 
-const StatCard = ({ icon, label, value, color = 'text-[#15a349]' }: StatCardProps) => (
+const StatCard = ({ icon, label, value, subtitle, valuePrefix, color = 'text-[#15a349]' }: StatCardProps) => (
     <div className="bg-[#e8e8e8] dark:bg-[#2a2a2a] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded p-4 shadow-sm hover:shadow-md transition-shadow">
         <div className={cn('flex items-center gap-2 mb-2', color)}>
             {icon}
@@ -254,8 +352,13 @@ const StatCard = ({ icon, label, value, color = 'text-[#15a349]' }: StatCardProp
             </span>
         </div>
         <div className="text-2xl font-black text-[#111] dark:text-white">
-            {value}
+            {valuePrefix}{value}
         </div>
+        {subtitle && (
+            <div className="text-xs text-muted-foreground mt-1">
+                {subtitle}
+            </div>
+        )}
     </div>
 );
 
@@ -276,7 +379,7 @@ const BetHistoryItem = ({ position }: BetHistoryItemProps) => (
                 <div className="text-sm text-muted-foreground mt-1">
                     <span className="font-semibold">{position.outcomeLabel}</span>
                     {' • '}
-                    <span>{formatSol(position.amountLamports)}</span>
+                    <span>{formatSol(position.stakeLamports)}</span>
                 </div>
             </div>
             {position.canClaim && (

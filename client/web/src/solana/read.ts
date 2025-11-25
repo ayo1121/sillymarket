@@ -843,6 +843,52 @@ export async function fetchMarketsBatch(
   }
 }
 
+/**
+ * Fetch markets created by a specific wallet
+ * 
+ * This filters markets by creator (authority) field from on-chain data.
+ * Uses fetchAllMarkets internally (already cached via React Query).
+ * 
+ * @param program - Anchor program instance
+ * @param creator - Creator wallet pubkey
+ * @returns Array of UIMarket created by this wallet
+ */
+export async function fetchUserMarkets(
+  program: Program<YesnoMarkets> | null,
+  creator: string | PublicKey
+): Promise<UIMarket[]> {
+  if (!program) {
+    if (import.meta.env.DEV) {
+      console.warn('[fetchUserMarkets] Program not ready');
+    }
+    return [];
+  }
+
+  try {
+    const creatorPk = typeof creator === 'string' ? new web3.PublicKey(creator) : creator;
+    const creatorStr = creatorPk.toBase58();
+
+    if (import.meta.env.DEV) {
+      console.log(`[RPC] Fetching markets created by: ${creatorStr}`);
+    }
+
+    // Fetch all markets (already optimized with shared connection + caching)
+    const allMarkets = await fetchAllMarkets(program);
+
+    // Filter by creator on-chain authority field
+    const userMarkets = allMarkets.filter(market => market.creatorPubkey === creatorStr);
+
+    if (import.meta.env.DEV) {
+      console.log(`[RPC] Found ${userMarkets.length} markets created by ${creatorStr}`);
+    }
+
+    return userMarkets;
+  } catch (error) {
+    console.error('[fetchUserMarkets] Error:', error);
+    return [];
+  }
+}
+
 export async function fetchUserPositions(program: Program<YesnoMarkets> | null, owner: string | PublicKey) {
   if (!program) {
     console.warn("[yesno] fetchUserPositions: program not ready");
