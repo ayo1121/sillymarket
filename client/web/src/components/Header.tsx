@@ -108,31 +108,31 @@ export const Header = () => {
               </Button>
             )}
 
-            type="button"
-            onClick={toggleTheme}
-            className="min-w-[44px] min-h-[44px] bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[#111] dark:text-white shadow-sm active:translate-y-[1px] rounded-sm"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? <SunMedium className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+            <button
+              onClick={toggleTheme}
+              className="min-w-[44px] min-h-[44px] bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[#111] dark:text-white shadow-sm active:translate-y-[1px] rounded-sm"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <SunMedium className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
 
-          {/* Window Controls (Visual Only) - Hidden on mobile */}
-          <div className="hidden sm:flex gap-1 pl-3 border-l-2 border-[#8a8a8a]/20">
-            <button className="w-5 h-5 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[8px] font-black text-[#111] dark:text-white shadow-sm active:translate-y-[1px]">
-              _
-            </button>
-            <button className="w-5 h-5 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center font-black text-[#111] dark:text-white text-[9px] shadow-sm active:translate-y-[1px]">
-              □
-            </button>
-            <button className="w-5 h-5 bg-[#e64545] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-[#ff6b6b] flex items-center justify-center font-black text-white text-[10px] shadow-sm active:translate-y-[1px]">
-              ×
-            </button>
+            {/* Window Controls (Visual Only) - Hidden on mobile */}
+            <div className="hidden sm:flex gap-1 pl-3 border-l-2 border-[#8a8a8a]/20">
+              <button className="w-5 h-5 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[8px] font-black text-[#111] dark:text-white shadow-sm active:translate-y-[1px]">
+                _
+              </button>
+              <button className="w-5 h-5 bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center font-black text-[#111] dark:text-white text-[9px] shadow-sm active:translate-y-[1px]">
+                □
+              </button>
+              <button className="w-5 h-5 bg-[#e64545] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-[#ff6b6b] flex items-center justify-center font-black text-white text-[10px] shadow-sm active:translate-y-[1px]">
+                ×
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Divider Line */}
-      <div className="h-[1px] bg-[#8a8a8a] w-full opacity-30" />
+        {/* Bottom Divider Line */}
+        <div className="h-[1px] bg-[#8a8a8a] w-full opacity-30" />
     </header>
   );
 };
