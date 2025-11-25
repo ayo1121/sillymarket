@@ -573,16 +573,16 @@ const MyBets = () => {
             {loading ? (
               <BetCardSkeletonList count={5} />
             ) : !program || !publicKey ? (
-              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
+              <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
                 <div className="text-6xl mb-4 opacity-20">:(</div>
-                <div className="text-muted-foreground">
+                <div className="text-muted-foreground dark:text-gray-400">
                   {!publicKey ? "Connect your wallet to see your bets" : "Program is loading..."}
                 </div>
               </div>
             ) : filteredBets.length === 0 ? (
-              <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
+              <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
                 <div className="text-6xl mb-4 opacity-20">:(</div>
-                <div className="text-muted-foreground mb-4">no bets yet. go make some predictions!</div>
+                <div className="text-muted-foreground dark:text-gray-400 mb-4">no bets yet. go make some predictions!</div>
                 <Button onClick={() => window.location.href = "/"} className="font-semibold">
                   Browse Markets
                 </Button>
@@ -708,16 +708,16 @@ const MyBets = () => {
           {myMarketsLoading ? (
             <MarketCardSkeletonGrid count={6} />
           ) : !program || !publicKey ? (
-            <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
+            <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
               <div className="text-6xl mb-4 opacity-20">:(</div>
-              <div className="text-muted-foreground">
+              <div className="text-muted-foreground dark:text-gray-400">
                 {!publicKey ? "Connect your wallet to see your markets" : "Program is loading..."}
               </div>
             </div>
           ) : filteredMyMarkets.length === 0 ? (
-            <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
+            <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
               <div className="text-6xl mb-4 opacity-20">:(</div>
-              <div className="text-muted-foreground mb-4">
+              <div className="text-muted-foreground dark:text-gray-400 mb-4">
                 No {marketFilter} markets yet. {marketFilter === "active" ? "Create your first market!" : ""}
               </div>
               <Button onClick={() => navigate("/create")} className="font-semibold">

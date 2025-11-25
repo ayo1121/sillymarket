@@ -206,11 +206,14 @@ export default function UserProfile() {
         const realizedPnL = totalWinnings - (totalStaked - openExposure);
         const winRate = resolvedCount > 0 ? (wonCount / resolvedCount) * 100 : 0;
 
+        // Convert lamports to SOL
+        const LAMPORTS_PER_SOL = 1_000_000_000;
+
         return {
             totalMarkets: positions.length,
-            totalVolume: totalStaked,
-            realizedPnL,
-            openExposure,
+            totalVolume: totalStaked / LAMPORTS_PER_SOL,
+            realizedPnL: realizedPnL / LAMPORTS_PER_SOL,
+            openExposure: openExposure / LAMPORTS_PER_SOL,
             winRate,
             resolvedCount,
             wonCount,
@@ -233,10 +236,12 @@ export default function UserProfile() {
                             </Button>
                         </Link>
                         {isOwnProfile && (
-                            <Button variant="outline" size="sm" onClick={() => navigate('/my-bets')}>
-                                <BarChart3 className="w-4 h-4 mr-2" />
-                                My Bets
-                            </Button>
+                            <Link to="/my-bets">
+                                <Button variant="outline" size="sm">
+                                    <BarChart3 className="w-4 h-4 mr-2" />
+                                    My Bets
+                                </Button>
+                            </Link>
                         )}
                     </div>
 
@@ -296,7 +301,7 @@ export default function UserProfile() {
                             icon={<Trophy className="w-5 h-5" />}
                             label="Resolved"
                             value={`${stats.wonCount}W / ${stats.lostCount}L`}
-                            color="text-gray-600"
+                            color="text-gray-600 dark:text-gray-400"
                         />
                     </div>
 
@@ -368,7 +373,7 @@ const StatCard = ({ icon, label, value, subtitle, valuePrefix, color = 'text-[#1
     <div className="bg-[#e8e8e8] dark:bg-[#2a2a2a] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded p-4 shadow-sm hover:shadow-md transition-shadow">
         <div className={cn('flex items-center gap-2 mb-2', color)}>
             {icon}
-            <span className="text-xs font-semibold uppercase tracking-wide">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#555] dark:text-[#aaa]">
                 {label}
             </span>
         </div>
@@ -376,7 +381,7 @@ const StatCard = ({ icon, label, value, subtitle, valuePrefix, color = 'text-[#1
             {valuePrefix}{value}
         </div>
         {subtitle && (
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                 {subtitle}
             </div>
         )}
