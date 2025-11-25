@@ -42,7 +42,7 @@ export default function UserProfile() {
                 console.log('[UserProfile] Fetching positions for:', wallet);
 
                 // 1. Fetch raw positions from on-chain
-                const rawPositions = await fetchUserPositions(program, pubkey);
+                const rawPositions = await fetchUserPositions(program as any, pubkey);
 
                 // 2. Fetch market data for each position to get details
                 const positionsWithDetails = await Promise.all(
@@ -52,15 +52,14 @@ export default function UserProfile() {
 
                         // Fetch market details (this uses caching internally if implemented, or we rely on React Query's deduping if we used useQuery hooks, but here we are in an async fn)
                         // We use fetchMarket from read.ts which handles metadata fetching
-                        const market = await fetchMarket(program, marketPubkeyStr);
+                        const market = await fetchMarket(program as any, marketPubkeyStr);
 
                         const outcomeIndex = p.account.outcomeIndex ?? p.account.outcome_index;
                         const outcomeLabel = market?.outcomes?.[outcomeIndex]?.label || `Outcome ${outcomeIndex}`;
                         const marketQuestion = market?.displayQuestion || "Unknown Market";
 
                         // Check if claimable (market resolved to this outcome)
-                        // This is a simplified check. Real check needs market state.
-                        const isResolved = market?.status === 'resolved'; // You might need to check the enum/string value from your IDL mapping
+                        const isResolved = market?.state === 'resolved';
                         const winningOutcomeIndex = market?.winningOutcomeIndex;
                         const canClaim = isResolved && winningOutcomeIndex === outcomeIndex && !p.account.claimed;
 
