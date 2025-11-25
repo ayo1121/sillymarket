@@ -303,6 +303,6 @@ export function mapRawMarketToUi(raw: any): UIMarket {
     userOutcomeIndex: null, // Will be set in read.ts if user has a position
     rawAccount: account,
     publicKey: publicKey || (creatorPubkey ? new PublicKey(creatorPubkey) : new PublicKey("11111111111111111111111111111111")), // fallback
-    winningOutcomeIndex,
+    winningOutcomeIndex: winningIndex,
   };
 }

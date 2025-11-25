@@ -12,6 +12,22 @@ import type { YesnoMarkets } from "../idl/yesno_markets";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import { getAnchorProgramWithProvider } from "./program";
 import { supabaseClient } from "../integrations/supabase/client";
+import { transactionQueue } from "../lib/transactionQueue";
+
+// Helper to check offline status and queue transaction
+function checkOfflineAndQueue(actionName: string, params: any) {
+  if (!navigator.onLine) {
+    console.log(`[${actionName}] Offline - queuing transaction`, params);
+    transactionQueue.add({
+      type: actionName,
+      params,
+      timestamp: Date.now(),
+      status: 'pending'
+    });
+    // Throw a specific error that UI can catch to show "Queued" toast
+    throw new Error("OFFLINE_QUEUED");
+  }
+}
 
 function prettyAnchorError(err: unknown, idl?: Idl, context?: string): Error {
   const anyErr: any = err;
@@ -253,6 +269,14 @@ export async function createMarket(
     throw new Error("Image URL must be <= 200 characters");
   }
 
+  // Check offline status
+  checkOfflineAndQueue("createMarket", {
+    cutoffTs: params.cutoffTs,
+    question: params.question,
+    answers: params.answers,
+    imageUrl: params.imageUrl
+  });
+
   // 3) Derive market PDA exactly the same way the on-chain program does
   const questionHash = await hashQuestionAndAnswers(question, answers);
   const programId = program.programId;
@@ -344,6 +368,13 @@ export async function placeBet(
   if (params.stakeLamports <= 0) {
     throw new Error("Stake must be positive");
   }
+
+  // Check offline status
+  checkOfflineAndQueue("placeBet", {
+    marketPubkey: params.marketPubkey,
+    outcomeIndex: params.outcomeIndex,
+    stakeLamports: params.stakeLamports
+  });
 
   // 3) Parse market pubkey
   const marketPk = new PublicKey(params.marketPubkey);
@@ -461,6 +492,11 @@ export async function claimWinnings(
     user: Address;
   }
 ) {
+  // Check offline status
+  checkOfflineAndQueue("claimWinnings", {
+    market: params.market.toString(),
+    user: params.user.toString()
+  });
   const marketPk = new PublicKey(params.market);
   const userPk = new PublicKey(params.user);
   // Use program.programId directly to ensure consistency
