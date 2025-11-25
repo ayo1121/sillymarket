@@ -133,6 +133,7 @@ export const Header = () => {
 
         {/* Bottom Divider Line */}
         <div className="h-[1px] bg-[#8a8a8a] w-full opacity-30" />
+      </div>
     </header>
   );
 };
