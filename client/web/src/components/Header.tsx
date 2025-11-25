@@ -81,6 +81,9 @@ export const Header = () => {
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
+            {/* Wallet Connect Button */}
+            <ConnectWalletAndUsername className="hidden sm:flex" />
+
             {/* MOBILE: Touch target optimized - min 44px height */}
             <Button
               variant="ghost"
