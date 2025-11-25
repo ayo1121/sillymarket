@@ -423,7 +423,9 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
           <button
             onClick={() => {
               setMenuOpen(false);
-              navigate("/my-bets");
+              if (publicKey) {
+                navigate(`/profile/${publicKey.toBase58()}`);
+              }
             }}
             className="w-full text-left px-3 py-2.5 border-b border-[#eee] dark:border-[#2a2a2a] font-semibold hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] text-sm sm:text-base"
           >
