@@ -109,8 +109,9 @@ const App = () => (
           <Sonner />
 
           {/* PWA Components */}
-          <OfflineIndicator />
-          <PendingTransactions />
+          {/* Temporarily disabled for debugging */}
+          {/* <OfflineIndicator /> */}
+          {/* <PendingTransactions /> */}
 
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
