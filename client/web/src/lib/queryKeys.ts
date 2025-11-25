@@ -24,6 +24,8 @@ export const queryKeys = {
             ['markets', 'detail', marketId] as const,
         creator: (wallet: string) =>
             ['markets', 'creator', wallet] as const,
+        batch: (pubkeys: string[]) =>
+            ['markets', 'batch', pubkeys.sort().join(',')] as const,
     },
 
     // User positions

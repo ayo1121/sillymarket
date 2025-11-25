@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -11,16 +11,17 @@ import { claimWinnings } from "@/solana/actions";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { useMarketsCtx, getBetStatus, computePnL, BetStatus, isPositionClaimable } from "@/hooks/marketsContext";
+import { getBetStatus, computePnL, BetStatus, isPositionClaimable } from "@/hooks/marketsContext";
 import { formatSol, shortenWallet } from "@/utils/format";
 import { MarketCard } from "@/components/MarketCard";
 import { resolveMarket } from "@/solana/actions";
-import { fetchConfig } from "@/solana/read";
+import { fetchConfig, fetchUserPositions, fetchMarketsBatch, fetchUserMarkets } from "@/solana/read";
 import { getTxExplorerUrl } from "@/utils/solanaExplorer";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { BetCardSkeletonList } from "@/components/skeletons/BetCardSkeleton";
 import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleton";
 import confetti from "canvas-confetti";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface BetView {
   id: string;
@@ -47,7 +48,6 @@ const MyBets = () => {
   const navigate = useNavigate();
   const program = useAnchorProgram();
   const { publicKey } = useWallet();
-  const { markets, loading: marketsLoading, positions, positionsLoading, refreshPositions } = useMarketsCtx();
   const [statusFilter, setStatusFilter] = useState<"active" | "won" | "lost">("active");
   const [claiming, setClaiming] = useState<Map<string, boolean>>(new Map());
   const [claimingAll, setClaimingAll] = useState(false);
@@ -62,6 +62,67 @@ const MyBets = () => {
       fetchConfig(program as any).then(setConfig).catch(console.error);
     }
   }, [program]);
+
+  // Fetch user positions with React Query
+  const { data: positions = [], isLoading: positionsLoading, refetch: refetchPositions } = useQuery({
+    queryKey: queryKeys.positions.user(publicKey?.toBase58() || ''),
+    queryFn: async () => {
+      if (!program || !publicKey) return [];
+
+      if (import.meta.env.DEV) {
+        console.log('[MyBets] Fetching positions for:', publicKey.toBase58());
+      }
+
+      return fetchUserPositions(program as any, publicKey);
+    },
+    enabled: !!program && !!publicKey,
+    staleTime: 60_000, // 1 minute
+  });
+
+  // Extract market pubkeys from positions
+  const marketPubkeys = useMemo(() => {
+    return positions.map((p: any) => {
+      const marketPk = p.account.market;
+      return marketPk?.toBase58?.() || marketPk?.toString?.() || '';
+    }).filter(Boolean);
+  }, [positions]);
+
+  // Batch fetch only markets for user's positions
+  const { data: marketsMap = new Map(), isLoading: marketsLoading } = useQuery({
+    queryKey: queryKeys.markets.batch(marketPubkeys),
+    queryFn: async () => {
+      if (!program || marketPubkeys.length === 0) return new Map();
+
+      if (import.meta.env.DEV) {
+        console.log(`[MyBets] Batch fetching ${marketPubkeys.length} markets`);
+      }
+
+      return fetchMarketsBatch(program as any, marketPubkeys);
+    },
+    enabled: !!program && marketPubkeys.length > 0,
+    staleTime: 60_000, // 1 minute
+  });
+
+  // Fetch user's created markets (for Markets tab)
+  const { data: myMarkets = [], isLoading: myMarketsLoading } = useQuery({
+    queryKey: queryKeys.markets.creator(publicKey?.toBase58() || ''),
+    queryFn: async () => {
+      if (!program || !publicKey) return [];
+
+      if (import.meta.env.DEV) {
+        console.log('[MyBets] Fetching created markets for:', publicKey.toBase58());
+      }
+
+      return fetchUserMarkets(program as any, publicKey);
+    },
+    enabled: !!program && !!publicKey && viewMode === 'markets',
+    staleTime: 60_000, // 1 minute
+  });
+
+  // Helper to refresh positions (for claim callbacks)
+  const refreshPositions = async () => {
+    await refetchPositions();
+  };
 
   // MOBILE FEATURE: Swipe gestures for bet status tab navigation
   // Allows swiping left/right to change between Active/Won/Lost tabs on mobile
@@ -107,18 +168,12 @@ const MyBets = () => {
     }
   );
 
-  const marketMap = useMemo(() => {
-    const map = new Map<string, any>();
-    markets.forEach((m) => map.set(m.pubkey, m));
-    return map;
-  }, [markets]);
-
   const betsView: BetView[] = useMemo(() => {
     if (!publicKey) return [];
     return positions
       .map((pos: any) => {
         const marketPk = pos.account.market?.toBase58?.() || pos.account.market?.toString?.();
-        const market = marketMap.get(marketPk);
+        const market = marketsMap.get(marketPk);
         if (!market) return null;
 
         const rawMarket = market.rawAccount || market;
@@ -178,7 +233,7 @@ const MyBets = () => {
         };
       })
       .filter((bet): bet is BetView => bet !== null);
-  }, [positions, marketMap, publicKey]);
+  }, [positions, marketsMap, publicKey]);
 
   const filteredBets = useMemo(() => {
     return betsView.filter((bet) => {
@@ -290,13 +345,9 @@ const MyBets = () => {
     }
   };
 
-  // Filter markets created by connected wallet
-  const myMarkets = useMemo(() => {
-    if (!publicKey) return [];
-    const creatorPubkey = publicKey.toBase58();
-
-    return markets
-      .filter(market => market.creatorPubkey === creatorPubkey)
+  // Filter created markets by status (active/resolved)
+  const filteredMyMarkets = useMemo(() => {
+    return myMarkets
       .filter(market => {
         const isResolved = market.state === "resolved" || market.isResolved;
         if (marketFilter === "active") {
@@ -310,21 +361,18 @@ const MyBets = () => {
         const bTs = b.rawAccount?.createdTs?.toNumber?.() ?? b.rawAccount?.created_ts?.toNumber?.() ?? 0;
         return bTs - aTs; // Newest first
       });
-  }, [markets, publicKey, marketFilter]);
+  }, [myMarkets, marketFilter]);
 
-  // Calculate market stats
+  // Calculate market stats from user's created markets
   const marketStats = useMemo(() => {
-    if (!publicKey) return { totalVolume: 0, feesCollected: 0 };
+    if (!publicKey || myMarkets.length === 0) return { totalVolume: 0, feesCollected: 0 };
 
-    const creatorPubkey = publicKey.toBase58();
-    const creatorMarkets = markets.filter(m => m.creatorPubkey === creatorPubkey);
-
-    const totalVolumeLamports = creatorMarkets.reduce((sum, market) => {
+    const totalVolumeLamports = myMarkets.reduce((sum, market) => {
       const vol = Number(market.volumeLamports || market.rawAccount?.totalPool || 0);
       return sum + vol;
     }, 0);
 
-    const feesCollectedLamports = creatorMarkets.reduce((sum, market) => {
+    const feesCollectedLamports = myMarkets.reduce((sum, market) => {
       // For resolved markets, fees are already distributed and reset to 0 on-chain.
       // We estimate creator fees as ~1% of volume (50% of the 2% total fee).
       if (market.isResolved) {
@@ -341,12 +389,12 @@ const MyBets = () => {
       totalVolume: totalVolumeLamports / LAMPORTS_PER_SOL,
       feesCollected: feesCollectedLamports / LAMPORTS_PER_SOL,
     };
-  }, [markets, publicKey]);
+  }, [myMarkets, publicKey]);
 
   const handleResolveMarket = async (marketPubkey: string, winnerIndex: number) => {
     if (!program || !publicKey || resolving.get(marketPubkey)) return;
 
-    const market = markets.find(m => m.pubkey === marketPubkey);
+    const market = myMarkets.find(m => m.pubkey === marketPubkey);
     if (!market) return;
 
     // Get fee wallet from config
@@ -657,8 +705,7 @@ const MyBets = () => {
       ) : (
         // Markets View
         <div className="space-y-4">
-          {/* SKELETON LOADING: Show market card skeletons instead of generic text */}
-          {loading ? (
+          {myMarketsLoading ? (
             <MarketCardSkeletonGrid count={6} />
           ) : !program || !publicKey ? (
             <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
@@ -667,7 +714,7 @@ const MyBets = () => {
                 {!publicKey ? "Connect your wallet to see your markets" : "Program is loading..."}
               </div>
             </div>
-          ) : myMarkets.length === 0 ? (
+          ) : filteredMyMarkets.length === 0 ? (
             <div className="bg-[#f5f5f5] border border-[#d3d3d3] rounded shadow-sm p-12 text-center">
               <div className="text-6xl mb-4 opacity-20">:(</div>
               <div className="text-muted-foreground mb-4">
@@ -678,7 +725,7 @@ const MyBets = () => {
               </Button>
             </div>
           ) : (
-            myMarkets.map(market => {
+            filteredMyMarkets.map(market => {
               const canResolve = market.isLocked && !market.isResolved && !(market as any).isVoid;
               const isResolving = resolving.get(market.pubkey);
 
