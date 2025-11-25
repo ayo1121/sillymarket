@@ -15,15 +15,10 @@ import { supabaseClient } from "../integrations/supabase/client";
 import { transactionQueue } from "../lib/transactionQueue";
 
 // Helper to check offline status and queue transaction
-function checkOfflineAndQueue(actionName: string, params: any) {
+function checkOfflineAndQueue(actionName: 'place_bet' | 'resolve_market' | 'claim_winnings' | 'create_market', params: any) {
   if (!navigator.onLine) {
     console.log(`[${actionName}] Offline - queuing transaction`, params);
-    transactionQueue.add({
-      type: actionName,
-      params,
-      timestamp: Date.now(),
-      status: 'pending'
-    });
+    transactionQueue.enqueue(actionName, params);
     // Throw a specific error that UI can catch to show "Queued" toast
     throw new Error("OFFLINE_QUEUED");
   }
@@ -270,7 +265,7 @@ export async function createMarket(
   }
 
   // Check offline status
-  checkOfflineAndQueue("createMarket", {
+  checkOfflineAndQueue("create_market", {
     cutoffTs: params.cutoffTs,
     question: params.question,
     answers: params.answers,
@@ -370,7 +365,7 @@ export async function placeBet(
   }
 
   // Check offline status
-  checkOfflineAndQueue("placeBet", {
+  checkOfflineAndQueue("place_bet", {
     marketPubkey: params.marketPubkey,
     outcomeIndex: params.outcomeIndex,
     stakeLamports: params.stakeLamports
@@ -493,7 +488,7 @@ export async function claimWinnings(
   }
 ) {
   // Check offline status
-  checkOfflineAndQueue("claimWinnings", {
+  checkOfflineAndQueue("claim_winnings", {
     market: params.market.toString(),
     user: params.user.toString()
   });
