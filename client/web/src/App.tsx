@@ -67,6 +67,31 @@ const PageLoader = () => (
 );
 
 /**
+ * Error fallback for lazy loading failures
+ */
+const LazyLoadError = ({ error }: { error?: Error }) => (
+  <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] flex items-center justify-center p-4">
+    <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded p-6 max-w-md">
+      <h1 className="text-2xl font-black mb-4">Loading Error</h1>
+      <p className="text-muted-foreground mb-4">
+        Failed to load page. This might be due to a network issue or browser cache.
+      </p>
+      {error && (
+        <pre className="text-xs bg-[#f5f5f5] dark:bg-[#2a2a2a] p-3 rounded mb-4 overflow-auto">
+          {error.message}
+        </pre>
+      )}
+      <button
+        onClick={() => window.location.reload()}
+        className="bg-[#15a349] text-white px-4 py-2 rounded font-bold hover:bg-[#0d7a35]"
+      >
+        Reload Page
+      </button>
+    </div>
+  </div>
+);
+
+/**
  * App wrapper with notifications detection
  * Detects claimable winnings and creates notifications
  */
