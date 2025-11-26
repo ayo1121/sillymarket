@@ -50,21 +50,24 @@ export default function UserProfile() {
     const { publicKey } = useWallet();
     const { username: currentUserUsername } = useWalletIdentity();
 
-    // Username and address display logic
+    // Username display logic - works even without wallet connected
+    // Uses profile data for the address being viewed
     const { displayName, displayAddress } = useMemo(() => {
         if (!wallet) return { displayName: 'Unknown', displayAddress: '' };
 
-        // For now, we only have username for the logged-in user
-        // If viewing own profile and have username, show it
-        const isOwnProfile = publicKey?.toBase58() === wallet;
         const walletAddress = wallet;
 
-        // Use username if viewing own profile and username is set
-        const username = isOwnProfile && currentUserUsername ? currentUserUsername : null;
+        // Check if viewing own profile to get username
+        const isOwnProfile = publicKey?.toBase58() === wallet;
 
-        const displayName = username && username.trim().length > 0
-            ? username.trim()
-            : shortenWallet(walletAddress);
+        // Use username if available for this profile
+        // For now, we only have username for logged-in user viewing own profile
+        // In future: fetch username from backend for any profile
+        const username = isOwnProfile && currentUserUsername && currentUserUsername.trim().length > 0
+            ? currentUserUsername.trim()
+            : null;
+
+        const displayName = username ?? shortenWallet(walletAddress);
         const displayAddress = shortenWallet(walletAddress);
 
         return { displayName, displayAddress };
@@ -252,20 +255,28 @@ export default function UserProfile() {
     return (
         <>
             <Header />
-            {/* Removed grey banner - using app's default dark background */}
-            <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
+            {/* No grey banner - using app's default dark background throughout */}
+            <div className="min-h-screen dark:bg-[#1d1d1d] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
-                    {/* Navigation Buttons */}
+                    {/* Navigation Buttons - Dark mode styled */}
                     <div className="flex gap-2 mb-6">
                         <Link to="/">
-                            <Button variant="outline" size="sm">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-[#111] dark:bg-[#1f1f1f] border-[#333] dark:border-[#3a3a3a] text-white hover:bg-[#222] dark:hover:bg-[#2a2a2a] hover:border-[#444] dark:hover:border-[#4a4a4a]"
+                            >
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back to Markets
                             </Button>
                         </Link>
                         {isOwnProfile && (
                             <Link to="/my-bets">
-                                <Button variant="outline" size="sm">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-[#111] dark:bg-[#1f1f1f] border-[#333] dark:border-[#3a3a3a] text-white hover:bg-[#222] dark:hover:bg-[#2a2a2a] hover:border-[#444] dark:hover:border-[#4a4a4a]"
+                                >
                                     <BarChart3 className="w-4 h-4 mr-2" />
                                     My Bets
                                 </Button>
@@ -446,14 +457,14 @@ const BetHistoryItem = ({ position }: BetHistoryItemProps) => {
                 </div>
             </Link>
 
-            {/* Solscan devnet link if transaction signature available */}
+            {/* Visible Solscan devnet link */}
             {position.txSignature && (
-                <div className="mt-2 pt-2 border-t border-[#e0e0e0] dark:border-[#333]">
+                <div className="mt-2">
                     <a
                         href={`https://solscan.io/tx/${position.txSignature}?cluster=devnet`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-[#666] dark:text-[#999] hover:text-[#15a349] dark:hover:text-[#15a349] transition-colors"
+                        className="inline-flex items-center gap-1 text-xs font-medium underline text-[#666] dark:text-[#aaa] hover:text-[#15a349] dark:hover:text-[#15a349] transition-colors"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <ExternalLink className="w-3 h-3" />
