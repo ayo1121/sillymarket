@@ -258,28 +258,20 @@ export default function UserProfile() {
             {/* Proper light/dark backgrounds - no grey banner */}
             <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
-                    {/* Navigation Buttons - Polished dark mode */}
+                    {/* Navigation Buttons - Native buttons for full style control */}
                     <div className="flex gap-2 mb-6">
                         <Link to="/">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-[#1f1f1f] border-[#3a3a3a] text-[#e8e8e8] hover:bg-[#2a2a2a] hover:border-[#4a4a4a] font-semibold"
-                            >
-                                <ArrowLeft className="w-4 h-4 mr-2" />
+                            <button className="inline-flex items-center gap-2 px-4 h-8 text-sm font-semibold bg-white dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#3a3a3a] text-[#111] dark:text-[#e8e8e8] rounded hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] hover:border-[#666] dark:hover:border-[#4a4a4a] transition-colors">
+                                <ArrowLeft className="w-4 h-4" />
                                 Back to Markets
-                            </Button>
+                            </button>
                         </Link>
                         {isOwnProfile && (
                             <Link to="/my-bets">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="bg-[#1f1f1f] border-[#3a3a3a] text-[#e8e8e8] hover:bg-[#2a2a2a] hover:border-[#4a4a4a] font-semibold"
-                                >
-                                    <BarChart3 className="w-4 h-4 mr-2" />
+                                <button className="inline-flex items-center gap-2 px-4 h-8 text-sm font-semibold bg-white dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#3a3a3a] text-[#111] dark:text-[#e8e8e8] rounded hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] hover:border-[#666] dark:hover:border-[#4a4a4a] transition-colors">
+                                    <BarChart3 className="w-4 h-4" />
                                     My Bets
-                                </Button>
+                                </button>
                             </Link>
                         )}
                     </div>
