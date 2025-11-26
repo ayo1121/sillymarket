@@ -255,16 +255,16 @@ export default function UserProfile() {
     return (
         <>
             <Header />
-            {/* No grey banner - using app's default dark background throughout */}
-            <div className="min-h-screen dark:bg-[#1d1d1d] pb-24">
+            {/* No grey banner - dark background only */}
+            <div className="min-h-screen bg-[#1d1d1d] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
-                    {/* Navigation Buttons - Dark mode styled */}
+                    {/* Navigation Buttons - Polished dark mode */}
                     <div className="flex gap-2 mb-6">
                         <Link to="/">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="bg-[#111] dark:bg-[#1f1f1f] border-[#333] dark:border-[#3a3a3a] text-white hover:bg-[#222] dark:hover:bg-[#2a2a2a] hover:border-[#444] dark:hover:border-[#4a4a4a]"
+                                className="bg-[#1f1f1f] border-[#3a3a3a] text-[#e8e8e8] hover:bg-[#2a2a2a] hover:border-[#4a4a4a] font-semibold"
                             >
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back to Markets
@@ -275,7 +275,7 @@ export default function UserProfile() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="bg-[#111] dark:bg-[#1f1f1f] border-[#333] dark:border-[#3a3a3a] text-white hover:bg-[#222] dark:hover:bg-[#2a2a2a] hover:border-[#444] dark:hover:border-[#4a4a4a]"
+                                    className="bg-[#1f1f1f] border-[#3a3a3a] text-[#e8e8e8] hover:bg-[#2a2a2a] hover:border-[#4a4a4a] font-semibold"
                                 >
                                     <BarChart3 className="w-4 h-4 mr-2" />
                                     My Bets
