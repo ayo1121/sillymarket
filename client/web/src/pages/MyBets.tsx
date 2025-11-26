@@ -22,6 +22,9 @@ import { BetCardSkeletonList } from "@/components/skeletons/BetCardSkeleton";
 import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleton";
 import confetti from "canvas-confetti";
 import { queryKeys } from "@/lib/queryKeys";
+import { supabase } from "@/integrations/supabase/client";
+import type { BetRow } from "@/supabase/bets";
+import { MarketStatusBadge } from "@/components/common/MarketStatusBadge";
 
 interface BetView {
   id: string;
@@ -42,6 +45,7 @@ interface BetView {
   marketPubkey: string;
   position: any | null;
   canClaim: boolean;
+  txSig?: string | null; // Transaction signature for Solscan link
 }
 
 const MyBets = () => {
@@ -117,6 +121,29 @@ const MyBets = () => {
     },
     enabled: !!program && !!publicKey && viewMode === 'markets',
     staleTime: 60_000, // 1 minute
+  });
+
+  // Fetch user bets from Supabase for tx_sig enrichment
+  const { data: userBetsData = [] } = useQuery({
+    queryKey: ['userBets', publicKey?.toBase58() || ''],
+    queryFn: async () => {
+      if (!publicKey) return [];
+
+      const { data, error } = await (supabase as any)
+        .from('bets')
+        .select('market_pubkey, outcome_index, tx_sig, amount_lamports')
+        .eq('bettor_pubkey', publicKey.toBase58())
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[MyBets] Error fetching bets:', error);
+        return [];
+      }
+
+      return (data || []) as BetRow[];
+    },
+    enabled: !!publicKey,
+    staleTime: 60_000,
   });
 
   // Helper to refresh positions (for claim callbacks)
@@ -211,6 +238,19 @@ const MyBets = () => {
         const marketAddress = shortenWallet(marketPk);
         const creatorAddress = market.creatorPubkey || "";
 
+        // Enrich with tx_sig from Supabase bets
+        // Match by market + outcome + approximate amount
+        const matchingBet = userBetsData.find((bet: BetRow) => {
+          if (bet.market_pubkey !== marketPk) return false;
+          if (bet.outcome_index !== outcomeIndex) return false;
+          // Approximate amount match (within 1% tolerance for rounding)
+          const betAmount = Number(bet.amount_lamports || 0);
+          const posAmount = Number(stakeLamports);
+          if (betAmount === 0 || posAmount === 0) return false;
+          const diff = Math.abs(betAmount - posAmount) / posAmount;
+          return diff < 0.01;
+        });
+
         return {
           id: `${marketPk}-${outcomeIndex}`,
           question: market.displayQuestion || market.question || "Unknown Market",
@@ -230,10 +270,11 @@ const MyBets = () => {
           marketPubkey: marketPk,
           position: pos,
           canClaim,
+          txSig: matchingBet?.tx_sig || null,
         };
       })
       .filter((bet): bet is BetView => bet !== null);
-  }, [positions, marketsMap, publicKey]);
+  }, [positions, marketsMap, publicKey, userBetsData]);
 
   const filteredBets = useMemo(() => {
     return betsView.filter((bet) => {
@@ -602,13 +643,12 @@ const MyBets = () => {
                     <div className="relative z-10">
                       {/* Status Badge */}
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-sm font-bold text-[#111]">Bet Details</span>
-                        <span className={`text-xs px-3 py-1 rounded font-semibold ${bet.status === "active" ? "bg-[#e8e8e8] text-[#111]" :
-                          bet.status === "won" ? "bg-green-100 text-green-800" :
-                            "bg-red-100 text-red-800"
-                          }`}>
-                          {bet.status === "active" ? "Open" : bet.status === "won" ? "Won" : "Lost"}
-                        </span>
+                        <span className="text-sm font-bold text-[#111] dark:text-white">Bet Details</span>
+                        <MarketStatusBadge
+                          state={bet.status === "active" ? "open" : bet.status === "won" ? "resolved" : "resolved"}
+                          isVoid={false}
+                          winnerOutcomeLabel={bet.status === "won" ? bet.prediction : undefined}
+                        />
                       </div>
 
                       {/* Market Info */}
@@ -670,6 +710,21 @@ const MyBets = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Solscan link */}
+                      {bet.txSig && (
+                        <div className="mt-3">
+                          <a
+                            href={getTxExplorerUrl(bet.txSig)}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center text-xs font-medium underline text-[#666] dark:text-[#c7c7c7] hover:text-[#111] dark:hover:text-white transition-colors"
+                          >
+                            View on Solscan
+                          </a>
+                        </div>
+                      )}
 
                       {/* Claim button */}
                       {bet.canClaim && (

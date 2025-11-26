@@ -43,63 +43,7 @@ import confetti from "canvas-confetti";
 import { SEO } from "@/components/SEO";
 import { MarketStructuredData } from "@/components/StructuredData";
 
-type ResolutionPillProps = {
-  state: string | null | undefined;
-  isVoid?: boolean;
-  winnerOutcomeLabel?: string;
-  winnerOutcomeIndex?: number | null;
-};
-
-/**
- * Status pill component for market resolution state.
- * Display rules:
- * - Void markets: "void"
- * - Resolved with winner: shows "Winner: [outcome]" (e.g., "Winner: yes", "Winner: no") with outcome color
- * - Resolved without winner: "resolved"
- * - Locked/Closed: "locked" or "closed"
- * - Open: "open"
- */
-const ResolutionPill: React.FC<ResolutionPillProps> = ({ state, isVoid, winnerOutcomeLabel, winnerOutcomeIndex }) => {
-  const normalized = state?.toString().toLowerCase?.() ?? "";
-  const showWinner = !isVoid && typeof winnerOutcomeLabel === "string" && winnerOutcomeLabel.trim().length > 0;
-
-  let text = state || "unknown";
-  let bgColor = "#e0e0e0";
-  let textColor = "#111";
-
-  if (isVoid) {
-    text = "VOID";
-    bgColor = "#666";
-    textColor = "#fff";
-  } else if (normalized === "resolved" || normalized === "settled") {
-    text = showWinner ? `Winner: ${winnerOutcomeLabel}` : "RESOLVED";
-    if (showWinner && winnerOutcomeIndex != null) {
-      const outcomeColor = getOutcomeColor(winnerOutcomeIndex);
-      bgColor = outcomeColor;
-      textColor = "#fff";
-    } else {
-      bgColor = "#4caf50";
-      textColor = "#fff";
-    }
-  } else if (normalized === "locked" || normalized === "closed") {
-    text = "LOCKED";
-    bgColor = "#ff9800";
-    textColor = "#fff";
-  } else if (normalized === "open") {
-    text = "OPEN";
-    bgColor = "#4caf50";
-    textColor = "#fff";
-  }
-
-  return (
-    <div
-      className="inline-flex items-center px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide shadow-sm"
-      style={{ backgroundColor: bgColor, color: textColor }}
-    >
-      {text}
-    </div>
-  );
-};
+import { MarketStatusBadge } from "@/components/common/MarketStatusBadge";
 
 const MarketDetails = () => {
   const { id: marketId } = useParams<{ id: string }>();
@@ -431,7 +375,7 @@ const MarketDetails = () => {
   const totalVolumeLabel = (() => {
     const sol = Number(totalVolumeLamports) / 1_000_000_000;
     if (!Number.isFinite(sol)) return "0.00";
-    return sol.toFixed(2);
+    return formatSol(sol, 2);
   })();
 
   console.log("[MarketDetails] hooks OK, market loaded?", !!market);
@@ -538,7 +482,7 @@ const MarketDetails = () => {
           <div className="relative z-10">
             {/* Top Row: Status + Share Button */}
             <div className="flex justify-between items-center mb-4 sm:mb-5 gap-3 flex-wrap">
-              <ResolutionPill
+              <MarketStatusBadge
                 state={statsStatusLabel}
                 isVoid={isVoid}
                 winnerOutcomeLabel={winnerOutcomeLabel}

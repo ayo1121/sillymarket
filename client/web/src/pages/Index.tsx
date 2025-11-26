@@ -22,6 +22,7 @@ import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleto
 import { useQuery } from "@tanstack/react-query";
 import { useLiveMarketUpdates } from "@/hooks/useLiveMarketUpdates";
 import { queryKeys } from "@/lib/queryKeys";
+import { formatSol } from "@/utils/format";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -189,7 +190,7 @@ const Index = () => {
                   the silliest outcome is always the most likely
                 </p>
                 <p className="text-[10px] sm:text-[11px] font-mono text-[#5f5f5f] dark:text-[#c7c7c7] uppercase tracking-wider font-semibold">
-                  {markets.length} markets · {(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000).toFixed(1)} SOL total volume
+                  {markets.length} markets · {formatSol(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000, 1)} SOL total volume
                 </p>
               </div>
               {/* Section Bar - Wider & Stronger Green */}

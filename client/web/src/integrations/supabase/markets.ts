@@ -42,29 +42,59 @@ export async function fetchMarketsMetadataByPubkeys(
   }
 
   try {
-    const { data, error } = await (supabase as any)
+    // 1. Fetch markets metadata
+    const { data: marketsData, error: marketsError } = await (supabase as any)
       .from(MARKETS_TABLE)
       .select("*")
       .in("market_pubkey", pubkeys);
 
-    if (error) {
+    if (marketsError) {
       console.error(
         "[supabase][markets] fetchMany error",
-        error.message,
-        error,
+        marketsError.message,
+        marketsError,
       );
       return [];
     }
 
-    const rows = (data ?? []).map((row: any): RemoteMarketMetadata => ({
-      market_pubkey: row.market_pubkey,
-      question: row.question ?? null,
-      description: row.description ?? null,
-      creator_wallet: row.creator_wallet ?? null,
-      creator_name: row.creator_name ?? null,
-      image_url: row.image_url ?? null,
-      answers: Array.isArray(row.answers) ? row.answers : null,
-    }));
+    // 2. Extract creator wallets to fetch usernames
+    const creatorWallets = Array.from(new Set(
+      (marketsData ?? [])
+        .map((m: any) => m.creator_wallet)
+        .filter((w: any) => typeof w === 'string' && w.length > 0)
+    )) as string[];
+
+    // 3. Fetch usernames from users table (standardized)
+    const usernameMap = new Map<string, string>();
+    if (creatorWallets.length > 0) {
+      const { data: usersData } = await (supabase as any)
+        .from('users')
+        .select('pubkey, username')
+        .in('pubkey', creatorWallets);
+
+      if (usersData) {
+        usersData.forEach((u: any) => {
+          if (u.pubkey && u.username) {
+            usernameMap.set(u.pubkey, u.username);
+          }
+        });
+      }
+    }
+
+    const rows = (marketsData ?? []).map((row: any): RemoteMarketMetadata => {
+      // Prefer profile username over static creator_name if available
+      const profileUsername = row.creator_wallet ? usernameMap.get(row.creator_wallet) : null;
+
+      return {
+        market_pubkey: row.market_pubkey,
+        question: row.question ?? null,
+        description: row.description ?? null,
+        creator_wallet: row.creator_wallet ?? null,
+        creator_name: profileUsername ?? row.creator_name ?? null, // Use profile username if available
+        image_url: row.image_url ?? null,
+        answers: Array.isArray(row.answers) ? row.answers : null,
+      };
+    });
 
     console.log(
       "[supabase][markets] fetch by pubkeys",

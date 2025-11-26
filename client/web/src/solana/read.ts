@@ -166,6 +166,12 @@ function extractOutcomeIndexFromPosition(pos: any): number | null {
 /**
  * Fetch usernames for a list of pubkeys from Supabase users table
  */
+/**
+ * Fetch usernames for a list of pubkeys from Supabase users table
+ * 
+ * Standardized to use public.users as the single source of truth.
+ * Fallback to shortened wallet address is handled by the caller or UI.
+ */
 async function fetchUsernamesForPubkeys(
   supabase: SupabaseClient,
   pubkeys: string[]
@@ -175,50 +181,25 @@ async function fetchUsernamesForPubkeys(
   try {
     // Query users table with pubkey column (actual schema)
     // Schema: id uuid, pubkey text, username text, created_at timestamptz
-    let data: any[] | null = null;
-    let error: any = null;
-
-    // Try table/column combinations - prioritize users.pubkey (actual schema)
-    const attempts = [
-      { table: "users", pubkeyCol: "pubkey", usernameCol: "username" },
-      { table: "user_profiles", pubkeyCol: "wallet_address", usernameCol: "username" },
-    ];
-
-    for (const attempt of attempts) {
-      try {
-        const result = await (supabase as any)
-          .from(attempt.table)
-          .select(`${attempt.pubkeyCol}, ${attempt.usernameCol}`)
-          .in(attempt.pubkeyCol, pubkeys);
-        if (!result.error && result.data) {
-          data = result.data;
-          error = null;
-          break;
-        }
-      } catch {
-        // Try next combination
-        continue;
-      }
-    }
+    const { data, error } = await (supabase as any)
+      .from("users")
+      .select("pubkey, username")
+      .in("pubkey", pubkeys);
 
     if (error || !data) {
-      // No users table found or error - return empty map (usernames will be null)
+      // Return empty map if error or no data
       return new Map();
     }
 
     const map = new Map<string, string>();
     for (const row of data) {
-      // Use the pubkey column name from the successful attempt
-      const pubkey = row.pubkey || row.wallet_address;
-      const username = row.username;
-      if (pubkey && username) {
-        map.set(pubkey, username);
+      if (row.pubkey && row.username) {
+        map.set(row.pubkey, row.username);
       }
     }
     return map;
   } catch (err) {
-    // If users table doesn't exist or has different schema, return empty map
-    // This is fine - usernames will just be null and we'll show shortened pubkeys
+    // Return empty map on exception
     return new Map();
   }
 }
@@ -822,6 +803,8 @@ export async function fetchMarketsBatch(
           ...uiMarket,
           displayQuestion,
           creatorName,
+          creatorUsername: creatorName, // Set creatorUsername from backend
+          creatorLabel: creatorName || uiMarket.creatorLabel, // Update label if name exists
           imageUrl: backendMeta.image_url ?? uiMarket.imageUrl,
           backendDescription: backendMeta.description ?? undefined,
           outcomes,
@@ -1150,28 +1133,28 @@ export async function fetchMarketActivity(
       if (wallet) wallets.add(wallet);
     });
 
-    // Fetch usernames from Supabase profiles
+    // Fetch usernames from Supabase users table (canonical source)
     const walletToUsername = new Map<string, string | null>();
     if (wallets.size > 0) {
       try {
         const { supabase } = await import("../integrations/supabase/client");
         const walletArray = Array.from(wallets);
 
-        // Query profiles by wallet_address
-        const { data: profiles } = await (supabase as any)
-          .from("profiles")
-          .select("wallet_address, username")
-          .in("wallet_address", walletArray);
+        // Query users by pubkey
+        const { data: users } = await (supabase as any)
+          .from("users")
+          .select("pubkey, username")
+          .in("pubkey", walletArray);
 
-        if (profiles) {
-          profiles.forEach((profile: any) => {
-            if (profile.wallet_address) {
-              walletToUsername.set(profile.wallet_address, profile.username ?? null);
+        if (users) {
+          users.forEach((user: any) => {
+            if (user.pubkey) {
+              walletToUsername.set(user.pubkey, user.username ?? null);
             }
           });
         }
       } catch (supabaseErr) {
-        console.error("[read] Failed to fetch profiles from Supabase", supabaseErr);
+        console.error("[read] Failed to fetch users from Supabase", supabaseErr);
         // Continue without usernames
       }
     }

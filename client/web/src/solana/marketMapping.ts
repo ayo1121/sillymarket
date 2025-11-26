@@ -285,7 +285,7 @@ export function mapRawMarketToUi(raw: any): UIMarket {
     displayQuestion,
     imageUrl: imageUrl || undefined,
     creatorPubkey,
-    creatorUsername: undefined, // TODO: fetch from API if available
+    creatorUsername: undefined, // Populated in read.ts via backend metadata
     creatorLabel,
     state: uiState,
     isLocked,

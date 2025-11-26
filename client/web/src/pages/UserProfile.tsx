@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useAnchorProgram } from '@/solana/program';
@@ -7,12 +7,12 @@ import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { shortenWallet, formatSol } from '@/utils/format';
 import { Trophy, TrendingUp, Activity, DollarSign, ArrowLeft, BarChart3, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useWalletIdentity } from '@/auth/walletIdentity';
+import { supabase } from '@/integrations/supabase/client';
+import { getTxExplorerUrl } from '@/utils/solanaExplorer';
 
 // Helper to format lamports to SOL with proper decimals
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -36,89 +36,113 @@ function formatLamportsToSol(amount: number | bigint): string {
  * 
  * Data source: On-chain positions via fetchUserPositions
  * 
- * TODO: Backend API for enhanced stats
- * - GET /api/users/:wallet/stats
- * - Returns: { marketsPlayed, winRate, totalVolume, rank, profitLoss }
- * - Leaderboard integration
- * - Historical performance chart
- * - Badge/achievement system
+ * Data source: On-chain positions via fetchUserPositions
  */
 export default function UserProfile() {
     const { wallet } = useParams<{ wallet: string }>();
     const program = useAnchorProgram();
     const navigate = useNavigate();
     const { publicKey } = useWallet();
-    const { username: currentUserUsername } = useWalletIdentity();
+    const [profileUsername, setProfileUsername] = useState<string | null>(null);
 
-    // Username display logic - works even without wallet connected
-    // Uses profile data for the address being viewed
+    // Fetch username from Supabase for the profile being viewed
+    useEffect(() => {
+        if (!wallet) return;
+
+        const fetchUsername = async () => {
+            try {
+                const { data, error } = await (supabase as any)
+                    .from('users')
+                    .select('username')
+                    .eq('pubkey', wallet)
+                    .single();
+
+                if (!error && data?.username) {
+                    setProfileUsername(data.username);
+                } else {
+                    setProfileUsername(null);
+                }
+            } catch (err) {
+                console.error('[UserProfile] Failed to fetch username:', err);
+                setProfileUsername(null);
+            }
+        };
+
+        fetchUsername();
+    }, [wallet]);
+
+    // Username display logic - works without wallet connected
     const { displayName, displayAddress } = useMemo(() => {
         if (!wallet) return { displayName: 'Unknown', displayAddress: '' };
 
         const walletAddress = wallet;
 
-        // Check if viewing own profile to get username
-        const isOwnProfile = publicKey?.toBase58() === wallet;
-
-        // Use username if available for this profile
-        // For now, we only have username for logged-in user viewing own profile
-        // In future: fetch username from backend for any profile
-        const username = isOwnProfile && currentUserUsername && currentUserUsername.trim().length > 0
-            ? currentUserUsername.trim()
+        // Use fetched username from Supabase
+        const username = profileUsername && profileUsername.trim().length > 0
+            ? profileUsername.trim()
             : null;
 
         const displayName = username ?? shortenWallet(walletAddress);
         const displayAddress = shortenWallet(walletAddress);
 
         return { displayName, displayAddress };
-    }, [wallet, publicKey, currentUserUsername]);
+    }, [wallet, profileUsername]);
 
     // Check if viewing own profile
     const isOwnProfile = publicKey?.toBase58() === wallet;
 
-    // Fetch user positions and associated market data
+    // Fetch user positions and enrich with market data and transaction signatures
     const { data: profileData, isLoading } = useQuery({
-        queryKey: queryKeys.positions.user(wallet || ''),
+        queryKey: ['userProfile', wallet],
         queryFn: async () => {
-            if (!program || !wallet) return { positions: [], marketsMap: new Map() };
+            if (!program || !wallet) return { positions: [], marketsMap: new Map(), betsMap: new Map() };
+
             try {
+                // Fetch positions from blockchain
                 const pubkey = new PublicKey(wallet);
+                const positions = await fetchUserPositions(program as any, pubkey);
 
                 if (import.meta.env.DEV) {
-                    console.log('[UserProfile] Fetching positions for:', wallet);
+                    console.log(`[UserProfile] Fetched ${positions.length} positions`);
                 }
 
-                // 1. Fetch raw positions from on-chain (1 RPC call)
-                const rawPositions = await fetchUserPositions(program as any, pubkey);
-
-                if (rawPositions.length === 0) {
-                    return { positions: [], marketsMap: new Map() };
+                if (positions.length === 0) {
+                    return { positions: [], marketsMap: new Map(), betsMap: new Map() };
                 }
 
-                // 2. Extract all unique market pubkeys
-                const marketPubkeys = rawPositions.map((p: any) => {
-                    const marketPubkey = p.account.market;
-                    return marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
-                });
+                // Fetch bets from Supabase for transaction signatures
+                const { data: betsData } = await supabase
+                    .from('bets')
+                    .select('market_pubkey, outcome_index, tx_sig, block_time, created_at')
+                    .eq('bettor_pubkey', wallet)
+                    .order('block_time', { ascending: false });
 
-                if (import.meta.env.DEV) {
-                    console.log(`[UserProfile] Batch fetching ${marketPubkeys.length} markets`);
+                // Create map of bets by market+outcome for quick lookup
+                const betsMap = new Map<string, any>();
+                if (betsData) {
+                    for (const bet of betsData) {
+                        const key = `${bet.market_pubkey}-${bet.outcome_index}`;
+                        // Only store the first bet found for a market+outcome combination
+                        // This assumes the first one is the relevant one for display,
+                        // or that multiple bets on the same outcome are rare/handled differently.
+                        if (!betsMap.has(key)) {
+                            betsMap.set(key, bet);
+                        }
+                    }
                 }
 
-                // 3. Batch fetch all markets in ONE RPC call (instead of N calls)
+                // Extract unique market pubkeys from the fetched positions
+                const marketPubkeys: string[] = Array.from(
+                    new Set(positions.map(p => p.account.market.toBase58()))
+                );
+
+                // Fetch market data - returns Map<string, UIMarket>
                 const marketsMap = await fetchMarketsBatch(program as any, marketPubkeys);
 
-                if (import.meta.env.DEV) {
-                    console.log(`[UserProfile] Fetched ${marketsMap.size} markets`);
-                }
-
-                // 4. Map positions to market data with enhanced details
-                const positionsWithDetails = rawPositions.map((p: any) => {
-                    const marketPubkey = p.account.market;
-                    const marketPubkeyStr = marketPubkey.toBase58 ? marketPubkey.toBase58() : marketPubkey.toString();
-
-                    // Get market from batch-fetched map
-                    const market = marketsMap.get(marketPubkeyStr);
+                // Enrich positions with market details and transaction signatures
+                const positionsWithDetails = positions.map(p => {
+                    const marketPubkeyStr = p.account.market.toBase58();
+                    const market: any = marketsMap.get(marketPubkeyStr);
 
                     if (!market) {
                         console.warn(`[UserProfile] Market not found in batch: ${marketPubkeyStr}`);
@@ -127,7 +151,6 @@ export default function UserProfile() {
 
                     const outcomeIndex = p.account.outcomeIndex ?? p.account.outcome_index;
                     const outcomeLabel = market.outcomes?.[outcomeIndex]?.label || `Outcome ${outcomeIndex}`;
-                    const marketQuestion = market.displayQuestion || "Unknown Market";
                     const stakeLamports = p.account.amount?.toNumber() || 0;
 
                     // Market state
@@ -153,9 +176,15 @@ export default function UserProfile() {
                         payoutLamports = stakeLamports;
                     }
 
+                    // Get transaction signature from bets table
+                    const betKey = `${marketPubkeyStr}-${outcomeIndex}`;
+                    const bet = betsMap.get(betKey);
+                    const txSignature = bet?.tx_sig || null;
+                    const createdAt = bet?.block_time || bet?.created_at || null;
+
                     return {
                         marketPubkey: marketPubkeyStr,
-                        marketQuestion,
+                        marketQuestion: market.displayQuestion || 'Unknown Market',
                         outcomeLabel,
                         outcomeIndex,
                         stakeLamports,
@@ -167,6 +196,8 @@ export default function UserProfile() {
                         canClaim,
                         claimed: p.account.claimed,
                         market, // Include full market for stats calculation
+                        txSignature,
+                        createdAt,
                     };
                 }).filter((bet): bet is NonNullable<typeof bet> => bet !== null);
 
@@ -174,14 +205,14 @@ export default function UserProfile() {
                     console.log(`[UserProfile] Processed ${positionsWithDetails.length} positions`);
                 }
 
-                return { positions: positionsWithDetails, marketsMap };
+                return { positions: positionsWithDetails, marketsMap, betsMap };
             } catch (error) {
                 console.error('Error fetching user profile data:', error);
-                return { positions: [], marketsMap: new Map() };
+                return { positions: [], marketsMap: new Map(), betsMap: new Map() };
             }
         },
         enabled: !!program && !!wallet,
-        staleTime: 60_000, // 1 minute - reduce refetch frequency
+        staleTime: 60_000, // 1 minute
     });
 
     const positions = profileData?.positions || [];
@@ -349,9 +380,9 @@ export default function UserProfile() {
                                     Start betting on markets to see your history here
                                 </p>
                                 <Link to="/">
-                                    <Button className="mt-4">
+                                    <button className="inline-flex items-center gap-2 px-4 h-8 text-sm font-semibold bg-white dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#3a3a3a] text-[#111] dark:text-[#e8e8e8] rounded hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] hover:border-[#666] dark:hover:border-[#4a4a4a] transition-colors mt-4">
                                         Browse Markets
-                                    </Button>
+                                    </button>
                                 </Link>
                             </div>
                         ) : (
@@ -363,22 +394,7 @@ export default function UserProfile() {
                         )}
                     </div>
 
-                    {/* TODO: Additional Features */}
-                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded">
-                        <p className="text-sm text-blue-800 dark:text-blue-200 font-semibold mb-2">
-                            📊 Coming Soon: Enhanced Stats
-                        </p>
-                        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 ml-4">
-                            <li>• Leaderboard ranking</li>
-                            <li>• Historical performance chart</li>
-                            <li>• Profit/loss tracking</li>
-                            <li>• Badge/achievement system</li>
-                            <li>• Social features (follow users, share predictions)</li>
-                        </ul>
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-3">
-                            <strong>TODO:</strong> Requires backend API endpoint: GET /api/users/:wallet/stats
-                        </p>
-                    </div>
+
                 </div>
             </div>
         </>
@@ -449,16 +465,17 @@ const BetHistoryItem = ({ position }: BetHistoryItemProps) => {
 
             {/* Visible Solscan button */}
             {position.txSignature && (
-                <a
-                    href={`https://solscan.io/tx/${position.txSignature}?cluster=devnet`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#f5f5f5] dark:bg-[#2a2a2a] border border-[#d0d0d0] dark:border-[#3a3a3a] rounded hover:bg-[#e8e8e8] dark:hover:bg-[#333] hover:border-[#15a349] dark:hover:border-[#15a349] transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <ExternalLink className="w-3 h-3" />
-                    <span>View on Solscan</span>
-                </a>
+                <div className="mt-2">
+                    <a
+                        href={getTxExplorerUrl(position.txSignature)}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center text-xs font-medium underline text-[#666] dark:text-[#c7c7c7] hover:text-[#111] dark:hover:text-white transition-colors"
+                    >
+                        View on Solscan
+                    </a>
+                </div>
             )}
         </div>
     );

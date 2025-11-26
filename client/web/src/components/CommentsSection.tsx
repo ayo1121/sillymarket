@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
 import { API_URL } from "@/lib/config";
+import { shortenWallet } from "@/utils/format";
 
 type Comment = {
   id: string;
@@ -156,9 +157,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
     }
   };
 
-  const shortenWallet = (address: string) => {
-    return address ? `${address.slice(0, 4)}…${address.slice(-4)}` : "";
-  };
+
 
   return (
     <div className="bg-white dark:bg-[#1f1f1f] border-2 border-[#8b8b8b] dark:border-[#3a3a3a] rounded shadow-[2px_2px_0_rgba(0,0,0,0.2)] p-4 sm:p-5 relative overflow-hidden">
