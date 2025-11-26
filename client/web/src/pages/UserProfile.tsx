@@ -255,8 +255,8 @@ export default function UserProfile() {
     return (
         <>
             <Header />
-            {/* No grey banner - dark background only */}
-            <div className="min-h-screen bg-[#1d1d1d] pb-24">
+            {/* Proper light/dark backgrounds - no grey banner */}
+            <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
                     {/* Navigation Buttons - Polished dark mode */}
                     <div className="flex gap-2 mb-6">
@@ -431,46 +431,42 @@ const BetHistoryItem = ({ position }: BetHistoryItemProps) => {
 
     return (
         <div className="bg-white dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded-lg p-4 hover:bg-[#fafafa] dark:hover:bg-[#252525] hover:border-[#d0d0d0] dark:hover:border-[#444] transition-all">
-            <Link to={`/market/${position.marketPubkey}`} className="block">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                        <div className="font-bold text-[#111] dark:text-[#e8e8e8] mb-1.5 line-clamp-2">
-                            {position.marketQuestion || 'Market'}
-                        </div>
-                        <div className="text-sm text-[#555] dark:text-[#aaa] mb-1">
-                            <span className="font-semibold text-[#333] dark:text-[#ccc]">{position.outcomeLabel}</span>
-                            {' • '}
-                            <span className="font-mono">{formatLamportsToSol(position.stakeLamports)} SOL</span>
-                        </div>
-                        {timeAgo && (
-                            <div className="text-xs text-[#999] dark:text-[#666]">
-                                {timeAgo}
-                            </div>
-                        )}
+            <div className="flex items-start justify-between gap-3 mb-2">
+                <Link to={`/market/${position.marketPubkey}`} className="flex-1 min-w-0">
+                    <div className="font-bold text-[#111] dark:text-[#e8e8e8] mb-1.5 line-clamp-2">
+                        {position.marketQuestion || 'Market'}
                     </div>
-                    {position.canClaim && (
-                        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-semibold text-sm flex-shrink-0">
-                            <Trophy className="w-4 h-4" />
-                            Won
+                    <div className="text-sm text-[#555] dark:text-[#aaa] mb-1">
+                        <span className="font-semibold text-[#333] dark:text-[#ccc]">{position.outcomeLabel}</span>
+                        {' • '}
+                        <span className="font-mono">{formatLamportsToSol(position.stakeLamports)} SOL</span>
+                    </div>
+                    {timeAgo && (
+                        <div className="text-xs text-[#999] dark:text-[#666]">
+                            {timeAgo}
                         </div>
                     )}
-                </div>
-            </Link>
+                </Link>
+                {position.canClaim && (
+                    <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-semibold text-sm flex-shrink-0">
+                        <Trophy className="w-4 h-4" />
+                        Won
+                    </div>
+                )}
+            </div>
 
-            {/* Visible Solscan devnet link */}
+            {/* Visible Solscan button */}
             {position.txSignature && (
-                <div className="mt-2">
-                    <a
-                        href={`https://solscan.io/tx/${position.txSignature}?cluster=devnet`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium underline text-[#666] dark:text-[#aaa] hover:text-[#15a349] dark:hover:text-[#15a349] transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <ExternalLink className="w-3 h-3" />
-                        View on Solscan
-                    </a>
-                </div>
+                <a
+                    href={`https://solscan.io/tx/${position.txSignature}?cluster=devnet`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#f5f5f5] dark:bg-[#2a2a2a] border border-[#d0d0d0] dark:border-[#3a3a3a] rounded hover:bg-[#e8e8e8] dark:hover:bg-[#333] hover:border-[#15a349] dark:hover:border-[#15a349] transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>View on Solscan</span>
+                </a>
             )}
         </div>
     );
