@@ -12,6 +12,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useWalletIdentity } from '@/auth/walletIdentity';
 
 // Helper to format lamports to SOL with proper decimals
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -47,19 +48,27 @@ export default function UserProfile() {
     const program = useAnchorProgram();
     const navigate = useNavigate();
     const { publicKey } = useWallet();
+    const { username: currentUserUsername } = useWalletIdentity();
 
     // Username and address display logic
     const { displayName, displayAddress } = useMemo(() => {
         if (!wallet) return { displayName: 'Unknown', displayAddress: '' };
 
-        // For now, we don't have a username field, so use shortened wallet
-        // In the future, this would check: profileUser?.username?.trim() || shortenWallet(wallet)
+        // For now, we only have username for the logged-in user
+        // If viewing own profile and have username, show it
+        const isOwnProfile = publicKey?.toBase58() === wallet;
         const walletAddress = wallet;
-        const displayName = shortenWallet(walletAddress);
+
+        // Use username if viewing own profile and username is set
+        const username = isOwnProfile && currentUserUsername ? currentUserUsername : null;
+
+        const displayName = username && username.trim().length > 0
+            ? username.trim()
+            : shortenWallet(walletAddress);
         const displayAddress = shortenWallet(walletAddress);
 
         return { displayName, displayAddress };
-    }, [wallet]);
+    }, [wallet, publicKey, currentUserUsername]);
 
     // Check if viewing own profile
     const isOwnProfile = publicKey?.toBase58() === wallet;
@@ -243,6 +252,7 @@ export default function UserProfile() {
     return (
         <>
             <Header />
+            {/* Removed grey banner - using app's default dark background */}
             <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
                     {/* Navigation Buttons */}
@@ -436,18 +446,18 @@ const BetHistoryItem = ({ position }: BetHistoryItemProps) => {
                 </div>
             </Link>
 
-            {/* Devnet transaction link if available */}
+            {/* Solscan devnet link if transaction signature available */}
             {position.txSignature && (
                 <div className="mt-2 pt-2 border-t border-[#e0e0e0] dark:border-[#333]">
                     <a
-                        href={`https://explorer.solana.com/tx/${position.txSignature}?cluster=devnet`}
+                        href={`https://solscan.io/tx/${position.txSignature}?cluster=devnet`}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-[#666] dark:text-[#999] hover:text-[#15a349] dark:hover:text-[#15a349] transition-colors"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <ExternalLink className="w-3 h-3" />
-                        View on Solana devnet
+                        View on Solscan
                     </a>
                 </div>
             )}
