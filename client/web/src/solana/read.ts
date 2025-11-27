@@ -17,6 +17,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BetRow } from "../supabase/bets";
 import { supabase } from "../integrations/supabase/client";
 import { getConnection } from "./connection";
+import { withRpcRetry, RetryConfig } from "./rpcRetry";
 
 /**
  * Type helpers for IDL account types
@@ -31,7 +32,11 @@ export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, use
   }
 
   try {
-    const rawMarkets = await program.account.market.all();
+    const rawMarkets = await withRpcRetry(
+      () => program.account.market.all(),
+      RetryConfig.CRITICAL.maxRetries,
+      RetryConfig.CRITICAL.baseDelayMs
+    );
     console.log("[read] fetchAllMarkets: on-chain count =", rawMarkets.length);
 
     // Map raw markets to UI format
@@ -46,7 +51,11 @@ export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, use
     const userPositionsByMarket = new Map<string, number | null>();
     if (userWallet) {
       try {
-        const allPositions = await program.account.position.all();
+        const allPositions = await withRpcRetry(
+          () => program.account.position.all(),
+          RetryConfig.CRITICAL.maxRetries,
+          RetryConfig.CRITICAL.baseDelayMs
+        );
         const userPositions = allPositions.filter((p: any) => {
           const posOwner = p.account.owner || p.account.user;
           if (!posOwner) return false;
@@ -595,7 +604,11 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
 
   try {
     const marketPk = new web3.PublicKey(pubkey);
-    const rawMarket = await program.account.market.fetch(marketPk);
+    const rawMarket = await withRpcRetry(
+      () => program.account.market.fetch(marketPk),
+      RetryConfig.CRITICAL.maxRetries,
+      RetryConfig.CRITICAL.baseDelayMs
+    );
 
     // Map to UI format
     const uiMarket = mapRawMarketToUi({
@@ -610,7 +623,11 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
     let userPositionRaw: any | null = null;
     if (userWallet) {
       try {
-        const allPositions = await program.account.position.all();
+        const allPositions = await withRpcRetry(
+          () => program.account.position.all(),
+          RetryConfig.STANDARD.maxRetries,
+          RetryConfig.STANDARD.baseDelayMs
+        );
         const userPositions = allPositions.filter((p: any) => {
           const posOwner = p.account.owner || p.account.user;
           if (!posOwner) return false;
@@ -748,7 +765,11 @@ export async function fetchMarketsBatch(
 
     // Fetch all markets in one RPC call
     const publicKeys = uniquePubkeys.map(pk => new web3.PublicKey(pk));
-    const rawMarkets = await program.account.market.fetchMultiple(publicKeys);
+    const rawMarkets = await withRpcRetry(
+      () => program.account.market.fetchMultiple(publicKeys),
+      RetryConfig.CRITICAL.maxRetries,
+      RetryConfig.CRITICAL.baseDelayMs
+    );
 
     // Fetch backend metadata for all markets in one call
     const backendMetaArray = await fetchMarketsMetadataByPubkeys(uniquePubkeys);
@@ -906,8 +927,12 @@ export async function fetchConfig(program: Program<YesnoMarkets> | null) {
   try {
     // Use program.programId directly to ensure consistency with Anchor's internal derivation
     const programId = program.programId;
-    const [configPda] = getConfigPda(programId);
-    const config = await program.account.config.fetch(configPda);
+    const [configPda] = getConfigPda(program.programId);
+    const config = await withRpcRetry(
+      () => program.account.config.fetch(configPda),
+      RetryConfig.CRITICAL.maxRetries,
+      RetryConfig.CRITICAL.baseDelayMs
+    );
     return config;
   } catch (err) {
     console.error("[yesno] fetchConfig failed", err);

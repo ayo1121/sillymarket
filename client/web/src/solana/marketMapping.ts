@@ -275,8 +275,7 @@ export function mapRawMarketToUi(raw: any): UIMarket {
   // Question - note: question text is NOT stored on-chain, only hash
   // The displayQuestion will be set by backend metadata in read.ts
   // This is just a placeholder - the real value comes from Supabase metadata
-  const shortBase58 = (pk: string) => pk.slice(0, 4);
-  const placeholder = pubkeyStr ? `market ${shortBase58(pubkeyStr)}...` : "unknown market";
+  const placeholder = pubkeyStr ? `market ${pubkeyStr.slice(0, 4)}...` : "unknown market";
   const displayQuestion = placeholder;
 
   return {

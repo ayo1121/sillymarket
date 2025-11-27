@@ -21,6 +21,14 @@ export const DATABASE_URL = process.env.DATABASE_URL || "";
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
+// Validate SESSION_SECRET in production
+if (IS_PRODUCTION && (!SESSION_SECRET || SESSION_SECRET === "dev-secret")) {
+    throw new Error("SESSION_SECRET must be set to a strong value in production");
+}
+if (!IS_PRODUCTION && SESSION_SECRET === "dev-secret") {
+    console.warn("⚠️  Using weak SESSION_SECRET in development. Set SESSION_SECRET in .env for production.");
+}
+
 // =====================================================================
 // ENVIRONMENT VALIDATION
 // =====================================================================
@@ -467,6 +475,10 @@ app.get("/comments", async (req, res) => {
         return res.status(400).json({ error: "marketId too long" });
     }
 
+    // Pagination support
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
     try {
         const result = await pool.query(
             `SELECT 
@@ -479,8 +491,9 @@ app.get("/comments", async (req, res) => {
       FROM comments c
       INNER JOIN users u ON c.user_id = u.id
       WHERE c.market_id = $1
-      ORDER BY c.created_at ASC`,
-            [marketId.trim()]
+      ORDER BY c.created_at ASC
+      LIMIT $2 OFFSET $3`,
+            [marketId.trim(), limit, offset]
         );
 
         res.json({
@@ -515,10 +528,11 @@ app.post("/comments", commentLimiter, async (req, res) => {
     }
 
     const { marketId, commentText } = parsed.data;
-    const trimmedText = commentText.trim();
+    // Strip HTML tags for XSS protection
+    const sanitizedText = commentText.replace(/<[^>]*>/g, '').trim();
     const trimmedMarketId = marketId.trim();
 
-    if (trimmedText.length === 0) {
+    if (sanitizedText.length === 0) {
         return res.status(400).json({ error: "Comment cannot be empty" });
     }
 
@@ -527,7 +541,7 @@ app.post("/comments", commentLimiter, async (req, res) => {
             `INSERT INTO comments (market_id, user_id, comment_text)
        VALUES ($1, $2, $3)
        RETURNING id, market_id, comment_text, created_at`,
-            [trimmedMarketId, user.id, trimmedText]
+            [trimmedMarketId, user.id, sanitizedText]
         );
 
         const userResult = await pool.query(
@@ -549,6 +563,224 @@ app.post("/comments", commentLimiter, async (req, res) => {
     } catch (e) {
         logError("POST /comments", e);
         res.status(500).json({ error: "Failed to create comment" });
+    }
+});
+
+// =====================================================================
+// ANALYTICS EVENTS
+// =====================================================================
+
+const eventsLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 50, // 50 events per minute per IP
+    message: { error: "Too many events, please slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.post("/events", eventsLimiter, async (req, res) => {
+    const user = (req as any).user as JwtUser | undefined;
+
+    const schema = z.object({
+        eventType: z.string().min(1).max(100),
+        eventProperties: z.record(z.any()).optional(),
+        page: z.string().max(500).optional(),
+        marketPubkey: z.string().max(100).optional(),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid event data" });
+    }
+
+    const { eventType, eventProperties, page, marketPubkey } = parsed.data;
+
+    try {
+        // Get session ID from cookie or generate one
+        let sessionId = req.cookies?.session_id;
+        if (!sessionId) {
+            sessionId = randomUUID();
+            res.cookie("session_id", sessionId, {
+                httpOnly: true,
+                sameSite: IS_PRODUCTION ? "none" : "lax",
+                secure: IS_PRODUCTION,
+                maxAge: 30 * 24 * 3600 * 1000 // 30 days
+            });
+        }
+
+        // Insert event into database
+        await pool.query(
+            `INSERT INTO frontend_events (user_pubkey, event_type, event_properties, page, market_pubkey, session_id, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+                user?.pubkey || null,
+                eventType,
+                eventProperties ? JSON.stringify(eventProperties) : null,
+                page || null,
+                marketPubkey || null,
+                sessionId,
+                req.headers["user-agent"] || null
+            ]
+        );
+
+        res.json({ ok: true });
+    } catch (e) {
+        logError("POST /events", e);
+        res.status(500).json({ error: "Failed to log event" });
+    }
+});
+
+// =====================================================================
+// MARKET METADATA
+// =====================================================================
+
+const marketMetadataLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // 10 market metadata writes per minute
+    message: { error: "Too many market creations, please slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.post("/markets/metadata", marketMetadataLimiter, async (req, res) => {
+    const user = (req as any).user as JwtUser | undefined;
+
+    if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const schema = z.object({
+        marketPubkey: z.string().min(32).max(44),
+        question: z.string().min(1).max(500),
+        creatorWallet: z.string().refine(isValidSolanaPubkey, "Invalid Solana pubkey"),
+        creatorName: z.string().max(100).optional(),
+        imageUrl: z.string().max(1000).optional(),
+        answers: z.array(z.string().max(200)).min(2).max(10),
+        description: z.string().max(2000).optional(),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid market metadata", details: parsed.error.errors });
+    }
+
+    const { marketPubkey, question, creatorWallet, creatorName, imageUrl, answers, description } = parsed.data;
+
+    // Verify creator wallet matches authenticated user
+    if (creatorWallet !== user.pubkey) {
+        return res.status(403).json({ error: "Creator wallet must match authenticated user" });
+    }
+
+    try {
+        await pool.query(
+            `INSERT INTO markets (market_pubkey, question, creator_wallet, creator_name, image_url, answers, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (market_pubkey) DO UPDATE
+       SET question = EXCLUDED.question,
+           creator_name = EXCLUDED.creator_name,
+           image_url = EXCLUDED.image_url,
+           answers = EXCLUDED.answers,
+           description = EXCLUDED.description`,
+            [
+                marketPubkey,
+                question,
+                creatorWallet,
+                creatorName || null,
+                imageUrl || null,
+                JSON.stringify(answers),
+                description || null
+            ]
+        );
+
+        res.json({ ok: true });
+    } catch (e) {
+        logError("POST /markets/metadata", e);
+        res.status(500).json({ error: "Failed to save market metadata" });
+    }
+});
+
+// =====================================================================
+// NOTIFICATIONS
+// =====================================================================
+
+app.get("/notifications", async (req, res) => {
+    const user = (req as any).user as JwtUser | undefined;
+
+    if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+    }
+
+    try {
+        const result = await pool.query(
+            `SELECT id, type, title, body, metadata, is_read, created_at
+       FROM notifications
+       WHERE user_pubkey = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+            [user.pubkey]
+        );
+
+        const notifications = result.rows.map(row => ({
+            id: row.id,
+            type: row.type,
+            title: row.title,
+            body: row.body,
+            metadata: row.metadata || {},
+            is_read: row.is_read,
+            created_at: row.created_at
+        }));
+
+        res.json({ notifications });
+    } catch (e) {
+        logError("GET /notifications", e);
+        res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+});
+
+const notificationLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60, // 60 mark-read operations per minute
+    message: { error: "Too many requests" },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.post("/notifications/mark-read", notificationLimiter, async (req, res) => {
+    const user = (req as any).user as JwtUser | undefined;
+
+    if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const schema = z.object({
+        id: z.string().uuid(),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid notification ID" });
+    }
+
+    const { id } = parsed.data;
+
+    try {
+        // Verify notification belongs to user and update
+        const result = await pool.query(
+            `UPDATE notifications
+       SET is_read = true
+       WHERE id = $1 AND user_pubkey = $2
+       RETURNING id`,
+            [id, user.pubkey]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Notification not found or access denied" });
+        }
+
+        res.json({ ok: true });
+    } catch (e) {
+        logError("POST /notifications/mark-read", e);
+        res.status(500).json({ error: "Failed to mark notification as read" });
     }
 });
 

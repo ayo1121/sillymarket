@@ -23,6 +23,7 @@ import { MarketCardSkeletonGrid } from "@/components/skeletons/MarketCardSkeleto
 import confetti from "canvas-confetti";
 import { queryKeys } from "@/lib/queryKeys";
 import { supabase } from "@/integrations/supabase/client";
+import { logPageView, logClick } from "@/lib/analytics";
 import type { BetRow } from "@/supabase/bets";
 import { MarketStatusBadge } from "@/components/common/MarketStatusBadge";
 
@@ -66,6 +67,11 @@ const MyBets = () => {
       fetchConfig(program as any).then(setConfig).catch(console.error);
     }
   }, [program]);
+
+  // Track page view
+  useEffect(() => {
+    logPageView('my_bets');
+  }, []);
 
   // Fetch user positions with React Query
   const { data: positions = [], isLoading: positionsLoading, refetch: refetchPositions } = useQuery({

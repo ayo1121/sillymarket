@@ -8,6 +8,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { placeBet } from "@/solana/actions";
 import type { UIMarket } from "@/solana/marketMapping";
 import { fetchAllMarkets } from "@/solana/read";
+import { formatSol } from "@/utils/format";
+import { logBetModalOpen } from "@/lib/analytics";
 import { useAnchorProgram } from "@/solana/program";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useWalletIdentity } from "@/auth/walletIdentity";
@@ -132,6 +134,13 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
       setIsSubmitting(false);
     }
   }, [open]);
+
+  // Track modal open for analytics
+  useEffect(() => {
+    if (open && market) {
+      logBetModalOpen(market.pubkey, answerIndex);
+    }
+  }, [open, market?.pubkey, answerIndex]);
 
   const handleSelectOutcome = (index: number) => {
     // Allow the user to pick any outcome; the program will enforce

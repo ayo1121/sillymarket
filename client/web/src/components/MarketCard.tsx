@@ -15,6 +15,7 @@ import {
   computeOutcomeSnapshotsFromHistory,
 } from "@/hooks/useMarketProbabilityHistory";
 import { Lock, CheckCircle, XCircle, Flame } from "lucide-react";
+import { logClick } from "@/lib/analytics";
 
 export type MarketCardProps = {
   market: UIMarket;
@@ -156,11 +157,9 @@ export const MarketCard: React.FC<MarketCardProps> = ({
   const navigate = useNavigate();
   const { label: timeRemainingLabel } = useTimeRemaining(market.closesAt);
 
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = () => {
     if (disableNavigation) return;
-    // Don't navigate if clicking buttons/interactive elements or outcome cards
-    if ((e.target as HTMLElement).closest("button")) return;
-    if ((e.target as HTMLElement).closest(".outcome-card")) return;
+    logClick('market_card', { market_pubkey: market.pubkey });
     navigate(`/market/${market.pubkey}`);
   };
 

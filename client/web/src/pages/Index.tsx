@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLiveMarketUpdates } from "@/hooks/useLiveMarketUpdates";
 import { queryKeys } from "@/lib/queryKeys";
 import { formatSol } from "@/utils/format";
+import { logPageView } from "@/lib/analytics";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -75,6 +76,11 @@ const Index = () => {
   const { isPulling, pullDistance, isRefreshing: isPullRefreshing } = usePullToRefresh(async () => {
     await refetch();
   });
+
+  // Track page view
+  useEffect(() => {
+    logPageView('index');
+  }, []);
 
   // MOBILE FEATURE: Swipe gestures for status filter navigation
   // Allows swiping left/right to change between All/Active/Closed filters on mobile

@@ -13,6 +13,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { getTxExplorerUrl } from '@/utils/solanaExplorer';
+import { logPageView, logClick } from '@/lib/analytics';
 
 // Helper to format lamports to SOL with proper decimals
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -90,6 +91,11 @@ export default function UserProfile() {
 
     // Check if viewing own profile
     const isOwnProfile = publicKey?.toBase58() === wallet;
+
+    // Track page view
+    useEffect(() => {
+        logPageView('user_profile', { viewed_wallet: wallet });
+    }, [wallet]);
 
     // Fetch user positions and enrich with market data and transaction signatures
     const { data: profileData, isLoading } = useQuery({

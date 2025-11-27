@@ -28,6 +28,7 @@ import { useWalletIdentity } from "@/auth/walletIdentity";
 import { supabase } from "@/integrations/supabase/client";
 import { PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
+import { logPageView } from "@/lib/analytics";
 import { useTimeRemaining } from "@/hooks/useTimeRemaining";
 import { useMarketProbabilityHistory } from "@/hooks/useMarketProbabilityHistory";
 import { getMarketImageUrl } from "@/solana/marketImage";
@@ -170,6 +171,9 @@ const MarketDetails = () => {
         if (marketData) {
           setMarket(marketData);
 
+          // Track page view for analytics
+          logPageView('market_details', { market_pubkey: marketId });
+
           // Fetch user position if wallet is connected
           if (wallet.publicKey && program) {
             try {
@@ -216,12 +220,12 @@ const MarketDetails = () => {
     if (!marketId || !program) return;
     try {
       console.log("[MarketDetails] Refreshing market from Supabase bets + on-chain...");
-      const refreshed = await fetchMarket(program as any, new PublicKey(marketId), wallet.publicKey ?? null);
-      if (refreshed) {
-        setMarket(refreshed);
+      const m = await fetchMarket(program as any, new PublicKey(marketId), publicKey ?? null);
+      if (m) {
+        setMarket(m);
 
         // Refresh user position
-        if (wallet.publicKey) {
+        if (publicKey) {
           try {
             const positions = await fetchUserPositions(program as any, wallet.publicKey);
             const positionForMarket = positions.find((p: any) => {

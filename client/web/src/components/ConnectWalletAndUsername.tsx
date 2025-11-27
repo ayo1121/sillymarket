@@ -9,8 +9,7 @@ import bs58 from "bs58";
 import { Button } from "@/components/ui/button";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
 import { useNavigate } from "react-router-dom";
-
-function shorten(pk: string) { return pk ? pk.slice(0, 4) + "…" + pk.slice(-4) : ""; }
+import { shortenWallet } from "@/utils/format";
 function forgetRemembered() {
   try {
     localStorage.removeItem("yesno_wallet");
@@ -331,7 +330,7 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
 
   const label = !connected
     ? "connect wallet"
-    : (username ? `@${username}` : (publicKey ? shorten(publicKey.toBase58()) : (wallet?.adapter?.name || "wallet")));
+    : (username ? `@${username}` : (publicKey ? shortenWallet(publicKey.toBase58()) : (wallet?.adapter?.name || "wallet")));
 
   const available = wallets
     .filter((w: any) =>

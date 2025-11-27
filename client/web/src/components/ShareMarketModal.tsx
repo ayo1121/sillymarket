@@ -6,6 +6,7 @@ import type { UIMarket } from "@/solana/marketMapping";
 import { renderSharePreview, type SharePreviewResult } from "../share/renderSharePreview";
 import { SharePreviewMarketCard } from "@/components/share/SharePreviewMarketCard";
 import { Download, Copy, Share2 } from "lucide-react";
+import { logClick, logShare } from "@/lib/analytics";
 
 type ShareMarketModalProps = {
   open: boolean;
@@ -32,6 +33,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
+      logShare(market.pubkey, 'copy_link');
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (err) {
@@ -45,8 +47,11 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
       setPreview(null);
       setIsGeneratingPreview(false);
       setPreviewError(null);
+    } else if (market) {
+      // Track share modal open
+      logClick('share_modal_open', { market_pubkey: market.pubkey });
     }
-  }, [open]);
+  }, [open, market?.pubkey]);
 
   useEffect(() => {
     if (!open || !market?.pubkey) {
@@ -262,7 +267,12 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   type="button"
                   className="font-bold shadow-sm w-full sm:w-auto"
                 >
-                  <a href={twitterHref} target="_blank" rel="noreferrer">
+                  <a
+                    href={twitterHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => logShare(market.pubkey, 'twitter')}
+                  >
                     𝕏 Twitter
                   </a>
                 </Button>

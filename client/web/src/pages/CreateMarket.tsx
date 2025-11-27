@@ -15,6 +15,7 @@ import { PublicKey } from "@solana/web3.js";
 import { uploadMarketImage } from "@/integrations/supabase/storage";
 import { useWalletIdentity } from "@/auth/walletIdentity";
 import { showErrorToast } from "@/lib/errorHandling";
+import { logPageView } from "@/lib/analytics";
 
 const CreateMarket = () => {
   const navigate = useNavigate();
@@ -66,6 +67,11 @@ const CreateMarket = () => {
     setImagePreview(null);
     setImageUrl("");
   };
+
+  // Track page view
+  useEffect(() => {
+    logPageView('create_market');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,29 +160,36 @@ const CreateMarket = () => {
         createdAt: createdAtIso,
       };
 
-      // Insert into Supabase markets table for global access
+      // Save market metadata via backend API
       try {
-        const { error: supabaseError } = await (await import("@/integrations/supabase/client")).supabase
-          .from("markets" as any) // Cast to any to avoid type error if table missing in types
-          .insert({
-            market_pubkey: marketPubkey,
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${API_URL}/markets/metadata`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Include cookies for SIWS session
+          body: JSON.stringify({
+            marketPubkey,
             question: question.trim(),
-            creator_wallet: creatorWallet,
-            creator_name: username ?? null,
-            image_url: finalImageUrl || null,
-            answers: answers,
-            description: description.trim() || null,
-          });
+            creatorWallet,
+            creatorName: username || undefined,
+            imageUrl: finalImageUrl || undefined,
+            answers,
+            description: description.trim() || undefined,
+          }),
+        });
 
-        if (supabaseError) {
-          console.error("[CreateMarket] Supabase insert failed:", supabaseError);
-          // Don't block market creation if Supabase fails, just log it
-          toast.error("Market created but metadata save failed. Some info may not display.");
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('[CreateMarket] Backend API failed:', errorData);
+          toast.error('Market created but metadata save failed. Some info may not display.');
         } else {
-          console.log("[CreateMarket] Market metadata stored in Supabase");
+          console.log('[CreateMarket] Market metadata stored via backend');
         }
-      } catch (supabaseErr) {
-        console.error("[CreateMarket] Supabase insert exception:", supabaseErr);
+      } catch (apiErr) {
+        console.error('[CreateMarket] Backend API exception:', apiErr);
+        toast.error('Market created but metadata save failed. Some info may not display.');
       }
 
       // Also store locally as fallback
