@@ -378,11 +378,18 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div className="bg-[#fafafa] dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded p-2 sm:p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
               <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 sm:mb-2 tracking-wide">Betting On</div>
+              <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 sm:mb-2 tracking-wide">Betting On</div>
               <div
-                className={`text-sm sm:text-base font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded inline-block ${answerIndex === 0
-                  ? 'bg-green-500/15 text-green-900'
-                  : 'bg-red-500/15 text-red-900'
-                  } shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]`}
+                className={`text-sm sm:text-base font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded inline-block shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] ${(() => {
+                  const theme = getOutcomeTheme(answerIndex);
+                  // Map theme text colors to background/text combinations
+                  if (theme.text.includes('green')) return 'bg-green-500/15 text-green-900 dark:text-green-400';
+                  if (theme.text.includes('red')) return 'bg-red-500/15 text-red-900 dark:text-red-400';
+                  if (theme.text.includes('blue')) return 'bg-blue-500/15 text-blue-900 dark:text-blue-400';
+                  if (theme.text.includes('yellow')) return 'bg-yellow-500/15 text-yellow-900 dark:text-yellow-400';
+                  if (theme.text.includes('purple')) return 'bg-purple-500/15 text-purple-900 dark:text-purple-400';
+                  return 'bg-gray-500/15 text-gray-900 dark:text-gray-400';
+                })()}`}
               >
                 {selectedLabel}
               </div>

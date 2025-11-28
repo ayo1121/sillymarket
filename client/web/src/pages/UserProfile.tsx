@@ -306,7 +306,7 @@ export default function UserProfile() {
         <>
             <Header />
             {/* Proper light/dark backgrounds - no grey banner */}
-            <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
+            <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#111] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
                     {/* Navigation Buttons - Native buttons for full style control */}
                     <div className="flex gap-2 mb-6">

@@ -170,10 +170,18 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
           <SharePreviewMarketCard market={market} />
         </div>
 
-        {/* Header */}
-        <div className="bg-[#111] text-white px-4 py-3 flex items-center gap-2">
-          <Share2 className="w-4 h-4" />
-          <span className="font-black text-sm uppercase tracking-wide">Share This Market</span>
+        {/* Header Bar - Windows95 style */}
+        <div className="relative bg-[#ececec] dark:bg-[#242424] px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-[#d3d3d3] dark:border-[#333] shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)]">
+          <div className="flex items-center gap-2">
+            <Share2 className="w-4 h-4 text-[#111] dark:text-white" />
+            <span className="font-bold text-[#111] dark:text-white text-xs sm:text-sm uppercase tracking-wide">Share This Market</span>
+          </div>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="w-5 h-5 sm:w-6 sm:h-6 border border-[#111] dark:border-white bg-white dark:bg-[#2a2a2a] flex items-center justify-center text-[#111] dark:text-white text-sm sm:text-base font-bold hover:bg-[#111] hover:text-white dark:hover:bg-white dark:hover:text-[#111] transition-colors rounded-sm"
+          >
+            ✖
+          </button>
         </div>
 
         <div className="p-4 sm:p-5 space-y-5 relative">
@@ -204,7 +212,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   variant="outline"
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="font-bold border-[#8b8b8b] dark:border-[#3a3a3a] hover:bg-[#e8e8e8] dark:hover:bg-[#2a2a2a] w-full sm:w-auto"
+                  className="font-bold border-[#111] dark:border-[#444] text-[#111] dark:text-white hover:bg-[#e0e0e0] dark:hover:bg-[#2a2a2a] w-full sm:w-auto bg-[#f0f0f0] dark:bg-[#1f1f1f]"
                 >
                   Close
                 </Button>
