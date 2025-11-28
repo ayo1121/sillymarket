@@ -207,6 +207,19 @@ export default function UserProfile() {
                     };
                 }).filter((bet): bet is NonNullable<typeof bet> => bet !== null);
 
+                // Sort by latest first (createdAt descending)
+                positionsWithDetails.sort((a, b) => {
+                    const getTimestamp = (val: any) => {
+                        if (!val) return 0;
+                        // Handle Solana block time (seconds) vs JS timestamp (ms)
+                        if (typeof val === 'number') {
+                            return val < 10000000000 ? val * 1000 : val;
+                        }
+                        return new Date(val).getTime();
+                    };
+                    return getTimestamp(b.createdAt) - getTimestamp(a.createdAt);
+                });
+
                 if (import.meta.env.DEV) {
                     console.log(`[UserProfile] Processed ${positionsWithDetails.length} positions`);
                 }

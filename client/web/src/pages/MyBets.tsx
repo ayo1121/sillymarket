@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -53,10 +53,45 @@ const MyBets = () => {
   const navigate = useNavigate();
   const program = useAnchorProgram();
   const { publicKey } = useWallet();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<"active" | "won" | "lost">("active");
   const [claiming, setClaiming] = useState<Map<string, boolean>>(new Map());
   const [claimingAll, setClaimingAll] = useState(false);
-  const [viewMode, setViewMode] = useState<"bets" | "markets">("bets");
+
+  // Initialize view mode from URL query param
+  const [viewMode, setViewMode] = useState<"bets" | "markets">(
+    searchParams.get("view") === "markets" ? "markets" : "bets"
+  );
+
+  // Sync URL changes to state (handles mobile nav clicks)
+  useEffect(() => {
+    const view = searchParams.get("view");
+    if (view === "markets" && viewMode !== "markets") {
+      setViewMode("markets");
+    } else if (view !== "markets" && viewMode === "markets") {
+      setViewMode("bets");
+    }
+  }, [searchParams]);
+
+  // Sync state changes to URL (handles toggle button)
+  useEffect(() => {
+    if (viewMode === "markets") {
+      if (searchParams.get("view") !== "markets") {
+        setSearchParams(prev => {
+          prev.set("view", "markets");
+          return prev;
+        });
+      }
+    } else {
+      if (searchParams.has("view")) {
+        setSearchParams(prev => {
+          prev.delete("view");
+          return prev;
+        });
+      }
+    }
+  }, [viewMode]);
+
   const [marketFilter, setMarketFilter] = useState<"active" | "resolved">("active");
   const [resolving, setResolving] = useState<Map<string, boolean>>(new Map());
   const [config, setConfig] = useState<any>(null);
