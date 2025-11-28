@@ -111,6 +111,8 @@ export const Header = () => {
               </Button>
             )}
 
+            <NotificationBell />
+
             <button
               onClick={toggleTheme}
               className="min-w-[44px] min-h-[44px] bg-[#d4d4d4] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] hover:bg-white dark:hover:bg-[#3a3a3a] flex items-center justify-center text-[#111] dark:text-white shadow-sm active:translate-y-[1px] rounded-sm"
