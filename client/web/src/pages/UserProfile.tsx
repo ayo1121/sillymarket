@@ -508,24 +508,24 @@ export default function UserProfile() {
                         />
                     </div>
 
-                    {/* Betting History or Created Markets */}
+                    {/* Activity Feed or Created Markets */}
                     {isOwnProfile ? (
                         <div className="bg-white dark:bg-[#1f1f1f] border border-[#d4d4d4] dark:border-[#3a3a3a] rounded-lg p-6 shadow-[0_2px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                             <h2 className="text-xl font-black mb-5 text-[#111] dark:text-[#e8e8e8]">
-                                Betting History
+                                Activity
                             </h2>
 
-                            {isLoading ? (
+                            {activityLoading ? (
                                 <div className="text-center py-8 text-[#666] dark:text-[#999]">
                                     <div className="animate-spin w-8 h-8 border-4 border-[#15a349] border-t-transparent rounded-full mx-auto mb-2"></div>
                                     Loading...
                                 </div>
-                            ) : positions.length === 0 ? (
+                            ) : activities.length === 0 ? (
                                 <div className="text-center py-12">
-                                    <Trophy className="w-16 h-16 mx-auto mb-4 text-[#999] dark:text-[#666] opacity-50" />
-                                    <p className="text-[#333] dark:text-[#ccc] font-semibold">No bets yet</p>
+                                    <Activity className="w-16 h-16 mx-auto mb-4 text-[#999] dark:text-[#666] opacity-50" />
+                                    <p className="text-[#333] dark:text-[#ccc] font-semibold">No activity yet</p>
                                     <p className="text-sm text-[#666] dark:text-[#999] mt-2">
-                                        Start betting on markets to see your history here
+                                        Start betting on markets to see your activity here
                                     </p>
                                     <Link to="/">
                                         <button className="inline-flex items-center gap-2 px-4 h-8 text-sm font-semibold bg-white dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#3a3a3a] text-[#111] dark:text-[#e8e8e8] rounded hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] hover:border-[#666] dark:hover:border-[#4a4a4a] transition-colors mt-4">
@@ -535,8 +535,8 @@ export default function UserProfile() {
                                 </div>
                             ) : (
                                 <div className="space-y-0 divide-y divide-[#e0e0e0] dark:divide-[#333] border border-[#e0e0e0] dark:border-[#333] rounded-lg overflow-hidden">
-                                    {currentPositions.map((position: any, idx: number) => (
-                                        <BetHistoryItem key={idx} position={position} />
+                                    {activities.slice(0, 20).map((activity: any, idx: number) => (
+                                        <ActivityItem key={`${activity.type}-${activity.data.id || idx}`} activity={activity} />
                                     ))}
                                 </div>
                             )}
@@ -624,6 +624,99 @@ export default function UserProfile() {
         </>
     );
 }
+
+// Activity Item Component
+interface ActivityItemProps {
+    activity: {
+        type: 'bet' | 'creation' | 'resolution' | 'claim';
+        timestamp: number;
+        data: any;
+    };
+}
+
+const ActivityItem = ({ activity }: ActivityItemProps) => {
+    const { type, timestamp, data } = activity;
+    const timeAgo = formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+
+    const renderIcon = () => {
+        switch (type) {
+            case 'bet':
+                return <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+            case 'creation':
+                return <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />;
+            case 'resolution':
+                return <CheckCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+            case 'claim':
+                return <Coins className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
+        }
+    };
+
+    const renderContent = () => {
+        switch (type) {
+            case 'bet':
+                return (
+                    <div className="flex-1">
+                        <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
+                            Placed bet: {formatLamportsToSol(data.amount_lamports)} SOL
+                        </div>
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
+                            {data.outcome_label || `Outcome ${data.outcome_index}`} • {timeAgo}
+                        </div>
+                    </div>
+                );
+            case 'creation':
+                return (
+                    <div className="flex-1">
+                        <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
+                            Created market
+                        </div>
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
+                            {data.outcomes_count} outcomes • {timeAgo}
+                        </div>
+                    </div>
+                );
+            case 'resolution':
+                return (
+                    <div className="flex-1">
+                        <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
+                            Market resolved
+                        </div>
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
+                            {data.auto_void ? 'Voided' : `Winner: Outcome ${data.winner_index}`} • {timeAgo}
+                        </div>
+                    </div>
+                );
+            case 'claim':
+                return (
+                    <div className="flex-1">
+                        <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
+                            Claimed {formatLamportsToSol(data.amount_lamports)} SOL
+                        </div>
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
+                            {timeAgo}
+                        </div>
+                    </div>
+                );
+        }
+    };
+
+    const marketPubkey = data.market_pubkey;
+
+    return (
+        <Link
+            to={`/market/${marketPubkey}`}
+            className="flex items-center gap-3 p-4 hover:bg-[#fafafa] dark:hover:bg-[#252525] transition-colors"
+        >
+            <div className="flex-shrink-0">
+                {renderIcon()}
+            </div>
+            {renderContent()}
+            <div className="flex-shrink-0">
+                <ExternalLink className="w-4 h-4 text-[#999] dark:text-[#666]" />
+            </div>
+        </Link>
+    );
+};
 
 interface StatCardProps {
     icon: React.ReactNode;
