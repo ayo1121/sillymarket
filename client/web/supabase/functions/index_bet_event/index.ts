@@ -84,6 +84,66 @@ function arraysEqual(a: Uint8Array | number[], b: number[]): boolean {
 }
 
 /**
+ * Safely convert a value to string, handling PublicKey and BN objects
+ */
+function safeToString(value: any): string | null {
+  if (value == null || value === undefined) return null;
+
+  // Handle PublicKey objects
+  if (value.toBase58 && typeof value.toBase58 === 'function') {
+    return value.toBase58();
+  }
+
+  // Handle BN (BigNumber) objects
+  if (value.toString && typeof value.toString === 'function') {
+    try {
+      return value.toString();
+    } catch (e) {
+      console.warn('[safeToString] Failed to convert value:', e);
+      return null;
+    }
+  }
+
+  // Handle regular values
+  try {
+    return String(value);
+  } catch (e) {
+    console.warn('[safeToString] Failed to convert value to string:', e);
+    return null;
+  }
+}
+
+/**
+ * Helper to create a notification
+ */
+async function createNotification(
+  userPubkey: string,
+  type: string,
+  title: string,
+  body: string,
+  metadata: any = {}
+) {
+  try {
+    const { error } = await supabase.from("notifications").insert({
+      user_pubkey: userPubkey,
+      type,
+      title,
+      body,
+      metadata,
+      is_read: false,
+    });
+
+    if (error) {
+      console.error("[index_bet_event] Failed to create notification:", error);
+    } else {
+      console.log(`[index_bet_event] Notification created for ${userPubkey}: ${type}`);
+    }
+  } catch (err) {
+    console.error("[index_bet_event] Exception creating notification:", err);
+  }
+}
+
+/**
  * Helper to normalize outcome index from various formats
  * Returns number | null - supports 0-4 (2-5 outcomes)
  */
@@ -1456,14 +1516,22 @@ Deno.serve(async (req) => {
             const question_hash = evData.question_hash || evData.questionHash || evData.data?.question_hash || evData.args?.question_hash || null;
 
             if (market && creator && cutoff_ts != null && outcomes_count != null) {
+              const marketStr = safeToString(market);
+              const creatorStr = safeToString(creator);
+
+              if (!marketStr || !creatorStr) {
+                console.warn("[index_bet_event] MarketCreated: Failed to convert pubkeys", { market, creator });
+                continue;
+              }
+
               const row: any = {
-                market_pubkey: String(market),
-                creator_pubkey: String(creator),
+                market_pubkey: marketStr,
+                creator_pubkey: creatorStr,
                 cutoff_ts: Number(cutoff_ts),
                 outcomes_count: Number(outcomes_count),
-                question_hash: question_hash ? String(question_hash) : null,
+                question_hash: question_hash ? safeToString(question_hash) : null,
                 block_time: blockTimeIso,
-                tx_sig: String(signature),
+                tx_sig: safeToString(signature) || signature,
               };
 
               const { error } = await supabase.from("market_events").insert(row);
@@ -1496,15 +1564,22 @@ Deno.serve(async (req) => {
             const fees_transferred = evData.fees_transferred || evData.feesTransferred || evData.data?.fees_transferred || evData.args?.fees_transferred || null;
 
             if (market && winner_index != null) {
+              const marketStr = safeToString(market);
+
+              if (!marketStr) {
+                console.warn("[index_bet_event] WinnerResolved: Failed to convert market pubkey", { market });
+                continue;
+              }
+
               const row: any = {
-                market_pubkey: String(market),
+                market_pubkey: marketStr,
                 winner_index: Number(winner_index),
                 auto_void: Boolean(auto_void),
                 resolved_total_pool: resolved_total_pool != null ? Number(resolved_total_pool) : null,
                 resolved_win_pool: resolved_win_pool != null ? Number(resolved_win_pool) : null,
                 fees_transferred: fees_transferred != null ? Number(fees_transferred) : null,
                 block_time: blockTimeIso,
-                tx_sig: String(signature),
+                tx_sig: safeToString(signature) || signature,
               };
 
               const { error } = await supabase.from("market_resolutions").insert(row);
@@ -1517,6 +1592,53 @@ Deno.serve(async (req) => {
               } else {
                 indexedEvents.push("WinnerResolved");
                 console.log("[index_bet_event] Indexed WinnerResolved:", signature);
+
+                // ---------------------------------------------------------
+                // NOTIFICATION LOGIC: Notify all bettors
+                // ---------------------------------------------------------
+                try {
+                  // 1. Fetch all bets for this market
+                  const { data: bets } = await supabase
+                    .from("bets")
+                    .select("bettor_pubkey, outcome_index")
+                    .eq("market_pubkey", marketStr);
+
+                  if (bets && bets.length > 0) {
+                    const uniqueBettors = new Set<string>();
+                    const notifications = [];
+                    const winIndex = Number(winner_index);
+                    const isVoid = Boolean(auto_void);
+
+                    for (const bet of bets) {
+                      if (uniqueBettors.has(bet.bettor_pubkey)) continue;
+                      uniqueBettors.add(bet.bettor_pubkey);
+
+                      const didWin = !isVoid && bet.outcome_index === winIndex;
+                      const type = didWin ? "claimable_winnings" : "market_resolved";
+                      const title = didWin ? "You Won!" : "Market Resolved";
+                      const body = didWin
+                        ? "You won! Claim your winnings now."
+                        : (isVoid ? "Market voided. Claim your refund." : "Market resolved. Check if you won.");
+
+                      notifications.push({
+                        user_pubkey: bet.bettor_pubkey,
+                        type,
+                        title,
+                        body,
+                        metadata: { market_id: marketStr },
+                        is_read: false,
+                      });
+                    }
+
+                    if (notifications.length > 0) {
+                      const { error: notifError } = await supabase.from("notifications").insert(notifications);
+                      if (notifError) console.error("[index_bet_event] Failed to insert notifications:", notifError);
+                      else console.log(`[index_bet_event] Created ${notifications.length} notifications for resolved market`);
+                    }
+                  }
+                } catch (err) {
+                  console.error("[index_bet_event] Error generating notifications for resolution:", err);
+                }
               }
             } else {
               const eventSample = JSON.stringify(evData).slice(0, 600);
@@ -1531,15 +1653,23 @@ Deno.serve(async (req) => {
           if (evType === "WinningsClaimed" || evType === "winningsClaimed") {
             const market = evData.market || evData.data?.market || evData.args?.market || baseKeys.marketPubkey;
             const user = evData.user || evData.data?.user || evData.args?.user || baseKeys.bettorPubkey;
-            const amount = evData.amount || evData.data?.amount || evData.args?.amount || null;
+            const amount_lamports = evData.amount || evData.data?.amount || evData.args?.amount || null;
 
-            if (market && user && amount != null) {
+            if (market && user && amount_lamports != null) {
+              const marketStr = safeToString(market);
+              const userStr = safeToString(user);
+
+              if (!marketStr || !userStr) {
+                console.warn("[index_bet_event] WinningsClaimed: Failed to convert pubkeys", { market, user });
+                continue;
+              }
+
               const row: any = {
-                market_pubkey: String(market),
-                user_pubkey: String(user),
-                amount_lamports: Number(amount),
+                market_pubkey: marketStr,
+                user_pubkey: userStr,
+                amount_lamports: Number(amount_lamports),
                 block_time: blockTimeIso,
-                tx_sig: String(signature),
+                tx_sig: safeToString(signature) || signature,
               };
 
               const { error } = await supabase.from("claims").insert(row);
@@ -1552,6 +1682,17 @@ Deno.serve(async (req) => {
               } else {
                 indexedEvents.push("WinningsClaimed");
                 console.log("[index_bet_event] Indexed WinningsClaimed:", signature);
+
+                // ---------------------------------------------------------
+                // NOTIFICATION LOGIC: Notify user
+                // ---------------------------------------------------------
+                await createNotification(
+                  userStr,
+                  "winnings_claimed",
+                  "Winnings Claimed",
+                  `You successfully claimed ${amount_lamports ? (Number(amount_lamports) / LAMPORTS_PER_SOL).toFixed(4) : "your"} SOL.`,
+                  { market_id: marketStr }
+                );
               }
             } else {
               const eventSample = JSON.stringify(evData).slice(0, 600);
