@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { BettingModal } from "@/components/BettingModal";
@@ -537,15 +537,13 @@ const MarketDetails = () => {
 
                 {/* Creator & Market Info */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm text-[#555] dark:text-[#c7c7c7]">
-                  <button
-                    type="button"
-                    onClick={handleCopyCreator}
+                  <Link
+                    to={`/profile/${market.creatorPubkey}`}
                     className="font-semibold hover:text-[#111] dark:hover:text-white transition-colors hover:underline flex items-center gap-1"
-                    title="Copy creator address"
+                    title="View creator profile"
                   >
                     by {market.creatorUsername ?? market.creatorName ?? market.creatorLabel}
-                    {copiedCreator && <span className="text-green-600 font-bold">✓</span>}
-                  </button>
+                  </Link>
                   <span className="text-[#999]">•</span>
                   <button
                     type="button"
@@ -883,8 +881,8 @@ const MarketDetails = () => {
                       // Format time
                       const timeLabel = formatTimeAgo(new Date(item.ts));
 
-                      return (
-                        <div key={i} className="flex items-center justify-between py-3 border-b border-[#f0f0f0] dark:border-[#333] last:border-0">
+                      const content = (
+                        <>
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${isBuy ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" :
                               isResolve ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" :
@@ -917,6 +915,26 @@ const MarketDetails = () => {
                               {item.amountSol ? `${formatSol(item.amountSol)} SOL` : "-"}
                             </div>
                           </div>
+                        </>
+                      );
+
+                      if (item.txSig) {
+                        return (
+                          <a
+                            key={i}
+                            href={getTxExplorerUrl(item.txSig)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-between py-3 border-b border-[#f0f0f0] dark:border-[#333] last:border-0 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group"
+                          >
+                            {content}
+                          </a>
+                        );
+                      }
+
+                      return (
+                        <div key={i} className="flex items-center justify-between py-3 border-b border-[#f0f0f0] dark:border-[#333] last:border-0">
+                          {content}
                         </div>
                       );
                     })

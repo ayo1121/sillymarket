@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useAnchorProgram } from "@/solana/program";
+import { fetchUserPositions, fetchMarketsBatch } from "@/solana/read";
+import { supabase } from "@/integrations/supabase/client";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -38,14 +41,15 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
  */
 export const NotificationsProvider = ({ children }: { children: ReactNode }) => {
     const { publicKey } = useWallet();
+    const program = useAnchorProgram();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch notifications from backend
+    // Generate and store notifications in Supabase
     const fetchNotifications = useCallback(async () => {
-        if (!publicKey) {
+        if (!publicKey || !program) {
             setNotifications([]);
             setUnreadCount(0);
             return;
@@ -55,16 +59,141 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         setError(null);
 
         try {
-            const response = await fetch(`${API_URL}/notifications`, {
-                credentials: 'include',
-            });
+            const walletAddress = publicKey.toBase58();
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch notifications');
+            // Fetch user positions
+            const positions = await fetchUserPositions(program as any, publicKey);
+
+            if (positions.length === 0) {
+                // Still fetch existing notifications from Supabase
+                const { data: existingNotifs } = await supabase
+                    .from('notifications')
+                    .select('*')
+                    .eq('user_pubkey', walletAddress)
+                    .order('created_at', { ascending: false });
+
+                const mapped = (existingNotifs || []).map((n: any) => ({
+                    id: n.id,
+                    type: n.type,
+                    title: n.title,
+                    message: n.body || '',
+                    marketId: n.metadata?.market_id,
+                    timestamp: new Date(n.created_at).getTime(),
+                    read: n.is_read,
+                    actionUrl: `/market/${n.metadata?.market_id}`,
+                }));
+
+                setNotifications(mapped);
+                setUnreadCount(mapped.filter(n => !n.read).length);
+                setIsLoading(false);
+                return;
             }
 
-            const data = await response.json();
-            const backendNotifications = data.notifications.map((n: any) => ({
+            // Get unique market pubkeys
+            const marketPubkeys: string[] = Array.from(
+                new Set(positions.map(p => p.account.market.toBase58()))
+            );
+
+            // Fetch market data
+            const marketsMap = await fetchMarketsBatch(program as any, marketPubkeys);
+
+            const generatedNotifications: Array<{
+                id: string;
+                type: string;
+                title: string;
+                body: string;
+                user_pubkey: string;
+                metadata: any;
+                is_read: boolean;
+            }> = [];
+
+            const now = Date.now();
+            const FIVE_MINUTES = 5 * 60 * 1000;
+
+            // Process each position
+            for (const position of positions) {
+                const marketPubkey = position.account.market.toBase58();
+                const market: any = marketsMap.get(marketPubkey);
+
+                if (!market) continue;
+
+                const outcomeIndex = position.account.outcomeIndex ?? position.account.outcome_index;
+
+                // 1. Claimable winnings
+                if (market.state === 'resolved' && !position.account.claimed) {
+                    const isVoid = market.winningOutcomeIndex === -2;
+                    const didWin = !isVoid && market.winningOutcomeIndex === outcomeIndex;
+
+                    if (didWin || isVoid) {
+                        generatedNotifications.push({
+                            id: `claim-${marketPubkey}-${outcomeIndex}`,
+                            type: 'claimable_winnings',
+                            title: 'Claimable Winnings!',
+                            body: `You can claim your ${isVoid ? 'refund' : 'winnings'} from "${market.displayQuestion}"`,
+                            user_pubkey: walletAddress,
+                            metadata: { market_id: marketPubkey },
+                            is_read: false,
+                        });
+                    }
+                }
+
+                // 2. Market closing soon (within 5 minutes)
+                if (market.state === 'open' && market.closesAt) {
+                    const closesAt = typeof market.closesAt === 'number'
+                        ? market.closesAt * 1000
+                        : new Date(market.closesAt).getTime();
+                    const timeUntilClose = closesAt - now;
+
+                    if (timeUntilClose > 0 && timeUntilClose < FIVE_MINUTES) {
+                        const minutesLeft = Math.floor(timeUntilClose / 60000);
+                        generatedNotifications.push({
+                            id: `closing-${marketPubkey}`,
+                            type: 'market_closing',
+                            title: 'Market Closing Soon',
+                            body: `"${market.displayQuestion}" closes in ${minutesLeft} minutes`,
+                            user_pubkey: walletAddress,
+                            metadata: { market_id: marketPubkey },
+                            is_read: false,
+                        });
+                    }
+                }
+
+                // 3. Market recently resolved
+                if (market.state === 'resolved') {
+                    const hasClaimableNotif = generatedNotifications.some(
+                        n => n.id === `claim-${marketPubkey}-${outcomeIndex}`
+                    );
+
+                    if (!hasClaimableNotif) {
+                        generatedNotifications.push({
+                            id: `resolved-${marketPubkey}`,
+                            type: 'market_resolved',
+                            title: 'Market Resolved',
+                            body: `"${market.displayQuestion}" has been resolved`,
+                            user_pubkey: walletAddress,
+                            metadata: { market_id: marketPubkey },
+                            is_read: false,
+                        });
+                    }
+                }
+            }
+
+            // Upsert notifications to Supabase
+            if (generatedNotifications.length > 0) {
+                await supabase
+                    .from('notifications')
+                    .upsert(generatedNotifications, { onConflict: 'id' });
+            }
+
+            // Fetch all notifications for this user
+            const { data: allNotifs } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_pubkey', walletAddress)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            const mapped = (allNotifs || []).map((n: any) => ({
                 id: n.id,
                 type: n.type,
                 title: n.title,
@@ -72,40 +201,40 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
                 marketId: n.metadata?.market_id,
                 timestamp: new Date(n.created_at).getTime(),
                 read: n.is_read,
-                actionUrl: n.metadata?.action_url,
+                actionUrl: `/market/${n.metadata?.market_id}`,
             }));
 
-            setNotifications(backendNotifications);
-            setUnreadCount(backendNotifications.filter((n: Notification) => !n.read).length);
+            // Sort by priority
+            const priorityOrder: Record<string, number> = { 'claimable_winnings': 0, 'market_closing': 1, 'market_resolved': 2 };
+            mapped.sort((a, b) => (priorityOrder[a.type] || 999) - (priorityOrder[b.type] || 999));
+
+            setNotifications(mapped);
+            setUnreadCount(mapped.filter(n => !n.read).length);
         } catch (err) {
-            console.error('[Notifications] Failed to fetch:', err);
+            console.error('[Notifications] Failed to generate:', err);
             setError('Failed to load notifications');
-            // Graceful degradation - keep existing notifications
         } finally {
             setIsLoading(false);
         }
-    }, [publicKey]);
+    }, [publicKey, program]);
 
-    // Fetch on mount and when wallet changes
+    // Fetch on mount and when wallet/program changes
     useEffect(() => {
         fetchNotifications();
-    }, [fetchNotifications]);
+
+        // Refresh every 2 minutes
+        const interval = setInterval(fetchNotifications, 2 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [fetchNotifications, program]);
 
     // Mark notification as read
     const markAsRead = useCallback(async (id: string) => {
         try {
-            const response = await fetch(`${API_URL}/notifications/mark-read`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({ id }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to mark as read');
-            }
+            // Update in Supabase
+            await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('id', id);
 
             // Update local state optimistically
             setNotifications((prev) =>
@@ -124,28 +253,27 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
     // Mark all as read
     const markAllAsRead = useCallback(async () => {
+        if (!publicKey) return;
+
         const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
 
         // Update local state immediately
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
         setUnreadCount(0);
 
-        // Send requests to backend
-        for (const id of unreadIds) {
+        // Update in Supabase
+        if (unreadIds.length > 0) {
             try {
-                await fetch(`${API_URL}/notifications/mark-read`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ id }),
-                });
+                await supabase
+                    .from('notifications')
+                    .update({ is_read: true })
+                    .eq('user_pubkey', publicKey.toBase58())
+                    .in('id', unreadIds);
             } catch (err) {
-                console.error('[Notifications] Failed to mark as read:', id, err);
+                console.error('[Notifications] Failed to mark all as read:', err);
             }
         }
-    }, [notifications]);
+    }, [notifications, publicKey]);
 
     // Remove notification (local only)
     const removeNotification = useCallback((id: string) => {

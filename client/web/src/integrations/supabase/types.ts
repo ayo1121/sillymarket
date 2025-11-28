@@ -86,6 +86,144 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_pubkey: string
+          type: string
+          title: string
+          body: string | null
+          metadata: Json | null
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id: string
+          user_pubkey: string
+          type: string
+          title: string
+          body?: string | null
+          metadata?: Json | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_pubkey?: string
+          type?: string
+          title?: string
+          body?: string | null
+          metadata?: Json | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      market_events: {
+        Row: {
+          id: string
+          market_pubkey: string
+          creator_pubkey: string
+          cutoff_ts: number
+          outcomes_count: number
+          question_hash: string | null
+          block_time: string
+          tx_sig: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          market_pubkey: string
+          creator_pubkey: string
+          cutoff_ts: number
+          outcomes_count: number
+          question_hash?: string | null
+          block_time: string
+          tx_sig: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          market_pubkey?: string
+          creator_pubkey?: string
+          cutoff_ts?: number
+          outcomes_count?: number
+          question_hash?: string | null
+          block_time?: string
+          tx_sig?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      market_resolutions: {
+        Row: {
+          id: string
+          market_pubkey: string
+          winner_index: number
+          auto_void: boolean
+          resolved_total_pool: number | null
+          resolved_win_pool: number | null
+          fees_transferred: number | null
+          block_time: string
+          tx_sig: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          market_pubkey: string
+          winner_index: number
+          auto_void?: boolean
+          resolved_total_pool?: number | null
+          resolved_win_pool?: number | null
+          fees_transferred?: number | null
+          block_time: string
+          tx_sig: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          market_pubkey?: string
+          winner_index?: number
+          auto_void?: boolean
+          resolved_total_pool?: number | null
+          resolved_win_pool?: number | null
+          fees_transferred?: number | null
+          block_time?: string
+          tx_sig?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      claims: {
+        Row: {
+          id: string
+          market_pubkey: string
+          user_pubkey: string
+          amount_lamports: number
+          block_time: string
+          tx_sig: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          market_pubkey: string
+          user_pubkey: string
+          amount_lamports: number
+          block_time: string
+          tx_sig: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          market_pubkey?: string
+          user_pubkey?: string
+          amount_lamports?: number
+          block_time?: string
+          tx_sig?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -203,7 +203,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                 <Button
                   type="button"
                   onClick={copyLink}
-                  className="font-bold shadow-md flex items-center gap-2 w-full sm:w-auto"
+                  className="font-bold shadow-md flex items-center gap-2 w-full sm:w-auto bg-[#111] text-white dark:bg-[#eee] dark:text-black hover:bg-[#333] dark:hover:bg-[#ccc] border-2 border-transparent"
                 >
                   <Copy className="w-4 h-4" />
                   {copied ? "Copied!" : "Copy Link"}
@@ -247,7 +247,7 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
                   type="button"
                   onClick={handleCopyImage}
                   disabled={buttonsDisabled}
-                  className="font-bold shadow-md flex items-center gap-2 w-full sm:w-auto"
+                  className="font-bold shadow-md flex items-center gap-2 w-full sm:w-auto bg-[#111] text-white dark:bg-[#eee] dark:text-black hover:bg-[#333] dark:hover:bg-[#ccc] border-2 border-transparent"
                 >
                   <Copy className="w-4 h-4" />
                   Copy Image

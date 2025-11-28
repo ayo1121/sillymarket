@@ -49,7 +49,7 @@ export const Header = () => {
   }, [program, wallet.publicKey]);
 
   return (
-    <header className="bg-[#b8b8b8] dark:bg-[#1d1d1d] border-b-2 border-white/50 dark:border-[#2d2d2d] shadow-sm mb-6 sm:mb-8 sticky top-0 z-50 transition-colors">
+    <header className="bg-[#c0c0c0] dark:bg-[#111] border-b-2 border-white/50 dark:border-[#2d2d2d] shadow-sm mb-6 sm:mb-8 sticky top-0 z-50 transition-colors">
       <div className="max-w-[1240px] mx-auto px-3 sm:px-4 py-2 sm:py-3 flex flex-wrap items-center justify-between gap-y-2">
 
         {/* Left: Brand Block */}

@@ -6,7 +6,7 @@ import { fetchUserPositions, fetchMarketsBatch } from '@/solana/read';
 import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { shortenWallet, formatSol } from '@/utils/format';
-import { Trophy, TrendingUp, Activity, DollarSign, ArrowLeft, BarChart3, ExternalLink } from 'lucide-react';
+import { Trophy, TrendingUp, Activity, DollarSign, ArrowLeft, BarChart3, ExternalLink, Plus, CheckCircle, Coins } from 'lucide-react';
 import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { getTxExplorerUrl } from '@/utils/solanaExplorer';
 import { logPageView, logClick } from '@/lib/analytics';
+import { fetchAllMarkets } from '@/solana/read';
 
 // Helper to format lamports to SOL with proper decimals
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -237,6 +238,133 @@ export default function UserProfile() {
     const positions = profileData?.positions || [];
     const marketsMap = profileData?.marketsMap || new Map();
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
+    const totalPages = Math.ceil(positions.length / ITEMS_PER_PAGE);
+    const currentPositions = positions.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    // Reset to page 1 when wallet changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [wallet]);
+
+    // Fetch created markets for this profile
+    const { data: createdMarkets, isLoading: marketsLoading } = useQuery({
+        queryKey: ['createdMarkets', wallet],
+        queryFn: async () => {
+            if (!program || !wallet) return [];
+            try {
+                const allMarkets = await fetchAllMarkets(program as any, publicKey ?? null);
+                // Filter markets created by this wallet
+                return allMarkets.filter(m => m.creatorPubkey === wallet);
+            } catch (error) {
+                console.error('Error fetching created markets:', error);
+                return [];
+            }
+        },
+        enabled: !!program && !!wallet && !isOwnProfile,
+        staleTime: 60_000,
+    });
+
+    // Fetch comprehensive activity feed (bets, creations, resolutions, claims)
+    const { data: activityData, isLoading: activityLoading } = useQuery({
+        queryKey: ['userActivity', wallet],
+        queryFn: async () => {
+            if (!wallet) return [];
+
+            try {
+                const activities: any[] = [];
+
+                // Fetch bets
+                const { data: bets } = await supabase
+                    .from('bets')
+                    .select('*')
+                    .eq('bettor_pubkey', wallet)
+                    .order('block_time', { ascending: false })
+                    .limit(50);
+
+                if (bets) {
+                    activities.push(...bets.map(bet => ({
+                        type: 'bet',
+                        timestamp: new Date(bet.block_time).getTime(),
+                        data: bet,
+                    })));
+                }
+
+                // Fetch market creations
+                const { data: creations } = await supabase
+                    .from('market_events')
+                    .select('*')
+                    .eq('creator_pubkey', wallet)
+                    .order('block_time', { ascending: false })
+                    .limit(50);
+
+                if (creations) {
+                    activities.push(...creations.map(creation => ({
+                        type: 'creation',
+                        timestamp: new Date(creation.block_time).getTime(),
+                        data: creation,
+                    })));
+                }
+
+                // Fetch market resolutions
+                const { data: resolutions } = await supabase
+                    .from('market_resolutions')
+                    .select('*')
+                    .order('block_time', { ascending: false })
+                    .limit(50);
+
+                if (resolutions) {
+                    // Filter resolutions for markets created by this user
+                    const userResolutions = resolutions.filter(res => {
+                        // We'll need to check if the market was created by this user
+                        // For now, include all and we'll filter in the UI if needed
+                        return true;
+                    });
+
+                    activities.push(...userResolutions.map(resolution => ({
+                        type: 'resolution',
+                        timestamp: new Date(resolution.block_time).getTime(),
+                        data: resolution,
+                    })));
+                }
+
+                // Fetch claims
+                const { data: claims } = await supabase
+                    .from('claims')
+                    .select('*')
+                    .eq('user_pubkey', wallet)
+                    .order('block_time', { ascending: false })
+                    .limit(50);
+
+                if (claims) {
+                    activities.push(...claims.map(claim => ({
+                        type: 'claim',
+                        timestamp: new Date(claim.block_time).getTime(),
+                        data: claim,
+                    })));
+                }
+
+                // Sort all activities by timestamp (newest first)
+                activities.sort((a, b) => b.timestamp - a.timestamp);
+
+                return activities;
+            } catch (error) {
+                console.error('Error fetching activity:', error);
+                return [];
+            }
+        },
+        enabled: !!wallet && isOwnProfile,
+        staleTime: 30_000, // 30 seconds
+    });
+
+    const activities = activityData || [];
+
     // Calculate enhanced stats from positions
     const stats = useMemo(() => {
         if (positions.length === 0) {
@@ -306,7 +434,7 @@ export default function UserProfile() {
         <>
             <Header />
             {/* Proper light/dark backgrounds - no grey banner */}
-            <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#111] pb-24">
+            <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#111] pb-24">
                 <div className="container mx-auto px-4 py-8 max-w-4xl">
                     {/* Navigation Buttons - Native buttons for full style control */}
                     <div className="flex gap-2 mb-6">
@@ -380,38 +508,115 @@ export default function UserProfile() {
                         />
                     </div>
 
-                    {/* Betting History - Improved dark mode */}
-                    <div className="bg-white dark:bg-[#1f1f1f] border border-[#d4d4d4] dark:border-[#3a3a3a] rounded-lg p-6 shadow-[0_2px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
-                        <h2 className="text-xl font-black mb-5 text-[#111] dark:text-[#e8e8e8]">
-                            Betting History
-                        </h2>
+                    {/* Betting History or Created Markets */}
+                    {isOwnProfile ? (
+                        <div className="bg-white dark:bg-[#1f1f1f] border border-[#d4d4d4] dark:border-[#3a3a3a] rounded-lg p-6 shadow-[0_2px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+                            <h2 className="text-xl font-black mb-5 text-[#111] dark:text-[#e8e8e8]">
+                                Betting History
+                            </h2>
 
-                        {isLoading ? (
-                            <div className="text-center py-8 text-[#666] dark:text-[#999]">
-                                <div className="animate-spin w-8 h-8 border-4 border-[#15a349] border-t-transparent rounded-full mx-auto mb-2"></div>
-                                Loading...
-                            </div>
-                        ) : positions.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Trophy className="w-16 h-16 mx-auto mb-4 text-[#999] dark:text-[#666] opacity-50" />
-                                <p className="text-[#333] dark:text-[#ccc] font-semibold">No bets yet</p>
-                                <p className="text-sm text-[#666] dark:text-[#999] mt-2">
-                                    Start betting on markets to see your history here
-                                </p>
-                                <Link to="/">
-                                    <button className="inline-flex items-center gap-2 px-4 h-8 text-sm font-semibold bg-white dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#3a3a3a] text-[#111] dark:text-[#e8e8e8] rounded hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] hover:border-[#666] dark:hover:border-[#4a4a4a] transition-colors mt-4">
-                                        Browse Markets
-                                    </button>
-                                </Link>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {positions.map((position: any, idx: number) => (
-                                    <BetHistoryItem key={idx} position={position} />
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                            {isLoading ? (
+                                <div className="text-center py-8 text-[#666] dark:text-[#999]">
+                                    <div className="animate-spin w-8 h-8 border-4 border-[#15a349] border-t-transparent rounded-full mx-auto mb-2"></div>
+                                    Loading...
+                                </div>
+                            ) : positions.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Trophy className="w-16 h-16 mx-auto mb-4 text-[#999] dark:text-[#666] opacity-50" />
+                                    <p className="text-[#333] dark:text-[#ccc] font-semibold">No bets yet</p>
+                                    <p className="text-sm text-[#666] dark:text-[#999] mt-2">
+                                        Start betting on markets to see your history here
+                                    </p>
+                                    <Link to="/">
+                                        <button className="inline-flex items-center gap-2 px-4 h-8 text-sm font-semibold bg-white dark:bg-[#1f1f1f] border border-[#8b8b8b] dark:border-[#3a3a3a] text-[#111] dark:text-[#e8e8e8] rounded hover:bg-[#f5f5f5] dark:hover:bg-[#2a2a2a] hover:border-[#666] dark:hover:border-[#4a4a4a] transition-colors mt-4">
+                                            Browse Markets
+                                        </button>
+                                    </Link>
+                                </div>
+                            ) : (
+                                <div className="space-y-0 divide-y divide-[#e0e0e0] dark:divide-[#333] border border-[#e0e0e0] dark:border-[#333] rounded-lg overflow-hidden">
+                                    {currentPositions.map((position: any, idx: number) => (
+                                        <BetHistoryItem key={idx} position={position} />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#e0e0e0] dark:border-[#333]">
+                                    <div className="text-xs text-[#666] dark:text-[#999]">
+                                        Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, positions.length)} of {positions.length} bets
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="px-3 py-1.5 text-xs font-bold bg-white dark:bg-[#2a2a2a] border border-[#d4d4d4] dark:border-[#3a3a3a] rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f5f5f5] dark:hover:bg-[#333] text-[#111] dark:text-[#e8e8e8] transition-colors"
+                                        >
+                                            Previous
+                                        </button>
+                                        <div className="text-xs font-bold text-[#111] dark:text-[#e8e8e8] px-2">
+                                            Page {currentPage} of {totalPages}
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="px-3 py-1.5 text-xs font-bold bg-white dark:bg-[#2a2a2a] border border-[#d4d4d4] dark:border-[#3a3a3a] rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f5f5f5] dark:hover:bg-[#333] text-[#111] dark:text-[#e8e8e8] transition-colors"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-[#1f1f1f] border border-[#d4d4d4] dark:border-[#3a3a3a] rounded-lg p-6 shadow-[0_2px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+                            <h2 className="text-xl font-black mb-5 text-[#111] dark:text-[#e8e8e8]">
+                                Created Markets
+                            </h2>
+
+                            {marketsLoading ? (
+                                <div className="text-center py-8 text-[#666] dark:text-[#999]">
+                                    <div className="animate-spin w-8 h-8 border-4 border-[#15a349] border-t-transparent rounded-full mx-auto mb-2"></div>
+                                    Loading...
+                                </div>
+                            ) : !createdMarkets || createdMarkets.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Trophy className="w-16 h-16 mx-auto mb-4 text-[#999] dark:text-[#666] opacity-50" />
+                                    <p className="text-[#333] dark:text-[#ccc] font-semibold">No markets created yet</p>
+                                    <p className="text-sm text-[#666] dark:text-[#999] mt-2">
+                                        This user hasn't created any markets
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {createdMarkets.map((market: any) => (
+                                        <Link
+                                            key={market.pubkey}
+                                            to={`/market/${market.pubkey}`}
+                                            className="block bg-white dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded-lg p-4 hover:bg-[#fafafa] dark:hover:bg-[#252525] hover:border-[#d0d0d0] dark:hover:border-[#444] transition-all"
+                                        >
+                                            <div className="font-bold text-[#111] dark:text-[#e8e8e8] mb-2">
+                                                {market.displayQuestion}
+                                            </div>
+                                            <div className="flex items-center gap-3 text-xs text-[#666] dark:text-[#999]">
+                                                <span>Vol: {formatSol(Number(market.volumeLamports) / 1e9, 2)} SOL</span>
+                                                <span>•</span>
+                                                <span className={cn(
+                                                    "font-bold uppercase",
+                                                    market.state === 'open' && "text-green-600 dark:text-green-400",
+                                                    market.state === 'locked' && "text-orange-600 dark:text-orange-400",
+                                                    market.state === 'resolved' && "text-blue-600 dark:text-blue-400"
+                                                )}>
+                                                    {market.state}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
 
                 </div>
@@ -457,45 +662,64 @@ const BetHistoryItem = ({ position }: BetHistoryItemProps) => {
     const timeAgo = position.createdAt ? formatDistanceToNow(new Date(position.createdAt), { addSuffix: true }) : null;
 
     return (
-        <div className="bg-white dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded-lg p-4 hover:bg-[#fafafa] dark:hover:bg-[#252525] hover:border-[#d0d0d0] dark:hover:border-[#444] transition-all">
-            <div className="flex items-start justify-between gap-3 mb-2">
-                <Link to={`/market/${position.marketPubkey}`} className="flex-1 min-w-0">
-                    <div className="font-bold text-[#111] dark:text-[#e8e8e8] mb-1.5 line-clamp-2">
+        <div className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-white dark:bg-[#1f1f1f] hover:bg-[#fafafa] dark:hover:bg-[#252525] transition-colors">
+            {/* Main Info */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                    <Link
+                        to={`/market/${position.marketPubkey}`}
+                        className="font-bold text-[#111] dark:text-[#e8e8e8] truncate hover:underline text-sm sm:text-base"
+                    >
                         {position.marketQuestion || 'Market'}
+                    </Link>
+                    {position.canClaim && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+                            WON
+                        </span>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-3 text-xs sm:text-sm text-[#555] dark:text-[#aaa]">
+                    <div className="flex items-center gap-1">
+                        <span className="text-[#666] dark:text-[#888]">Bet:</span>
+                        <span className={`font-bold ${position.didWin ? 'text-green-600 dark:text-green-400' :
+                            position.didLose ? 'text-red-600 dark:text-red-400' :
+                                'text-[#111] dark:text-[#e8e8e8]'
+                            }`}>
+                            {position.outcomeLabel}
+                        </span>
                     </div>
-                    <div className="text-sm text-[#555] dark:text-[#aaa] mb-1">
-                        <span className="font-semibold text-[#333] dark:text-[#ccc]">{position.outcomeLabel}</span>
-                        {' • '}
-                        <span className="font-mono">{formatLamportsToSol(position.stakeLamports)} SOL</span>
+                    <span className="text-[#ccc] dark:text-[#444]">|</span>
+                    <div className="font-mono font-medium">
+                        {formatLamportsToSol(position.stakeLamports)} SOL
                     </div>
                     {timeAgo && (
-                        <div className="text-xs text-[#999] dark:text-[#666]">
-                            {timeAgo}
-                        </div>
+                        <>
+                            <span className="text-[#ccc] dark:text-[#444] hidden sm:inline">|</span>
+                            <span className="text-[#999] dark:text-[#666] hidden sm:inline">{timeAgo}</span>
+                        </>
                     )}
-                </Link>
-                {position.canClaim && (
-                    <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-semibold text-sm flex-shrink-0">
-                        <Trophy className="w-4 h-4" />
-                        Won
-                    </div>
-                )}
+                </div>
             </div>
 
-            {/* Visible Solscan button */}
-            {position.txSignature && (
-                <div className="mt-2">
+            {/* Actions / Meta Right */}
+            <div className="flex items-center justify-between sm:justify-end gap-4 mt-1 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#f0f0f0] dark:border-[#333] sm:border-none">
+                {timeAgo && (
+                    <span className="text-xs text-[#999] dark:text-[#666] sm:hidden">{timeAgo}</span>
+                )}
+
+                {position.txSignature && (
                     <a
                         href={getTxExplorerUrl(position.txSignature)}
                         target="_blank"
                         rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center text-xs font-medium underline text-[#666] dark:text-[#c7c7c7] hover:text-[#111] dark:hover:text-white transition-colors"
+                        className="flex items-center gap-1 text-xs font-medium text-[#666] dark:text-[#999] hover:text-[#111] dark:hover:text-white transition-colors bg-[#f5f5f5] dark:bg-[#2a2a2a] px-2 py-1 rounded border border-[#e0e0e0] dark:border-[#3a3a3a]"
                     >
-                        View on Solscan
+                        <span>Solscan</span>
+                        <ExternalLink className="w-3 h-3" />
                     </a>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

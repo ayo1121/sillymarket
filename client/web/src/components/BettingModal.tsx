@@ -357,12 +357,12 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
                       key={outcome.index}
                       type="button"
                       onClick={() => handleSelectOutcome(outcome.index)}
-                      className={`w-full bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-2 sm:p-3 text-left cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-[#111] shadow-md' : ''
+                      className={`w-full bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-2 sm:p-3 text-left cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-[#111] dark:ring-white shadow-md' : ''
                         }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                          <div className={`font-bold text-xs sm:text-sm truncate ${theme.text} dark:text-white`}>
+                          <div className={`font-bold text-xs sm:text-sm truncate ${theme.text}`}>
                             {outcome.label}
                           </div>
                         </div>
@@ -377,7 +377,6 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
           {/* Betting On & Payout Boxes */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div className="bg-[#fafafa] dark:bg-[#1f1f1f] border border-[#e0e0e0] dark:border-[#333] rounded p-2 sm:p-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
-              <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 sm:mb-2 tracking-wide">Betting On</div>
               <div className="text-[10px] sm:text-[11px] uppercase text-[#666] dark:text-[#c7c7c7] font-semibold mb-1 sm:mb-2 tracking-wide">Betting On</div>
               <div
                 className={`text-sm sm:text-base font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded inline-block shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] ${(() => {
@@ -462,7 +461,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
             <Button
               onClick={handleSubmit}
               disabled={!amount || parseFloat(amount) <= 0 || isSubmitting || !wallet.connected}
-              className="flex-1 h-10 sm:h-11 bg-[#111] text-white border border-white/20 font-semibold rounded hover:bg-white hover:text-[#111] hover:border-[#111] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#111] disabled:hover:text-white"
+              className="flex-1 h-10 sm:h-11 bg-[#111] text-white dark:bg-white dark:text-[#111] border border-white/20 dark:border-transparent font-semibold rounded hover:bg-white hover:text-[#111] hover:border-[#111] dark:hover:bg-[#ccc] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#111] disabled:hover:text-white dark:disabled:hover:bg-white dark:disabled:hover:text-[#111]"
             >
               {isSubmitting ? "Placing..." : "Confirm Bet"}
             </Button>

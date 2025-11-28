@@ -142,7 +142,7 @@ const Index = () => {
   const visibleMarkets = filteredAndSortedMarkets.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#1d1d1d] pb-24">
+    <div className="min-h-screen bg-[#c0c0c0] dark:bg-[#111] pb-24">
       <Header />
 
       {/* Live indicator */}

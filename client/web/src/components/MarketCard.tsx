@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
 import type { UIMarket } from "@/solana/marketMapping";
 import { useTimeRemaining } from "@/hooks/useTimeRemaining";
@@ -237,7 +237,14 @@ export const MarketCard: React.FC<MarketCardProps> = ({
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] sm:text-xs text-[#5f5f5f] dark:text-[#c7c7c7] mt-1">
             <span className="font-medium whitespace-nowrap truncate max-w-[120px]">
-              by {market.creatorUsername || market.creatorPubkey}
+              by{' '}
+              <Link
+                to={`/profile/${market.creatorPubkey}`}
+                onClick={(e) => e.stopPropagation()}
+                className="hover:text-[#111] dark:hover:text-white hover:underline transition-colors"
+              >
+                {market.creatorUsername || shortenWallet(market.creatorPubkey)}
+              </Link>
             </span>
             <span className="opacity-40">•</span>
             {/* MOBILE: Touch target optimized copy button - min 44px */}

@@ -190,8 +190,11 @@ function extractAnchorEventsFromLogs(logs: string[]): Array<{
     return events;
   }
 
-  // BetPlaced event discriminator from IDL
+  // Event discriminators from IDL (sha256("event:<event_name>").slice(0,8))
   const BET_PLACED_DISCRIMINATOR = [88, 88, 145, 226, 126, 206, 32, 0];
+  const MARKET_CREATED_DISCRIMINATOR = [109, 91, 158, 146, 254, 205, 168, 98];
+  const WINNER_RESOLVED_DISCRIMINATOR = [250, 242, 155, 75, 109, 192, 204, 47];
+  const WINNINGS_CLAIMED_DISCRIMINATOR = [185, 234, 107, 47, 154, 221, 112, 160];
 
   for (const log of logs) {
     // Anchor events are emitted as "Program data: <base64>"
@@ -209,6 +212,12 @@ function extractAnchorEventsFromLogs(logs: string[]): Array<{
 
         if (arraysEqual(discriminator, BET_PLACED_DISCRIMINATOR)) {
           events.push({ name: "BetPlaced", data });
+        } else if (arraysEqual(discriminator, MARKET_CREATED_DISCRIMINATOR)) {
+          events.push({ name: "MarketCreated", data });
+        } else if (arraysEqual(discriminator, WINNER_RESOLVED_DISCRIMINATOR)) {
+          events.push({ name: "WinnerResolved", data });
+        } else if (arraysEqual(discriminator, WINNINGS_CLAIMED_DISCRIMINATOR)) {
+          events.push({ name: "WinningsClaimed", data });
         }
       } catch (err) {
         console.warn("[bets-indexer] Failed to decode event log:", err);
