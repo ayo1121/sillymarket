@@ -637,6 +637,25 @@ interface ActivityItemProps {
 const ActivityItem = ({ activity }: ActivityItemProps) => {
     const { type, timestamp, data } = activity;
     const timeAgo = formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    const program = useAnchorProgram();
+    const [marketData, setMarketData] = useState<any>(null);
+
+    // Fetch market data to get question and outcomes
+    useEffect(() => {
+        const fetchMarket = async () => {
+            if (!program || !data.market_pubkey) return;
+
+            try {
+                const marketPubkey = new PublicKey(data.market_pubkey);
+                const marketAccount = await (program as any).account.market.fetch(marketPubkey);
+                setMarketData(marketAccount);
+            } catch (error) {
+                console.error('Error fetching market for activity:', error);
+            }
+        };
+
+        fetchMarket();
+    }, [program, data.market_pubkey]);
 
     const renderIcon = () => {
         switch (type) {
@@ -651,48 +670,71 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
         }
     };
 
+    const getOutcomeLabel = (outcomeIndex: number) => {
+        if (!marketData || !marketData.outcomes) return `Outcome ${outcomeIndex}`;
+        const outcome = marketData.outcomes[outcomeIndex];
+        return outcome?.label || `Outcome ${outcomeIndex}`;
+    };
+
+    const getMarketQuestion = () => {
+        if (!marketData) return 'Loading...';
+        return marketData.question || 'Unknown Market';
+    };
+
     const renderContent = () => {
         switch (type) {
             case 'bet':
                 return (
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
                             Placed bet: {formatLamportsToSol(data.amount_lamports)} SOL
                         </div>
-                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
-                            {data.outcome_label || `Outcome ${data.outcome_index}`} • {timeAgo}
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1 truncate">
+                            {data.outcome_label || getOutcomeLabel(data.outcome_index)} • {getMarketQuestion()}
+                        </div>
+                        <div className="text-xs text-[#999] dark:text-[#666] mt-0.5">
+                            {timeAgo}
                         </div>
                     </div>
                 );
             case 'creation':
                 return (
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
                             Created market
                         </div>
-                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1 truncate">
+                            {getMarketQuestion()}
+                        </div>
+                        <div className="text-xs text-[#999] dark:text-[#666] mt-0.5">
                             {data.outcomes_count} outcomes • {timeAgo}
                         </div>
                     </div>
                 );
             case 'resolution':
                 return (
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
                             Market resolved
                         </div>
-                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
-                            {data.auto_void ? 'Voided' : `Winner: Outcome ${data.winner_index}`} • {timeAgo}
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1 truncate">
+                            {data.auto_void ? 'Voided' : `Winner: ${getOutcomeLabel(data.winner_index)}`} • {getMarketQuestion()}
+                        </div>
+                        <div className="text-xs text-[#999] dark:text-[#666] mt-0.5">
+                            {timeAgo}
                         </div>
                     </div>
                 );
             case 'claim':
                 return (
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="font-semibold text-[#111] dark:text-[#e8e8e8] text-sm">
                             Claimed {formatLamportsToSol(data.amount_lamports)} SOL
                         </div>
-                        <div className="text-xs text-[#666] dark:text-[#999] mt-1">
+                        <div className="text-xs text-[#666] dark:text-[#999] mt-1 truncate">
+                            {getMarketQuestion()}
+                        </div>
+                        <div className="text-xs text-[#999] dark:text-[#666] mt-0.5">
                             {timeAgo}
                         </div>
                     </div>
@@ -701,22 +743,44 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
     };
 
     const marketPubkey = data.market_pubkey;
+    const txSignature = data.tx_sig;
+
+    const handleExplorerClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (txSignature) {
+            window.open(getTxExplorerUrl(txSignature), '_blank');
+            logClick('activity_tx_explorer', { tx_sig: txSignature, activity_type: type });
+        }
+    };
 
     return (
-        <Link
-            to={`/market/${marketPubkey}`}
-            className="flex items-center gap-3 p-4 hover:bg-[#fafafa] dark:hover:bg-[#252525] transition-colors"
-        >
+        <div className="flex items-center gap-3 p-4 hover:bg-[#fafafa] dark:hover:bg-[#252525] transition-colors">
             <div className="flex-shrink-0">
                 {renderIcon()}
             </div>
-            {renderContent()}
-            <div className="flex-shrink-0">
-                <ExternalLink className="w-4 h-4 text-[#999] dark:text-[#666]" />
+            <Link
+                to={`/market/${marketPubkey}`}
+                className="flex-1 min-w-0"
+                onClick={() => logClick('activity_market_link', { market: marketPubkey, activity_type: type })}
+            >
+                {renderContent()}
+            </Link>
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {txSignature && (
+                    <button
+                        onClick={handleExplorerClick}
+                        className="p-1.5 hover:bg-[#e0e0e0] dark:hover:bg-[#333] rounded transition-colors"
+                        title="View on Solana Explorer"
+                    >
+                        <ExternalLink className="w-4 h-4 text-[#666] dark:text-[#999]" />
+                    </button>
+                )}
             </div>
-        </Link>
+        </div>
     );
 };
+
 
 interface StatCardProps {
     icon: React.ReactNode;
