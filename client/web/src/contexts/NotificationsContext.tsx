@@ -227,6 +227,75 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         return () => clearInterval(interval);
     }, [fetchNotifications, program]);
 
+    // Realtime subscription for new notifications
+    useEffect(() => {
+        if (!publicKey) return;
+
+        const setupRealtimeSubscription = async () => {
+            try {
+                const { useRealtimeNotifications } = await import("@/hooks/useRealtimeSubscription");
+
+                // This will be called when a new notification arrives
+                const handleNewNotification = (newNotif: any) => {
+                    console.log("[Notifications] Realtime notification received:", newNotif);
+
+                    const mapped = {
+                        id: newNotif.id,
+                        type: newNotif.type,
+                        title: newNotif.title,
+                        message: newNotif.body || '',
+                        marketId: newNotif.metadata?.market_id,
+                        timestamp: new Date(newNotif.created_at).getTime(),
+                        read: newNotif.is_read,
+                        actionUrl: `/market/${newNotif.metadata?.market_id}`,
+                    };
+
+                    // Add to notifications list
+                    setNotifications((prev) => [mapped, ...prev]);
+                    setUnreadCount((prev) => prev + 1);
+
+                    // Show toast notification (optional)
+                    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                        new Notification(newNotif.title, {
+                            body: newNotif.body || '',
+                            icon: '/favicon.ico',
+                        });
+                    }
+                };
+
+                // Note: useRealtimeNotifications is a hook, so we can't call it here
+                // Instead, we'll set up the subscription manually
+                const userPubkey = publicKey.toBase58();
+                const channel = supabase
+                    .channel(`notifications:${userPubkey}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'notifications',
+                            filter: `user_pubkey=eq.${userPubkey}`,
+                        },
+                        (payload) => {
+                            handleNewNotification(payload.new);
+                        }
+                    )
+                    .subscribe();
+
+                return () => {
+                    supabase.removeChannel(channel);
+                };
+            } catch (err) {
+                console.error("[Notifications] Failed to set up realtime subscription:", err);
+            }
+        };
+
+        const cleanup = setupRealtimeSubscription();
+        return () => {
+            cleanup.then((fn) => fn?.());
+        };
+    }, [publicKey]);
+
     // Mark notification as read
     const markAsRead = useCallback(async (id: string) => {
         try {

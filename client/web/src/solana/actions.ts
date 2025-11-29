@@ -331,6 +331,33 @@ export async function createMarket(
   const marketPubkey = marketPda.toBase58();
   console.log("[createMarket] ✅ tx", { txSig, market: marketPubkey });
 
+  // Save market metadata to Supabase
+  try {
+    const { saveMarketMetadata } = await import("@/integrations/supabase/writes");
+
+    // Build outcome labels from answers
+    const outcomeLabels: Record<string, string> = {};
+    answers.forEach((answer, index) => {
+      outcomeLabels[index.toString()] = answer;
+    });
+
+    await saveMarketMetadata({
+      marketPubkey,
+      question,
+      description: "", // TODO: Add description field to createMarket params
+      creatorWallet: wallet.publicKey.toBase58(),
+      creatorName: null, // TODO: Fetch from user profile
+      imageUrl: imageUrl || null,
+      answers: answers.length.toString(),
+      outcomeLabels,
+    });
+
+    console.log("[createMarket] ✅ Metadata saved to Supabase");
+  } catch (err) {
+    console.error("[createMarket] Failed to save metadata to Supabase:", err);
+    // Don't throw - on-chain creation succeeded, metadata save is non-critical
+  }
+
   return { txSig, marketPubkey };
 }
 

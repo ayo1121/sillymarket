@@ -115,6 +115,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
     setError(null);
 
     try {
+      // Try backend API first
       const res = await fetch(
         `${API_URL}/comments`,
         {
@@ -129,8 +130,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
       );
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData?.error || `Failed to post comment: ${res.statusText}`);
+        throw new Error("Backend API failed");
       }
 
       const data = await res.json();
@@ -144,14 +144,49 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
         title: "Comment posted!",
         description: "Your comment has been added.",
       });
-    } catch (err: any) {
-      console.error("Error posting comment:", err);
-      setError(err?.message || "Failed to post comment");
-      toast({
-        title: "Error posting comment",
-        description: err?.message || "Failed to post comment",
-        variant: "destructive",
-      });
+    } catch (backendError: any) {
+      console.warn("[CommentsSection] Backend API failed, trying Supabase direct write:", backendError);
+
+      // Fallback to Supabase direct write
+      try {
+        const { postComment } = await import("@/integrations/supabase/writes");
+        const { supabase } = await import("@/integrations/supabase/client");
+
+        // Get user ID from Supabase users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('pubkey', window.localStorage.getItem('wallet_pubkey') || '')
+          .single();
+
+        if (!userData?.id) {
+          throw new Error("User not found in database");
+        }
+
+        await postComment({
+          marketId: validationResult.data.marketId,
+          userId: userData.id,
+          commentText: validationResult.data.commentText,
+        });
+
+        // Refresh comments list
+        await fetchComments();
+        setNewComment("");
+        setLastCommentTime(Date.now());
+
+        toast({
+          title: "Comment posted!",
+          description: "Your comment has been added.",
+        });
+      } catch (supabaseError: any) {
+        console.error("Error posting comment (both backend and Supabase failed):", supabaseError);
+        setError(supabaseError?.message || "Failed to post comment");
+        toast({
+          title: "Error posting comment",
+          description: supabaseError?.message || "Failed to post comment",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

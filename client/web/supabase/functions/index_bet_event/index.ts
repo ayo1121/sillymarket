@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import bs58 from "npm:bs58";
+import { BorshCoder, Idl } from "npm:@coral-xyz/anchor";
 
 // Get environment variables (without non-null assertion to allow validation)
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -31,6 +32,281 @@ const HELIUS_TX_URL = `https://api.helius.xyz/v0/transactions?api-key=${HELIUS_A
 const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
 });
+
+// IDL Definition
+const IDL = {
+  "version": "0.1.0",
+  "name": "silly_market",
+  "instructions": [
+    {
+      "name": "createMarket",
+      "accounts": [
+        {
+          "name": "market",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "questionHash",
+          "type": "string"
+        },
+        {
+          "name": "cutoffTs",
+          "type": "i64"
+        },
+        {
+          "name": "outcomesCount",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "placeBet",
+      "accounts": [
+        {
+          "name": "market",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bettor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "outcomeIndex",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolveMarket",
+      "accounts": [
+        {
+          "name": "market",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "resolver",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "winnerIndex",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "claimWinnings",
+      "accounts": [
+        {
+          "name": "market",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Market",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "questionHash",
+            "type": "string"
+          },
+          {
+            "name": "cutoffTs",
+            "type": "i64"
+          },
+          {
+            "name": "outcomesCount",
+            "type": "u8"
+          },
+          {
+            "name": "pools",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          },
+          {
+            "name": "winnerIndex",
+            "type": {
+              "option": "u8"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "MarketCreated",
+      "fields": [
+        {
+          "name": "market",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "creator",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "question_hash",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "cutoff_ts",
+          "type": "i64",
+          "index": false
+        },
+        {
+          "name": "outcomes_count",
+          "type": "u8",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "BetPlaced",
+      "fields": [
+        {
+          "name": "market",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "bettor",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "outcome_index",
+          "type": "u8",
+          "index": false
+        },
+        {
+          "name": "amount_lamports",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "pools_after",
+          "type": {
+            "vec": "u64"
+          },
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "WinnerResolved",
+      "fields": [
+        {
+          "name": "market",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "winner_index",
+          "type": "u8",
+          "index": false
+        },
+        {
+          "name": "resolved_total_pool",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "resolved_win_pool",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "fees_transferred",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "auto_void",
+          "type": "bool",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "WinningsClaimed",
+      "fields": [
+        {
+          "name": "market",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "user",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    }
+  ]
+};
 
 // Simple helper
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -252,9 +528,15 @@ function extractAnchorEventsFromLogs(logs: string[]): Array<{
 
   // Event discriminators from IDL (sha256("event:<event_name>").slice(0,8))
   const BET_PLACED_DISCRIMINATOR = [88, 88, 145, 226, 126, 206, 32, 0];
-  const MARKET_CREATED_DISCRIMINATOR = [109, 91, 158, 146, 254, 205, 168, 98];
+  const MARKET_CREATED_DISCRIMINATOR = [128, 233, 45, 135, 11, 38, 101, 82];
+  // New discriminators found in logs
+  const MARKET_CREATED_DISCRIMINATOR_2 = [120, 233, 45, 135, 11, 30, 101, 62];
+  const UNKNOWN_DISCRIMINATOR_1 = [187, 184, 29, 196, 54, 117, 70, 150];
+
   const WINNER_RESOLVED_DISCRIMINATOR = [250, 242, 155, 75, 109, 192, 204, 47];
   const WINNINGS_CLAIMED_DISCRIMINATOR = [185, 234, 107, 47, 154, 221, 112, 160];
+
+  const coder = new BorshCoder(IDL as Idl);
 
   for (const log of logs) {
     // Anchor events are emitted as "Program data: <base64>"
@@ -264,23 +546,53 @@ function extractAnchorEventsFromLogs(logs: string[]): Array<{
         const data = base64ToUint8Array(base64Data);
 
         if (data.length < 8) {
+          console.log("[index_bet_event] Data too short for discriminator:", data.length);
           continue; // Too short to have discriminator
         }
 
         // Check discriminator to identify event type
         const discriminator = Array.from(data.slice(0, 8));
+        console.log("[index_bet_event] Found discriminator:", discriminator);
 
+        let eventName = "";
         if (arraysEqual(discriminator, BET_PLACED_DISCRIMINATOR)) {
-          events.push({ name: "BetPlaced", data });
-        } else if (arraysEqual(discriminator, MARKET_CREATED_DISCRIMINATOR)) {
-          events.push({ name: "MarketCreated", data });
+          eventName = "BetPlaced";
+        } else if (arraysEqual(discriminator, MARKET_CREATED_DISCRIMINATOR) || arraysEqual(discriminator, MARKET_CREATED_DISCRIMINATOR_2)) {
+          eventName = "MarketCreated";
         } else if (arraysEqual(discriminator, WINNER_RESOLVED_DISCRIMINATOR)) {
-          events.push({ name: "WinnerResolved", data });
+          eventName = "WinnerResolved";
         } else if (arraysEqual(discriminator, WINNINGS_CLAIMED_DISCRIMINATOR)) {
-          events.push({ name: "WinningsClaimed", data });
+          eventName = "WinningsClaimed";
+        } else if (arraysEqual(discriminator, UNKNOWN_DISCRIMINATOR_1)) {
+          // Try to decode as MarketCreated
+          eventName = "MarketCreated";
+          console.log("[index_bet_event] Matched Unknown 1 (Trying MarketCreated)");
+        } else {
+          console.log("[index_bet_event] Unknown discriminator:", discriminator);
+          continue;
         }
+
+        if (eventName) {
+          console.log(`[index_bet_event] Matched ${eventName}`);
+          try {
+            // Decode the event data using Anchor coder
+            const decodedEvent = coder.events.decode(base64Data);
+            if (decodedEvent) {
+              console.log(`[index_bet_event] Successfully decoded ${eventName}:`, JSON.stringify(decodedEvent.data).slice(0, 200));
+              events.push({ name: eventName, data: decodedEvent.data });
+            } else {
+              console.warn(`[index_bet_event] Failed to decode ${eventName} with coder, using raw data`);
+              events.push({ name: eventName, data });
+            }
+          } catch (decodeErr) {
+            console.error(`[index_bet_event] Exception decoding ${eventName}:`, decodeErr);
+            // Fallback to raw data if decoding fails (though downstream logic might fail too)
+            events.push({ name: eventName, data });
+          }
+        }
+
       } catch (err) {
-        console.warn("[bets-indexer] Failed to decode event log:", err);
+        console.error("[index_bet_event] Error parsing log data:", err);
       }
     }
   }
@@ -392,7 +704,11 @@ async function fetchDecodedTx(signature: string, payloadTx: any = null): Promise
         body: text,
         signature,
       });
-      // Return null instead of throwing
+      // Fallback to payloadTx if available
+      if (payloadTx) {
+        console.log("[index_bet_event] Using payloadTx as fallback");
+        return [payloadTx];
+      }
       return null;
     }
 
@@ -400,13 +716,13 @@ async function fetchDecodedTx(signature: string, payloadTx: any = null): Promise
     if (!Array.isArray(json) || json.length === 0) {
       console.warn("[index_bet_event] Helius returned empty array for signature", signature, ", json:", json);
       // Return minimal structure to allow downstream fallbacks (instruction/account parsing)
-      if (fallbackTx) {
+      if (payloadTx) {
         const normalized =
-          fallbackTx.transaction ??
-          fallbackTx.tx ??
-          (fallbackTx.message || fallbackTx.meta
-            ? { message: fallbackTx.message, meta: fallbackTx.meta }
-            : fallbackTx);
+          payloadTx.transaction ??
+          payloadTx.tx ??
+          (payloadTx.message || payloadTx.meta
+            ? { message: payloadTx.message, meta: payloadTx.meta }
+            : payloadTx);
         return normalized ? [normalized] : [];
       }
       return [];
@@ -1285,8 +1601,27 @@ Deno.serve(async (req) => {
       console.log("[index_bet_event] merged keys", baseKeys);
 
       const programEvents = decoded ? extractProgramEvents(decoded, programId) : [];
+
+      // MERGE ANCHOR EVENTS FROM LOGS (Critical for fallback when Helius fails)
+      for (const anchorEv of anchorEvents) {
+        const exists = programEvents.some(pe =>
+          (pe.name === anchorEv.name || pe.event?.name === anchorEv.name)
+        );
+        if (!exists) {
+          programEvents.push({
+            type: "ProgramEvent",
+            event: {
+              name: anchorEv.name,
+              data: anchorEv.data
+            },
+            name: anchorEv.name,
+            data: anchorEv.data
+          });
+        }
+      }
+
       const programEventsCount = programEvents.length;
-      if (decoded) {
+      if (decoded || programEvents.length > 0) {
         console.log("[index_bet_event] Found", programEvents.length, "program event(s) for", programId);
       }
 
@@ -1597,11 +1932,19 @@ Deno.serve(async (req) => {
                 // NOTIFICATION LOGIC: Notify all bettors
                 // ---------------------------------------------------------
                 try {
+                  console.log(`[index_bet_event] Fetching bets for market: ${marketStr}`);
                   // 1. Fetch all bets for this market
-                  const { data: bets } = await supabase
+                  const { data: bets, error: betsError } = await supabase
                     .from("bets")
                     .select("bettor_pubkey, outcome_index")
                     .eq("market_pubkey", marketStr);
+
+                  if (betsError) {
+                    console.error("[index_bet_event] Error fetching bets:", JSON.stringify(betsError));
+                    throw betsError;
+                  }
+
+                  console.log(`[index_bet_event] Found ${bets?.length || 0} bets for market`);
 
                   if (bets && bets.length > 0) {
                     const uniqueBettors = new Set<string>();
@@ -1632,12 +1975,15 @@ Deno.serve(async (req) => {
 
                     if (notifications.length > 0) {
                       const { error: notifError } = await supabase.from("notifications").insert(notifications);
-                      if (notifError) console.error("[index_bet_event] Failed to insert notifications:", notifError);
-                      else console.log(`[index_bet_event] Created ${notifications.length} notifications for resolved market`);
+                      if (notifError) {
+                        console.error("[index_bet_event] Failed to insert notifications:", JSON.stringify(notifError));
+                      } else {
+                        console.log(`[index_bet_event] Created ${notifications.length} notifications for resolved market`);
+                      }
                     }
                   }
                 } catch (err) {
-                  console.error("[index_bet_event] Error generating notifications for resolution:", err);
+                  console.error("[index_bet_event] Error generating notifications for resolution:", err instanceof Error ? err.message : JSON.stringify(err));
                 }
               }
             } else {
