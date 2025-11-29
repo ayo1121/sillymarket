@@ -16,8 +16,8 @@ export async function saveMarketMetadata(params: {
     const { error } = await supabase.from("markets").insert({
         market_pubkey: params.marketPubkey,
         question: params.question,
-        description: params.description,
-        creator_wallet: params.creatorWallet,
+        description: params.description || null, // DB allows null
+        creator_wallet: params.creatorWallet || null, // DB allows null
         creator_name: params.creatorName,
         image_url: params.imageUrl,
         answers: params.answers,
@@ -31,6 +31,7 @@ export async function saveMarketMetadata(params: {
 
     console.log("[Supabase] Market metadata saved:", params.marketPubkey);
 }
+
 
 /**
  * Upsert user profile when a wallet connects / username changes.

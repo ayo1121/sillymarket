@@ -45,6 +45,7 @@ import { SEO } from "@/components/SEO";
 import { MarketStructuredData } from "@/components/StructuredData";
 
 import { MarketStatusBadge } from "@/components/common/MarketStatusBadge";
+import { useRealtimeBets } from "@/hooks/useRealtimeSubscription";
 
 const MarketDetails = () => {
   const { id: marketId } = useParams<{ id: string }>();
@@ -67,6 +68,7 @@ const MarketDetails = () => {
   const handleOpenShare = useCallback((m: UIMarket) => setShareTarget(m), []);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedCreator, setCopiedCreator] = useState(false);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
   const closesAtMs = useMemo(
     () =>
       market?.closesAt?.getTime?.() ??
@@ -156,6 +158,13 @@ const MarketDetails = () => {
 
   const MAX_VISIBLE_RECENT = 10;
 
+  // Realtime subscription for new bets
+  useRealtimeBets(marketId || "", (newBet) => {
+    console.log("[MarketDetails] New bet received via realtime:", newBet);
+    // Trigger a reload of market data to reflect the new bet
+    setReloadTrigger(prev => prev + 1);
+  });
+
   // Fetch market data
   useEffect(() => {
     if (!program || !marketId) {
@@ -212,7 +221,8 @@ const MarketDetails = () => {
     };
 
     loadMarket();
-  }, [program, marketId, wallet.publicKey]);
+  }, [program, marketId, wallet.publicKey, reloadTrigger]);
+
 
   // Helper functions for pool calculations
   // Refresh market data from Supabase bets + on-chain

@@ -231,6 +231,7 @@ export async function createMarket(
     question: string;
     answers: string[];
     imageUrl?: string | null;
+    description?: string;
   }
 ): Promise<{ txSig: string; marketPubkey: string }> {
   // 1) Get program bound to wallet
@@ -247,6 +248,7 @@ export async function createMarket(
   const question = params.question.trim();
   const answers = params.answers.map(a => a.trim());
   const imageUrl = (params.imageUrl || "").trim();
+  const description = (params.description || "").trim();
 
   // Validate
   if (question.length === 0 || question.length > 1024) {
@@ -263,13 +265,17 @@ export async function createMarket(
   if (imageUrl.length > 200) {
     throw new Error("Image URL must be <= 200 characters");
   }
+  if (description.length > 1024) {
+    throw new Error("Description must be <= 1024 characters");
+  }
 
   // Check offline status
   checkOfflineAndQueue("create_market", {
     cutoffTs: params.cutoffTs,
     question: params.question,
     answers: params.answers,
-    imageUrl: params.imageUrl
+    imageUrl: params.imageUrl,
+    description: params.description,
   });
 
   // 3) Derive market PDA exactly the same way the on-chain program does
@@ -299,13 +305,15 @@ export async function createMarket(
     Array.from(questionHash),
     question,
     answers,
-    imageUrl
+    imageUrl,
+    description,
   ) ?? (program.methods as any).create_market?.(
     cutoffTsBn,
     Array.from(questionHash),
     question,
     answers,
-    imageUrl
+    imageUrl,
+    description,
   );
 
   if (!builder) {
@@ -344,7 +352,7 @@ export async function createMarket(
     await saveMarketMetadata({
       marketPubkey,
       question,
-      description: "", // TODO: Add description field to createMarket params
+      description: description || "",
       creatorWallet: wallet.publicKey.toBase58(),
       creatorName: null, // TODO: Fetch from user profile
       imageUrl: imageUrl || null,

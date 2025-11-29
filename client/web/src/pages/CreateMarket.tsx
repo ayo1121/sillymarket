@@ -141,6 +141,7 @@ const CreateMarket = () => {
         question: question.trim(),
         answers: answers,
         imageUrl: finalImageUrl || null,
+        description: description.trim(),
       });
 
       console.log("[CreateMarket] Anchor tx success", { txSig, marketPubkey });

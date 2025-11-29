@@ -22,13 +22,14 @@ interface CommentsSectionProps {
 }
 
 export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
-  const { isAuthenticated } = useWalletIdentity();
+  const { isAuthenticated, pubkey: walletPubkey } = useWalletIdentity();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [lastCommentTime, setLastCommentTime] = useState(0);
+
 
   const fetchComments = async () => {
     setFetchLoading(true);
@@ -152,15 +153,19 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
         const { postComment } = await import("@/integrations/supabase/writes");
         const { supabase } = await import("@/integrations/supabase/client");
 
+        if (!walletPubkey) {
+          throw new Error("Wallet not connected");
+        }
+
         // Get user ID from Supabase users table
         const { data: userData } = await supabase
           .from('users')
           .select('id')
-          .eq('pubkey', window.localStorage.getItem('wallet_pubkey') || '')
+          .eq('pubkey', walletPubkey)
           .single();
 
         if (!userData?.id) {
-          throw new Error("User not found in database");
+          throw new Error("User not found in database. Please reconnect your wallet.");
         }
 
         await postComment({
