@@ -8,6 +8,7 @@ import { BorshCoder, Idl } from "npm:@coral-xyz/anchor";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const HELIUS_API_KEY = Deno.env.get("HELIUS_API_KEY");
+const HELIUS_WEBHOOK_SECRET = Deno.env.get("HELIUS_WEBHOOK_SECRET");
 const YESNO_PROGRAM_ID = Deno.env.get("YESNO_PROGRAM_ID") || "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb";
 const PLACE_BET_DISCRIMINATOR = Uint8Array.from([222, 62, 67, 220, 63, 166, 126, 33]); // sha256("global:place_bet").slice(0,8)
 
@@ -16,6 +17,7 @@ const missingVars: string[] = [];
 if (!SUPABASE_URL) missingVars.push("SUPABASE_URL");
 if (!SUPABASE_SERVICE_ROLE_KEY) missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
 if (!HELIUS_API_KEY) missingVars.push("HELIUS_API_KEY");
+if (!HELIUS_WEBHOOK_SECRET) missingVars.push("HELIUS_WEBHOOK_SECRET");
 
 if (missingVars.length > 0) {
   const errorMsg = `[bets-indexer] FATAL: Missing required environment variables: ${missingVars.join(", ")}. Configure via: npx supabase secrets set <VAR_NAME>=<value>`;
@@ -32,6 +34,101 @@ const HELIUS_TX_URL = `https://api.helius.xyz/v0/transactions?api-key=${HELIUS_A
 const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
 });
+
+// =====================================================================
+// SECURITY: Helius Webhook Signature Verification
+// =====================================================================
+
+/**
+ * Verify Helius webhook signature using HMAC-SHA256
+ * @param body - Raw request body as string
+ * @param signature - Signature from helius-signature header
+ * @param secret - Shared secret configured in Helius dashboard
+ * @returns true if signature is valid, false otherwise
+ */
+async function verifyHeliusSignature(
+  body: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
+  try {
+    // Helius uses HMAC-SHA256 for webhook signatures
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const signatureBuffer = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(body)
+    );
+
+    // Convert to hex string
+    const computedSignature = Array.from(new Uint8Array(signatureBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Constant-time comparison to prevent timing attacks
+    return computedSignature === signature.toLowerCase();
+  } catch (err) {
+    console.error("[bets-indexer] Signature verification error:", err);
+    return false;
+  }
+}
+
+// =====================================================================
+// SECURITY: Simple Rate Limiting (In-Memory)
+// =====================================================================
+
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 100; // Max 100 requests per minute per IP
+
+/**
+ * Check if request should be rate limited
+ * @param identifier - IP address or other identifier
+ * @returns true if rate limit exceeded, false otherwise
+ */
+function isRateLimited(identifier: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(identifier);
+
+  if (!entry || now > entry.resetAt) {
+    // New window
+    rateLimitMap.set(identifier, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    });
+    return false;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return true; // Rate limit exceeded
+  }
+
+  entry.count++;
+  return false;
+}
+
+// Cleanup old entries periodically (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
 
 // IDL Definition
 const IDL = {
@@ -1394,33 +1491,74 @@ function findInstructionOutcomeIndex(args: {
 
 Deno.serve(async (req) => {
   const start = Date.now();
+  const requestId = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+
+  // =====================================================================
+  // SECURITY: Rate Limiting
+  // =====================================================================
+  const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+
+  if (isRateLimited(clientIp)) {
+    console.warn(`[bets-indexer] [${timestamp}] [${requestId}] RATE_LIMIT_EXCEEDED ip=${clientIp}`);
+    return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   // Log incoming request for debugging
-  console.log("[bets-indexer] Received request:", {
-    method: req.method,
-    url: req.url,
-    timestamp: new Date().toISOString(),
-  });
+  console.log(`[bets-indexer] [${timestamp}] [${requestId}] REQUEST method=${req.method} ip=${clientIp}`);
 
   if (req.method !== "POST") {
-    console.log("[bets-indexer] ⚠️ Non-POST request rejected:", req.method);
+    console.warn(`[bets-indexer] [${timestamp}] [${requestId}] METHOD_NOT_ALLOWED method=${req.method}`);
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // =====================================================================
+  // SECURITY: Helius Webhook Signature Verification
+  // =====================================================================
+  const heliusSignature = req.headers.get("helius-signature") || req.headers.get("x-helius-signature");
+
+  if (!heliusSignature) {
+    console.error(`[bets-indexer] [${timestamp}] [${requestId}] MISSING_SIGNATURE ip=${clientIp}`);
+    return new Response(JSON.stringify({ error: "Missing webhook signature" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Read raw body for signature verification
+  const rawBody = await req.text();
+  const isValidSignature = await verifyHeliusSignature(
+    rawBody,
+    heliusSignature,
+    HELIUS_WEBHOOK_SECRET!
+  );
+
+  if (!isValidSignature) {
+    console.error(`[bets-indexer] [${timestamp}] [${requestId}] INVALID_SIGNATURE ip=${clientIp} signature=${heliusSignature.slice(0, 16)}...`);
+    return new Response(JSON.stringify({ error: "Invalid webhook signature" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  console.log(`[bets-indexer] [${timestamp}] [${requestId}] SIGNATURE_VERIFIED`);
+
+  // Parse JSON body after signature verification
   let body: any;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody);
   } catch (e) {
-    console.error("[index_bet_event] Failed to parse JSON body:", e);
+    console.error(`[bets-indexer] [${timestamp}] [${requestId}] JSON_PARSE_ERROR error=${e}`);
     return new Response("Bad JSON", { status: 400 });
   }
 
   // Log incoming payload structure for debugging
   try {
-    const raw = JSON.stringify(body);
-    const truncated = raw.length > 2000 ? raw.slice(0, 2000) + "..." : raw;
-    console.log("[index_bet_event] Incoming payload (truncated):", truncated);
-    console.log("[index_bet_event] Payload keys:", Object.keys(body || {}));
+    const truncated = rawBody.length > 2000 ? rawBody.slice(0, 2000) + "..." : rawBody;
+    console.log(`[bets-indexer] [${timestamp}] [${requestId}] PAYLOAD_RECEIVED size=${rawBody.length} keys=${Object.keys(body || {}).join(",")}`);
   } catch {
     // ignore
   }
@@ -1448,7 +1586,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log("[index_bet_event] Found", signatures.length, "signature(s)");
+    console.log(`[bets-indexer] [${timestamp}] [${requestId}] SIGNATURES_FOUND count=${signatures.length}`);
 
     const programId = YESNO_PROGRAM_ID;
 

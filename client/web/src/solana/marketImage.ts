@@ -1,4 +1,5 @@
 import type { UIMarket } from "./marketMapping";
+import { sanitizeImageUrl } from "@/lib/urlValidation";
 
 export function getMarketImageUrl(market: UIMarket | null | undefined): string | null {
   if (!market) return null;
@@ -13,5 +14,7 @@ export function getMarketImageUrl(market: UIMarket | null | undefined): string |
 
   const url = candidates[0] ?? null;
   if (!url || url.toString().trim().length === 0) return null;
-  return url.toString();
+
+  // SECURITY: Validate URL to prevent XSS via malicious image URLs
+  return sanitizeImageUrl(url.toString());
 }
