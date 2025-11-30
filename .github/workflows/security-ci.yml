@@ -58,7 +58,9 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          cargo install anchor-cli --version 0.30.1 --locked
+          wget https://github.com/coral-xyz/anchor/releases/download/v0.29.0/anchor-cli-v0.29.0-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf anchor-cli-v0.29.0-x86_64-unknown-linux-gnu.tar.gz
+          echo "$PWD/anchor-cli-v0.29.0-x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
 
       - name: Verify Solana installation
         run: |
@@ -154,7 +156,7 @@ jobs:
           cache-dependency-path: client/web/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: TypeScript Type Check
         run: |
