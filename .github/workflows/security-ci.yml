@@ -58,9 +58,7 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          wget https://github.com/solana-foundation/anchor/releases/download/v0.30.1/anchor-cli-v0.30.1-x86_64-unknown-linux-gnu.tar.gz
-          tar -xzf anchor-cli-v0.30.1-x86_64-unknown-linux-gnu.tar.gz
-          echo "$PWD/anchor-cli-v0.30.1-x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+          cargo install anchor-cli --version 0.30.1 --locked
 
       - name: Verify Solana installation
         run: |
