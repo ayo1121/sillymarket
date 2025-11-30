@@ -304,7 +304,8 @@ pub mod yesno_markets {
 
         // Creator must cover creation fee + market rent
         let creator_balance = ctx.accounts.creator.lamports();
-        let market_rent = anchor_lang::solana_program::rent::Rent::get()?.minimum_balance(Market::SPACE);
+        let market_rent =
+            anchor_lang::solana_program::rent::Rent::get()?.minimum_balance(Market::SPACE);
         require!(
             creator_balance >= CREATION_FEE_LAMPORTS + market_rent,
             ErrorCode::InsufficientFunds
