@@ -1,0 +1,26 @@
+[advisories]
+# All advisories below are transitive dependencies from solana-program 1.18.26
+# which is required for Anchor 0.29.0 compatibility. These cannot be upgraded
+# without breaking the Anchor framework.
+
+ignore = [
+    "RUSTSEC-2024-0344",  # curve25519-dalek timing variability
+                           # - Transitive via solana-program 1.18.26
+                           # - Timing attacks not exploitable in on-chain programs
+                           # - Would require solana-program upgrade (breaks Anchor 0.29.0)
+    
+    "RUSTSEC-2024-0388",  # derivative unmaintained
+                           # - Build-time derive macro only (ark-* crates)
+                           # - Not runtime code, no security impact
+                           # - Transitive via solana-program
+    
+    "RUSTSEC-2024-0436",  # paste unmaintained  
+                           # - Build-time macro only (ark-ff)
+                           # - Not runtime code, no security impact
+                           # - Transitive via solana-program
+    
+    "RUSTSEC-2023-0033",  # borsh ZST unsoundness
+                           # - We don't use Zero-Sized Types in borsh serialization
+                           # - Transitive via solana-program 1.18.26
+                           # - Would require solana-program upgrade (breaks Anchor 0.29.0)
+]

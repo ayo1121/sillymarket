@@ -94,13 +94,13 @@ jobs:
           echo "✅ Program tests passed"
           echo "::endgroup::"
 
-      - name: Cargo Audit (Advisory)
-        continue-on-error: true
+      - name: Cargo Audit
         working-directory: programs/yesno_markets
         run: |
           echo "::group::Checking for vulnerable dependencies"
           cargo install cargo-audit
-          cargo audit || echo "::warning::Cargo audit found advisories - review for security issues"
+          cargo audit
+          echo "✅ No unignored security advisories"
           echo "::endgroup::"
 
       - name: Anchor Security Summary
