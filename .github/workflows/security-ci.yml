@@ -288,8 +288,14 @@ jobs:
       - name: Check for Hardcoded Secrets in Migrations
         run: |
           echo "::group::Scanning migrations for hardcoded secrets"
-          if grep -rE "(password|secret|key).*=.*['\"]" client/web/supabase/migrations/ 2>/dev/null; then
+          # Exclude 'primary key' from matches (it's a SQL keyword, not a secret)
+          if grep -rE "(password|secret).*=.*['\"]" client/web/supabase/migrations/ 2>/dev/null; then
             echo "::error::Found potential hardcoded secrets in migrations"
+            exit 1
+          fi
+          # Check for API keys separately (more specific pattern)
+          if grep -rE "(api_key|secret_key|private_key).*=.*['\"][a-zA-Z0-9]{20,}" client/web/supabase/migrations/ 2>/dev/null; then
+            echo "::error::Found potential API keys in migrations"
             exit 1
           fi
           echo "✅ No hardcoded secrets in migrations"
