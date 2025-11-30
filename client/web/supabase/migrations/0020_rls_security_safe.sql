@@ -89,40 +89,41 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 3. PROFILES TABLE (if exists)
+-- 3. USERS TABLE (if exists)
 -- =====================================================================
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'profiles') THEN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users') THEN
     
     -- SELECT: Everyone can read
-    DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
-    DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
-    EXECUTE 'CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT TO public USING (true)';
+    DROP POLICY IF EXISTS "users_select_all" ON public.users;
+    DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.users;
+    EXECUTE 'CREATE POLICY "users_select_all" ON public.users FOR SELECT TO public USING (true)';
     
     -- INSERT: Users can only insert their own profile
-    DROP POLICY IF EXISTS "profiles_insert_own" ON public.profiles;
-    DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
-    EXECUTE 'CREATE POLICY "profiles_insert_own" ON public.profiles
+    DROP POLICY IF EXISTS "users_insert_own" ON public.users;
+    DROP POLICY IF EXISTS "users_insert_all" ON public.users;
+    DROP POLICY IF EXISTS "Users can insert their own profile" ON public.users;
+    EXECUTE 'CREATE POLICY "users_insert_own" ON public.users
       FOR INSERT TO authenticated, anon
-      WITH CHECK (user_id = (current_setting(''request.jwt.claims'', true)::json->>''sub'')::uuid)';
+      WITH CHECK (pubkey = current_setting(''request.jwt.claims'', true)::json->>''sub'')';
     
     -- UPDATE: Users can only update their own profile
-    DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
-    DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-    EXECUTE 'CREATE POLICY "profiles_update_own" ON public.profiles
+    DROP POLICY IF EXISTS "users_update_own" ON public.users;
+    DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
+    EXECUTE 'CREATE POLICY "users_update_own" ON public.users
       FOR UPDATE TO authenticated, anon
-      USING (user_id = (current_setting(''request.jwt.claims'', true)::json->>''sub'')::uuid)
-      WITH CHECK (user_id = (current_setting(''request.jwt.claims'', true)::json->>''sub'')::uuid)';
+      USING (pubkey = current_setting(''request.jwt.claims'', true)::json->>''sub'')
+      WITH CHECK (pubkey = current_setting(''request.jwt.claims'', true)::json->>''sub'')';
     
     -- DELETE: Nobody can delete profiles
-    DROP POLICY IF EXISTS "profiles_delete_nobody" ON public.profiles;
-    EXECUTE 'CREATE POLICY "profiles_delete_nobody" ON public.profiles FOR DELETE TO public USING (false)';
+    DROP POLICY IF EXISTS "users_delete_nobody" ON public.users;
+    EXECUTE 'CREATE POLICY "users_delete_nobody" ON public.users FOR DELETE TO public USING (false)';
     
-    RAISE NOTICE '✅ Profiles table: 4 policies created';
+    RAISE NOTICE '✅ Users table: 4 policies created';
   ELSE
-    RAISE WARNING '⚠️  Profiles table does not exist - skipping';
+    RAISE WARNING '⚠️  Users table does not exist - skipping';
   END IF;
 END $$;
 
@@ -142,8 +143,8 @@ BEGIN
   IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'comments') THEN
     tables_found := array_append(tables_found, 'comments');
   END IF;
-  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'profiles') THEN
-    tables_found := array_append(tables_found, 'profiles');
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users') THEN
+    tables_found := array_append(tables_found, 'users');
   END IF;
   
   -- Count policies for existing tables
@@ -169,7 +170,7 @@ SELECT
   policyname,
   cmd AS command
 FROM pg_policies
-WHERE tablename IN ('markets', 'comments', 'profiles')
+WHERE tablename IN ('markets', 'comments', 'users')
   AND schemaname = 'public'
 ORDER BY tablename, 
   CASE 
