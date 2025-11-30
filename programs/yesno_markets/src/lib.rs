@@ -827,10 +827,8 @@ pub mod yesno_markets {
                     to: ctx.accounts.user.key()
                 });
             }
-        } else {
-            if m.win_unclaimed > 0 {
-                m.win_unclaimed = m.win_unclaimed.saturating_sub(1);
-            }
+        } else if m.win_unclaimed > 0 {
+            m.win_unclaimed = m.win_unclaimed.saturating_sub(1);
         }
 
         pda_transfer_from_market(
@@ -1133,7 +1131,7 @@ fn available_lamports_above_rent(acc: &AccountInfo, account_space: usize) -> Res
 
 // Validate only. No on-chain reallocation.
 #[inline]
-fn require_trim_ascii_no_ctrl(s: &mut String) -> Result<()> {
+fn require_trim_ascii_no_ctrl(s: &mut str) -> Result<()> {
     let t = s.trim();
     require!(!t.is_empty(), ErrorCode::BadParam);
     require!(
