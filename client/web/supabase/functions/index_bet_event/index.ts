@@ -1883,7 +1883,7 @@ Deno.serve(async (req) => {
               eventAmount = baseKeys.amountLamports;
             }
 
-            let poolsAfter =
+            const poolsAfter =
               normalizeNumericArrayFromEvent(evData.pools_after ?? evData.poolsAfter) ??
               extractedPoolsAfter ??
               baseKeys.poolsAfter;
