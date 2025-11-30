@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::rent::Rent;
 use anchor_lang::system_program;
 use solana_sha256_hasher::hash;
 
@@ -305,7 +304,7 @@ pub mod yesno_markets {
 
         // Creator must cover creation fee + market rent
         let creator_balance = ctx.accounts.creator.lamports();
-        let market_rent = Rent::get()?.minimum_balance(Market::SPACE);
+        let market_rent = anchor_lang::solana_program::rent::Rent::get()?.minimum_balance(Market::SPACE);
         require!(
             creator_balance >= CREATION_FEE_LAMPORTS + market_rent,
             ErrorCode::InsufficientFunds
@@ -1125,7 +1124,7 @@ fn pda_transfer_from_market<'info>(
 #[inline]
 fn available_lamports_above_rent(acc: &AccountInfo, account_space: usize) -> Result<u64> {
     let lamports = acc.lamports();
-    let rent_min = Rent::get()?.minimum_balance(account_space);
+    let rent_min = anchor_lang::solana_program::rent::Rent::get()?.minimum_balance(account_space);
     Ok(lamports.saturating_sub(rent_min))
 }
 
