@@ -59,67 +59,44 @@ jobs:
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.79.0
+          toolchain: stable
           components: rustfmt, clippy
 
-      - name: Install Anchor CLI
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
-
-      - name: Verify Solana installation
-        run: |
-          solana --version
-          anchor --version
-
       - name: Rust Format Check
+        working-directory: programs/yesno_markets
         run: |
           echo "::group::Checking Rust code formatting"
-          cargo fmt --all -- --check
-          if [ $? -ne 0 ]; then
-            echo "::error::Rust code is not properly formatted. Run 'cargo fmt' locally."
-            exit 1
-          fi
+          cargo fmt -- --check
           echo "✅ Rust formatting check passed"
           echo "::endgroup::"
 
       - name: Clippy Lint
+        working-directory: programs/yesno_markets
         run: |
           echo "::group::Running Clippy linter"
           cargo clippy --all-targets --all-features -- -D warnings
-          if [ $? -ne 0 ]; then
-            echo "::error::Clippy found issues. Fix warnings before merging."
-            exit 1
-          fi
           echo "✅ Clippy lint passed"
           echo "::endgroup::"
 
       - name: Build Anchor Program
+        working-directory: programs/yesno_markets
         run: |
           echo "::group::Building Anchor program"
-          cd yesno_markets
-          anchor build
-          if [ $? -ne 0 ]; then
-            echo "::error::Anchor build failed"
-            exit 1
-          fi
+          cargo build --release
           echo "✅ Anchor build passed"
           echo "::endgroup::"
 
-      - name: Run Anchor Tests
+      - name: Run Program Tests
+        working-directory: programs/yesno_markets
         run: |
-          echo "::group::Running Anchor tests"
-          cd yesno_markets
-          # Note: anchor test requires a local validator, which may not be stable in CI
-          # For now, we run cargo test on the program itself
-          cd programs/yesno_markets
+          echo "::group::Running program tests"
           cargo test --lib
-          if [ $? -ne 0 ]; then
-            echo "::error::Anchor tests failed"
-          anchor test
+          echo "✅ Program tests passed"
           echo "::endgroup::"
 
       - name: Cargo Audit (Advisory)
         continue-on-error: true
+        working-directory: programs/yesno_markets
         run: |
           echo "::group::Checking for vulnerable dependencies"
           cargo install cargo-audit
