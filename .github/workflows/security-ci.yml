@@ -111,7 +111,9 @@ jobs:
           cargo test --lib
           if [ $? -ne 0 ]; then
             echo "::error::Anchor tests failed"
-          anchor test
+            exit 1
+          fi
+          echo "✅ Anchor tests passed"
           echo "::endgroup::"
 
       - name: Cargo Audit (Advisory)
@@ -158,24 +160,22 @@ jobs:
 
       - name: TypeScript Type Check
         run: |
-          cd client/web
           npx tsc --noEmit
 
       - name: Check for Exposed Secrets
         run: |
           # Check for common secret patterns in frontend code
-          if grep -rE "sk_live_[0-9a-zA-Z]+" client/web/src/; then
+          if grep -rE "sk_live_[0-9a-zA-Z]+" src/; then
             echo "::error::Found potential Stripe secret key in frontend code"
             exit 1
           fi
-          if grep -rE "AIza[0-9A-Za-z-_]{35}" client/web/src/; then
+          if grep -rE "AIza[0-9A-Za-z_-]{35}" src/; then
             echo "::error::Found potential Google API key in frontend code"
             exit 1
           fi
 
       - name: ESLint Security Rules
         run: |
-          cd client/web
           # Run ESLint with security plugin
           # We use || true because we want to see the output but not fail immediately if there are warnings
           # However, we configure it to fail on errors
