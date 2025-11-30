@@ -45,13 +45,15 @@ export async function upsertUser(pubkey: string, username?: string) {
         return;
     }
 
+    const payload: any = { pubkey };
+    if (username) {
+        payload.username = username;
+    }
+
     const { error } = await supabase
         .from("users")
         .upsert(
-            {
-                pubkey,
-                username: username || null,
-            },
+            payload,
             { onConflict: "pubkey" },
         );
 

@@ -136,11 +136,13 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
   }, [open]);
 
   // Track modal open for analytics
+  // Track modal open for analytics
+  const marketPubkey = market?.pubkey;
   useEffect(() => {
-    if (open && market) {
-      logBetModalOpen(market.pubkey, answerIndex);
+    if (open && marketPubkey) {
+      logBetModalOpen(marketPubkey, answerIndex);
     }
-  }, [open, market?.pubkey, answerIndex]);
+  }, [open, marketPubkey, answerIndex]);
 
   const handleSelectOutcome = (index: number) => {
     // Allow the user to pick any outcome; the program will enforce

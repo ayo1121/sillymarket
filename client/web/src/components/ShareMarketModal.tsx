@@ -41,17 +41,18 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
     }
   };
 
+  const marketPubkey = market?.pubkey;
   useEffect(() => {
     if (!open) {
       setCopied(false);
       setPreview(null);
       setIsGeneratingPreview(false);
       setPreviewError(null);
-    } else if (market) {
+    } else if (marketPubkey) {
       // Track share modal open
-      logClick('share_modal_open', { market_pubkey: market.pubkey });
+      logClick('share_modal_open', { market_pubkey: marketPubkey });
     }
-  }, [open, market?.pubkey]);
+  }, [open, marketPubkey]);
 
   useEffect(() => {
     if (!open || !market?.pubkey) {

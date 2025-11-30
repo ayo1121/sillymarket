@@ -29,11 +29,12 @@ export function WalletIdentityProvider({ children }: { children: React.ReactNode
       return;
     }
 
-    // Upsert user in Supabase when wallet connects
+    // Upsert user in Supabase when wallet connects (just to ensure existence)
     const upsertUserProfile = async () => {
       try {
         const { upsertUser } = await import("@/integrations/supabase/writes");
-        await upsertUser(pk, username || undefined);
+        // Don't pass username here to avoid overwriting it with null before we fetch it
+        await upsertUser(pk);
         console.log("[walletIdentity] User profile upserted in Supabase");
       } catch (err) {
         console.error("[walletIdentity] Failed to upsert user in Supabase:", err);
@@ -81,11 +82,11 @@ export function WalletIdentityProvider({ children }: { children: React.ReactNode
     };
   }, [pk, connected]);
 
-  const setUsername = (u: string) => {
+  const setUsername = React.useCallback((u: string) => {
     if (!pk) return;
     setU(u);
     // Server already updated, just sync local state
-  };
+  }, [pk]);
 
   const requireWallet = import.meta.env.VITE_REQUIRE_WALLET === "1";
   const ready = !requireWallet || !!pk;       // ONLY require wallet, not username
@@ -97,8 +98,9 @@ export function WalletIdentityProvider({ children }: { children: React.ReactNode
     ready,
     isAuthenticated,
     walletAddress: pk
-  }), [pk, username, ready, isAuthenticated]);
+  }), [pk, username, setUsername, ready, isAuthenticated]);
 
   return <WalletIdentityCtx.Provider value={v}>{children}</WalletIdentityCtx.Provider>;
 }
+// eslint-disable-next-line react-refresh/only-export-components
 export function useWalletIdentity() { return useContext(WalletIdentityCtx); }

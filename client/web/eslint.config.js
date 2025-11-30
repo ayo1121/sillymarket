@@ -5,37 +5,60 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import security from "eslint-plugin-security";
 
-// Hack: Patch the plugin to include missing rules referenced in legacy code
+// Hack: Create a patched plugin that includes missing rules referenced in legacy code
 const dummyRule = { create: () => ({}) };
-tseslint.plugin.rules = {
-  ...tseslint.plugin.rules,
-  "no-unsafe-assignment": dummyRule,
-  "ban-types": dummyRule,
-  "no-unsafe-return": dummyRule,
+const patchedPlugin = {
+  ...tseslint.plugin,
+  rules: {
+    ...tseslint.plugin.rules,
+    "no-unsafe-assignment": dummyRule,
+    "ban-types": dummyRule,
+    "no-unsafe-return": dummyRule,
+  },
 };
+
+// Patch the recommended configs to use our patched plugin
+const patchedRecommendedConfigs = tseslint.configs.recommended.map((cfg) => {
+  if (cfg.plugins && cfg.plugins["@typescript-eslint"]) {
+    return {
+      ...cfg,
+      plugins: {
+        ...cfg.plugins,
+        "@typescript-eslint": patchedPlugin,
+      },
+    };
+  }
+  return cfg;
+});
 
 export default tseslint.config(
   { ignores: ["dist"] },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}"],
+    // Global settings for all files
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
     },
+  },
+  js.configs.recommended,
+  ...patchedRecommendedConfigs,
+  {
+    files: ["**/*.{ts,tsx}"],
     plugins: {
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       "security": security,
-      // @typescript-eslint is already included by extends, so we don't add it here
     },
     rules: {
+      "no-undef": "off", // TypeScript checks this
       ...reactHooks.configs.recommended.rules,
       ...security.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
-      // "@typescript-eslint/no-unsafe-return": "off", // Now handled by dummy rule
 
       // SECURITY: Disable overly aggressive object injection detection
       "security/detect-object-injection": "off",

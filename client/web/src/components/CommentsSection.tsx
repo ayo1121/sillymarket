@@ -31,7 +31,7 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
   const [lastCommentTime, setLastCommentTime] = useState(0);
 
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setFetchLoading(true);
     setError(null);
     try {
@@ -54,14 +54,14 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [marketId]);
 
   useEffect(() => {
     fetchComments();
     // Poll for updates every 5 seconds
     const interval = setInterval(fetchComments, 5000);
     return () => clearInterval(interval);
-  }, [marketId]);
+  }, [fetchComments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
