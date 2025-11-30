@@ -37,6 +37,14 @@ export async function saveMarketMetadata(params: {
  * Upsert user profile when a wallet connects / username changes.
  */
 export async function upsertUser(pubkey: string, username?: string) {
+    // Check if we have an authenticated session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+        console.warn("[Supabase] Skipping user upsert: No authenticated session (RLS requires auth)");
+        return;
+    }
+
     const { error } = await supabase
         .from("users")
         .upsert(
@@ -83,6 +91,14 @@ export async function createNotification(params: {
     body?: string;
     metadata?: Record<string, any>;
 }) {
+    // Check if we have an authenticated session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+        console.warn("[Supabase] Skipping notification creation: No authenticated session");
+        return;
+    }
+
     const { error } = await supabase.from("notifications").insert({
         user_pubkey: params.userPubkey,
         type: params.type,
