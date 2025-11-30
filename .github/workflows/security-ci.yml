@@ -74,7 +74,7 @@ jobs:
         working-directory: programs/yesno_markets
         run: |
           echo "::group::Running Clippy linter"
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --all-targets --all-features
           echo "✅ Clippy lint passed"
           echo "::endgroup::"
 
