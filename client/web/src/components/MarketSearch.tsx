@@ -30,7 +30,7 @@ export const MarketSearch: React.FC<MarketSearchProps> = ({
             // Check if input looks like a Solana address (base58, 32-44 chars)
             const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value.trim());
 
-            let matches = markets.filter(m => {
+            const matches = markets.filter(m => {
                 // Search by market question
                 if (m.displayQuestion.toLowerCase().includes(lowerValue)) {
                     return true;
