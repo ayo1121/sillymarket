@@ -10,5 +10,8 @@ yesno_markets = "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb"
 cluster = "Localnet"
 wallet  = "/home/ayo/.config/solana/deployer.json"
 
+[toolchain]
+anchor_version = "0.29.0"
+
 [scripts]
 test = "npx mocha -r ts-node/register -t 1000000 tests/**/*.ts"
