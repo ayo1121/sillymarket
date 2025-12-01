@@ -297,44 +297,30 @@ export async function createMarket(
   const platformFeeWallet = new PublicKey(feeWalletStr);
   console.log("[createMarket] using platformFeeWallet:", platformFeeWallet.toBase58());
 
-  // 5) Build and send transaction using Anchor's IDL-driven methods()
-  const cutoffTsBn = new anchor.BN(Number(params.cutoffTs));
+  const args = [
+    new anchor.BN(Number(params.cutoffTs)),        // cutoff_ts: i64
+    Array.from(questionHash),                      // question_hash: [u8; 32]
+    question,                                      // question: string
+    answers,                                       // answers: string[]
+    imageUrl,                                      // image_url: string
+  ];
 
-  const builder = (program.methods as any).createMarket?.(
-    cutoffTsBn,
-    Array.from(questionHash),
-    question,
-    answers,
-    imageUrl,
-    description,
-  ) ?? (program.methods as any).create_market?.(
-    cutoffTsBn,
-    Array.from(questionHash),
-    question,
-    answers,
-    imageUrl,
-    description,
+  console.log("[createMarket] args length", args.length, "values:", args);
+
+  const accounts = {
+    config: configPda,
+    creator: wallet.publicKey!,
+    platformFeeWallet,
+    market: marketPda,
+    systemProgram: SystemProgram.programId,
+  };
+
+  const txSig = await callIx(
+    program as any,
+    "create_market",
+    args,
+    accounts
   );
-
-  if (!builder) {
-    throw new Error("[createMarket] methods.createMarket not found on program");
-  }
-
-  let txSig: string;
-  try {
-    txSig = await builder
-      .accounts({
-        config: configPda,
-        creator: wallet.publicKey,
-        platformFeeWallet,
-        market: marketPda,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-  } catch (err) {
-    console.error("[createMarket] tx failed", err);
-    throw prettyAnchorError(err, program.idl as Idl, "createMarket");
-  }
 
   const marketPubkey = marketPda.toBase58();
   console.log("[createMarket] ✅ tx", { txSig, market: marketPubkey });
