@@ -38,7 +38,7 @@ function normalizeIdl(raw: any): anchor.Idl {
 }
 
 
-const PROGRAM_ID = new PublicKey(
+export const PROGRAM_ID = new PublicKey(
   // support both new and old IDL formats
   ((idl as any).address ??
     (idl as any).metadata?.address ??
@@ -70,7 +70,7 @@ export function getAnchorProgram(wallet: WalletContextState) {
     signAllTransactions: async () => {
       throw new Error("Wallet not connected");
     },
-  };
+  } as unknown as anchor.Wallet;
 
   // We'll log IDL summary after normalization and patching
 
@@ -81,12 +81,12 @@ export function getAnchorProgram(wallet: WalletContextState) {
 
   // Create AnchorWallet wrapper that matches Anchor's expected interface
   const anchorWallet: anchor.Wallet = hasPk && hasSigner && hasSignAll
-    ? {
+    ? ({
       publicKey: wallet.publicKey!,
       signTransaction: wallet.signTransaction!,
       signAllTransactions: wallet.signAllTransactions!,
-    }
-    : readOnlyWallet;
+    } as unknown as anchor.Wallet)
+    : readOnlyWallet as any as anchor.Wallet;
 
   const provider = new anchor.AnchorProvider(
     connection,
@@ -242,7 +242,7 @@ export function getWritableProgram(
       ? wallet.signAllTransactions.bind(wallet)
       : async (txs: Transaction[]) =>
         Promise.all(txs.map((tx) => wallet.signTransaction!(tx))),
-  } as anchor.Wallet;
+  } as unknown as anchor.Wallet;
 
   const provider = new anchor.AnchorProvider(connection, anchorWallet, {
     preflightCommitment: "processed",

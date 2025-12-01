@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import { PROGRAM_ID } from "./program";
 
 export function getAccountByPattern(
-  program: Program<YesnoMarkets> | null,
+  program: Program<any> | null,
   pattern: string
 ) {
   if (!program) {
@@ -21,14 +21,13 @@ export function getAccountByPattern(
   const key = Object.keys(program.account).find((k) =>
     k.toLowerCase().includes(pattern.toLowerCase())
   );
-  
+
   if (!key) {
     console.warn(`[yesno] getAccountByPattern: Account matching "${pattern}" not found in IDL`);
     return null;
   }
-  
-  // @ts-expect-error dynamic
-  return program.account[key] as any;
+
+  return (program as any).account[key] as any;
 }
 
 export function getIxByPattern(idl: Idl, pattern: string) {

@@ -44,13 +44,13 @@ export default function MarketPage() {
     (async () => {
       if (!program || !marketPk) return;
       try {
-        const a = await fetchMarket(program, marketPk, publicKey);
+        const a = await fetchMarket(program as any, marketPk, publicKey);
         setAcct(a);
 
         // Fetch user position if wallet is connected
         if (publicKey) {
           try {
-            const positions = await fetchUserPositions(program, publicKey);
+            const positions = await fetchUserPositions(program as any, publicKey);
             const positionForMarket = positions.find((p: any) => {
               const posMarket = p.account.market;
               const marketPubkey = posMarket?.toBase58 ? posMarket.toBase58() : posMarket?.toString();
@@ -65,7 +65,7 @@ export default function MarketPage() {
 
         // Fetch config for resolve checks
         try {
-          const configData = await fetchConfig(program);
+          const configData = await fetchConfig(program as any);
           setConfig(configData);
         } catch (configErr) {
           console.error("Error fetching config:", configErr);
@@ -80,13 +80,13 @@ export default function MarketPage() {
   const refreshMarket = async () => {
     if (!program || !marketPk) return;
     try {
-      const a = await fetchMarket(program, marketPk, publicKey);
+      const a = await fetchMarket(program as any, marketPk, publicKey);
       setAcct(a);
 
       // Refresh user position
       if (publicKey) {
         try {
-          const positions = await fetchUserPositions(program, publicKey);
+          const positions = await fetchUserPositions(program as any, publicKey);
           const positionForMarket = positions.find((p: any) => {
             const posMarket = p.account.market;
             const marketPubkey = posMarket?.toBase58 ? posMarket.toBase58() : posMarket?.toString();
@@ -113,6 +113,8 @@ export default function MarketPage() {
     const num = typeof lamports === "number" ? lamports : lamports.toNumber();
     return (num / 1_000_000_000).toFixed(2);
   };
+
+  const wallet = useWallet();
 
   async function onPlaceBet(outcomeIndex: number) {
     if (!program || !publicKey || !marketPk || !acct) return;
@@ -147,17 +149,16 @@ export default function MarketPage() {
 
     setBetting(true);
     try {
-      const sig = await placeBet(program, {
-        market: marketPk,
-        user: publicKey,
+      const { txSig } = await placeBet(wallet, {
+        marketPubkey: marketPk.toBase58(),
         outcomeIndex,
-        amountLamports: lamports,
+        stakeLamports: lamports,
       });
       toast.success(
         <div className="flex flex-col gap-1 text-sm">
-          <span>Bet placed! Transaction: {sig}</span>
+          <span>Bet placed! Transaction: {txSig}</span>
           <a
-            href={getTxExplorerUrl(sig)}
+            href={getTxExplorerUrl(txSig)}
             target="_blank"
             rel="noreferrer"
             className="underline font-semibold text-xs"
@@ -386,15 +387,15 @@ export default function MarketPage() {
           <div className="border rounded p-4 space-y-3">
             <h3 className="font-semibold">Place Bet</h3>
             <div className="flex gap-2">
-        <input
+              <input
                 type="number"
                 step="0.01"
                 min="0.01"
-          value={amount}
+                value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="Amount (SOL)"
                 className="border rounded px-2 py-1 text-sm flex-1"
-        />
+              />
             </div>
             <div className="grid grid-cols-2 gap-2">
               {Array.from({ length: outcomesCount }).map((_, i) => (
@@ -405,7 +406,7 @@ export default function MarketPage() {
                   disabled={betting || !amount || solToLamports(amount) < MIN_BET_LAMPORTS}
                 >
                   {betting ? "Placing..." : `Bet Outcome ${i}`}
-        </button>
+                </button>
               ))}
             </div>
             <div className="text-xs text-gray-500">
@@ -440,7 +441,7 @@ export default function MarketPage() {
               </button>
             </div>
             <div className="text-xs text-gray-500">
-              {configAuthority && publicKey.equals(configAuthority) 
+              {configAuthority && publicKey.equals(configAuthority)
                 ? "Admin can resolve (may be pre-cutoff if enabled)"
                 : "Creator can resolve after cutoff"}
             </div>

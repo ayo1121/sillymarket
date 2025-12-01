@@ -59,18 +59,18 @@ const PROGRAM_ID = new PublicKey(
 type MarketAccount = YesnoMarkets["types"][number] extends { name: "Market"; type: infer T } ? T : never;
 type PositionAccount = YesnoMarkets["types"][number] extends { name: "Position"; type: infer T } ? T : never;
 
-export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, userWallet?: PublicKey | null): Promise<UIMarket[]> {
+export async function fetchAllMarkets(program: Program<any> | null, userWallet?: PublicKey | null): Promise<UIMarket[]> {
   if (!program) {
     console.warn("[yesno] fetchAllMarkets: program not ready");
     return [];
   }
 
   try {
-    const rawMarkets = await withRpcRetry(
-      () => program.account.market.all(),
+    const rawMarkets = (await withRpcRetry(
+      () => (program as any).account.market.all(),
       RetryConfig.CRITICAL.maxRetries,
       RetryConfig.CRITICAL.baseDelayMs
-    );
+    )) as any;
     console.log("[read] fetchAllMarkets: on-chain count =", rawMarkets.length);
 
     // Map raw markets to UI format
@@ -85,11 +85,11 @@ export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, use
     const userPositionsByMarket = new Map<string, number | null>();
     if (userWallet) {
       try {
-        const allPositions = await withRpcRetry(
-          () => program.account.position.all(),
+        const allPositions = (await withRpcRetry(
+          () => (program as any).account.position.all(),
           RetryConfig.CRITICAL.maxRetries,
           RetryConfig.CRITICAL.baseDelayMs
-        );
+        )) as any;
         const userPositions = allPositions.filter((p: any) => {
           const posOwner = p.account.owner || p.account.user;
           if (!posOwner) return false;
@@ -181,7 +181,7 @@ export async function fetchAllMarkets(program: Program<YesnoMarkets> | null, use
 
     console.log("[read] merged markets sample", withLocal.slice(0, 3));
 
-    return withLocal;
+    return withLocal as unknown as UIMarket[];
   } catch (err) {
     console.error("[yesno] fetchAllMarkets failed", err);
     return [];
@@ -329,7 +329,7 @@ export async function fetchBetEvents(
     // Build username map
     const uniquePubkeys = Array.from(
       new Set(rows.map((r: any) => r.bettor_pubkey).filter(Boolean))
-    );
+    ) as string[];
     const usernameMap = await fetchUsernamesForPubkeys(supabase, uniquePubkeys);
 
     // Compute outcomesCount and initialize history
@@ -630,7 +630,7 @@ export async function fetchBetEvents(
   }
 }
 
-export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey: string | PublicKey, userWallet?: PublicKey | null): Promise<UIMarket | null> {
+export async function fetchMarket(program: Program<any> | null, pubkey: string | PublicKey, userWallet?: PublicKey | null): Promise<UIMarket | null> {
   if (!program) {
     console.warn("[yesno] fetchMarket: program not ready");
     return null;
@@ -639,7 +639,7 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
   try {
     const marketPk = new web3.PublicKey(pubkey);
     const rawMarket = await withRpcRetry(
-      () => program.account.market.fetch(marketPk),
+      () => (program as any).account.market.fetch(marketPk),
       RetryConfig.CRITICAL.maxRetries,
       RetryConfig.CRITICAL.baseDelayMs
     );
@@ -657,11 +657,11 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
     let userPositionRaw: any | null = null;
     if (userWallet) {
       try {
-        const allPositions = await withRpcRetry(
-          () => program.account.position.all(),
+        const allPositions = (await withRpcRetry(
+          () => (program as any).account.position.all(),
           RetryConfig.STANDARD.maxRetries,
           RetryConfig.STANDARD.baseDelayMs
-        );
+        )) as any;
         const userPositions = allPositions.filter((p: any) => {
           const posOwner = p.account.owner || p.account.user;
           if (!posOwner) return false;
@@ -746,7 +746,7 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
     };
 
     // Apply localStorage metadata as secondary fallback
-    const [withLocalStorage] = attachMetadataToMarkets([enrichedWithHistory]);
+    const [withLocalStorage] = attachMetadataToMarkets([enrichedWithHistory as any]) as unknown as UIMarket[];
 
     console.log("[read] fetchMarket: enriched market", {
       pubkey: withLocalStorage.pubkey,
@@ -760,7 +760,7 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
       activityCount: withLocalStorage.activity?.length ?? 0,
     });
 
-    return withLocalStorage;
+    return withLocalStorage as unknown as UIMarket;
   } catch (err) {
     console.error("[yesno] fetchMarket failed", err);
     return null;
@@ -779,7 +779,7 @@ export async function fetchMarket(program: Program<YesnoMarkets> | null, pubkey:
  * @returns Map of pubkey -> UIMarket
  */
 export async function fetchMarketsBatch(
-  program: Program<YesnoMarkets> | null,
+  program: Program<any> | null,
   pubkeys: string[],
   userWallet?: PublicKey | null
 ): Promise<Map<string, UIMarket>> {
@@ -800,7 +800,7 @@ export async function fetchMarketsBatch(
     // Fetch all markets in one RPC call
     const publicKeys = uniquePubkeys.map(pk => new web3.PublicKey(pk));
     const rawMarkets = await withRpcRetry(
-      () => program.account.market.fetchMultiple(publicKeys),
+      () => (program as any).account.market.fetchMultiple(publicKeys),
       RetryConfig.CRITICAL.maxRetries,
       RetryConfig.CRITICAL.baseDelayMs
     );
@@ -892,7 +892,7 @@ export async function fetchMarketsBatch(
  * @returns Array of UIMarket created by this wallet
  */
 export async function fetchUserMarkets(
-  program: Program<YesnoMarkets> | null,
+  program: Program<any> | null,
   creator: string | PublicKey
 ): Promise<UIMarket[]> {
   if (!program) {
@@ -927,7 +927,7 @@ export async function fetchUserMarkets(
   }
 }
 
-export async function fetchUserPositions(program: Program<YesnoMarkets> | null, owner: string | PublicKey) {
+export async function fetchUserPositions(program: Program<any> | null, owner: string | PublicKey) {
   if (!program) {
     console.warn("[yesno] fetchUserPositions: program not ready");
     return [];
@@ -935,7 +935,7 @@ export async function fetchUserPositions(program: Program<YesnoMarkets> | null, 
 
   try {
     const ownerPk = new web3.PublicKey(owner);
-    const allPositions = await program.account.position.all();
+    const allPositions = await (program as any).account.position.all();
 
     // Filter by owner in JavaScript
     const userPositions = allPositions.filter((p: any) => {
@@ -952,7 +952,7 @@ export async function fetchUserPositions(program: Program<YesnoMarkets> | null, 
   }
 }
 
-export async function fetchConfig(program: Program<YesnoMarkets> | null) {
+export async function fetchConfig(program: Program<any> | null) {
   if (!program) {
     console.warn("[yesno] fetchConfig: program not ready");
     return null;
@@ -963,7 +963,7 @@ export async function fetchConfig(program: Program<YesnoMarkets> | null) {
     const programId = program.programId;
     const [configPda] = getConfigPda(program.programId);
     const config = await withRpcRetry(
-      () => program.account.config.fetch(configPda),
+      () => (program as any).account.config.fetch(configPda),
       RetryConfig.CRITICAL.maxRetries,
       RetryConfig.CRITICAL.baseDelayMs
     );
@@ -1123,7 +1123,7 @@ export function canClaimPosition(args: {
 /**
  * Get a readonly Anchor program (no wallet required)
  */
-async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null> {
+async function getReadonlyAnchorProgram(): Promise<Program<any> | null> {
   try {
     const endpoint =
       (import.meta as any).env?.VITE_RPC_URL as string ||
@@ -1153,9 +1153,8 @@ async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null>
 
     const program = new anchor.Program(
       normalizedIdl as anchor.Idl,
-      PROGRAM_ID,
       provider
-    ) as Program<YesnoMarkets>;
+    ) as unknown as Program<any>;
 
     console.log("[read] getReadonlyAnchorProgram initialized", {
       programId: program.programId.toBase58(),
@@ -1169,7 +1168,7 @@ async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null>
   }
 }
 
-export type MarketActivityItem = {
+export type ReadMarketActivityItem = {
   wallet: string;
   walletShort: string;
   username?: string | null;
@@ -1179,7 +1178,7 @@ export type MarketActivityItem = {
   createdAt: Date | null;
 };
 
-export type MarketHistoryPoint = {
+export type ReadMarketHistoryPoint = {
   timestamp: number; // ms since epoch
   probability: number; // 0..1 for primary outcome (index 0)
 };
@@ -1189,7 +1188,7 @@ export type MarketHistoryPoint = {
  */
 export async function fetchMarketActivity(
   marketPubkey: string
-): Promise<MarketActivityItem[]> {
+): Promise<ReadMarketActivityItem[]> {
   const program = await getReadonlyAnchorProgram();
   if (!program) {
     return [];
@@ -1199,7 +1198,7 @@ export async function fetchMarketActivity(
     const marketPk = new PublicKey(marketPubkey);
 
     // Fetch all positions and filter by market
-    const allPositions = await program.account.position.all();
+    const allPositions = await (program as any).account.position.all();
     const marketPositions = allPositions.filter((p: any) => {
       const posMarket = p.account.market;
       return posMarket && posMarket.toBase58 ? posMarket.toBase58() === marketPubkey : false;
@@ -1224,14 +1223,14 @@ export async function fetchMarketActivity(
             const owner = p.account.owner;
             const wallet = owner?.toBase58 ? owner.toBase58() : owner?.toString() || "";
             return {
-              wallet,
-              walletShort: shortenWallet(wallet),
+              wallet: p.account.owner.toBase58(),
+              walletShort: shortenWallet(p.account.owner.toBase58()),
               username: null,
-              displayName: shortenWallet(wallet),
-              outcomeIndex: Number(p.account.outcome_index || 0),
-              amountLamports: BigInt((p.account.amount as any)?.toString?.() || "0"),
+              displayName: shortenWallet(p.account.owner.toBase58()),
+              outcomeIndex: p.account.outcomeIndex,
+              amountLamports: p.account.amount,
               createdAt: null,
-            } as MarketActivityItem;
+            } as ReadMarketActivityItem;
           });
         }
         const walletArray = Array.from(wallets);
@@ -1255,7 +1254,7 @@ export async function fetchMarketActivity(
       }
     }
 
-    const items: MarketActivityItem[] = marketPositions.map((p: any) => {
+    const items: ReadMarketActivityItem[] = marketPositions.map((p: any) => {
       const owner = p.account.owner;
       const wallet = owner?.toBase58 ? owner.toBase58() : owner?.toString() || "";
       const outcomeIndex = Number(p.account.outcome_index || 0);
@@ -1297,7 +1296,7 @@ export async function fetchMarketActivity(
  */
 export async function fetchMarketHistory(
   marketPubkey: string
-): Promise<MarketHistoryPoint[]> {
+): Promise<ReadMarketHistoryPoint[]> {
   const program = await getReadonlyAnchorProgram();
   if (!program) {
     return [];
@@ -1307,7 +1306,7 @@ export async function fetchMarketHistory(
     const marketPk = new PublicKey(marketPubkey);
 
     // Get market account for initial pools
-    const market = await program.account.market.fetch(marketPk);
+    const market = await (program as any).account.market.fetch(marketPk);
     const pools = [...(market.pools || [])].map((p: any) => {
       if (typeof p === "bigint") return p;
       if (typeof p === "number") return BigInt(p);
@@ -1316,13 +1315,13 @@ export async function fetchMarketHistory(
     });
 
     // Get all positions for this market
-    const allPositions = await program.account.position.all();
-    const marketPositions = allPositions.filter((p: any) => {
+    const positions = await (program as any).account.position.all();
+    const marketPositions = positions.filter((p: any) => {
       const posMarket = p.account.market;
       return posMarket && posMarket.toBase58 ? posMarket.toBase58() === marketPubkey : false;
     });
 
-    const points: MarketHistoryPoint[] = [];
+    const points: ReadMarketHistoryPoint[] = [];
 
     // Start with initial state
     const initialTotal = pools.reduce((acc, v) => acc + v, BigInt(0));
