@@ -296,7 +296,7 @@ export async function fetchBetEvents(
 }> {
   try {
     const { data: rowsData, error } = await (supabase as any)
-      .from<BetRow>("bets")
+      .from("bets")
       .select("id, market_pubkey, bettor_pubkey, username, outcome_index, outcome_label, amount_sol, amount_lamports, tx_sig, created_at, block_time, pools_after, probs_after")
       .eq("market_pubkey", marketPubkey)
       .order("block_time", { ascending: false, nullsFirst: false })

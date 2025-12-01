@@ -1,12 +1,12 @@
 // src/hooks/useYesNo.ts
 import { useEffect, useState, useCallback } from "react";
-import { useAnchorProgram, AnyProgram } from "../solana/program";
+import { useAnchorProgram } from "../solana/program";
 import { fetchAllMarkets, fetchMarket } from "../solana/read";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { placeBet } from "../solana/actions";
 import { PublicKey } from "@solana/web3.js";
 
-export function useProgram(): AnyProgram | null {
+export function useProgram(): any | null {
   return useAnchorProgram();
 }
 
@@ -62,11 +62,10 @@ export function usePlaceBet(marketPk?: string) {
       if (!program) throw new Error("Program not ready");
       if (!publicKey) throw new Error("Connect wallet");
       if (!marketPk) throw new Error("Missing market");
-      return placeBet(program, {
-        market: new PublicKey(marketPk),
-        payer: publicKey,
-        sideIndex,
-        lamports,
+      return placeBet(program as any, {
+        marketPubkey: marketPk,
+        outcomeIndex: sideIndex,
+        stakeLamports: lamports,
       });
     },
     [program, publicKey, marketPk]

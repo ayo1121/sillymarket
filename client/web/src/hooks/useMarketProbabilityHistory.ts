@@ -88,7 +88,7 @@ export function useMarketProbabilityHistory(market?: UIMarket | null): {
       label: outcome.label,
       color: getOutcomeColor(idx),
       points: filtered.map((p) => ({
-        t: p.ts ?? p.time ?? Date.now(),
+        t: p.ts ?? (p as any).time ?? Date.now(),
         prob: p.probs?.[idx] ?? 0,
       })),
     }));

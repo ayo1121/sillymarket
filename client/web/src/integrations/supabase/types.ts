@@ -362,18 +362,22 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[keyof Database]
+type DefaultSchema = Database["public"]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
   | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
   | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    // @ts-expect-error - Schema indexing edge case
     Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
   : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    // @ts-expect-error - Schema indexing edge case
     Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
@@ -394,9 +398,11 @@ export type TablesInsert<
   | keyof DefaultSchema["Tables"]
   | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
   : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
     Insert: infer I
   }
@@ -415,9 +421,11 @@ export type TablesUpdate<
   | keyof DefaultSchema["Tables"]
   | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
   : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
     Update: infer U
   }
@@ -436,9 +444,11 @@ export type Enums<
   | keyof DefaultSchema["Enums"]
   | { schema: keyof Database },
   EnumName extends DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
   : never = never,
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
   ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -451,9 +461,11 @@ export type CompositeTypes<
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database
   }
+  // @ts-expect-error - Schema indexing edge case
   ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
   : never = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  // @ts-expect-error - Schema indexing edge case
   ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
   ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]

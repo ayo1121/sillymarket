@@ -5,5 +5,5 @@ import { PROGRAM_ID } from "@/solana/env";
 export const SYS = "11111111111111111111111111111111";
 
 export function deriveMarket(seed: string) {
-  return pdas.findMarketPda(new PublicKey(PROGRAM_ID), seed).toBase58();
+  return ((pdas as any).findMarketPda(new PublicKey(PROGRAM_ID), seed) as any)[0].toBase58();
 }

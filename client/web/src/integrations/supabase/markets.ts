@@ -182,7 +182,7 @@ export async function upsertSupabaseMarketMetadata(meta: UpsertMetadataParams) {
   try {
     const { data, error } = await supabase
       .from('markets')
-      .upsert(meta, { onConflict: 'market_pubkey' })
+      .upsert(meta as any, { onConflict: 'market_pubkey' })
       .select();
 
     if (error) {

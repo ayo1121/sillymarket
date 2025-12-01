@@ -104,7 +104,6 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
   const canUseClipboardImage =
     typeof navigator !== "undefined" &&
     !!navigator.clipboard &&
-    // @ts-expect-error ClipboardItem not always in lib.dom
     typeof window.ClipboardItem !== "undefined" &&
     typeof (navigator.clipboard as any).write === "function";
 
@@ -134,7 +133,6 @@ export function ShareMarketModal({ open, onOpenChange, market }: ShareMarketModa
       if (!blob) return;
 
       if (canUseClipboardImage && blob) {
-        // @ts-expect-error ClipboardItem not typed in some configs
         const item = new ClipboardItem({ "image/png": blob });
         await navigator.clipboard.write([item]);
         console.log("[ShareMarketModal] image copied as blob");

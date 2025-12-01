@@ -213,7 +213,7 @@ const AdminPanel = () => {
       successToastWithLink("Config initialized!", sig);
       // Reload config
       const configData = await fetchConfig(program as any);
-      setConfig(configData.account || configData);
+      setConfig((configData as any).account || configData);
       setIsAdmin(true);
     } catch (err: any) {
       console.error("Initialize error:", err);
@@ -236,7 +236,7 @@ const AdminPanel = () => {
       successToastWithLink("Authority updated!", sig);
       // Reload config
       const configData = await fetchConfig(program as any);
-      setConfig(configData.account || configData);
+      setConfig((configData as any).account || configData);
     } catch (err: any) {
       console.error("Set authority error:", err);
       showErrorToast(err, "Failed to set authority");

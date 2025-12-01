@@ -24,7 +24,7 @@ interface Market {
  * Once available, update this hook to only check followed markets.
  */
 export const useNotifications = (markets: Market[]) => {
-  const { addNotification } = useNotificationsContext();
+  const { addNotification } = useNotificationsContext() as any;
   const notifiedMarkets = useRef(new Set<string>());
 
   useEffect(() => {

@@ -15,7 +15,7 @@ import { useNotificationsContext } from "@/contexts/NotificationsContext";
  */
 export const useClaimableWinnings = () => {
     const { positions, hasClaimablePositions, claimableCount } = useMarketsCtx();
-    const { addNotification } = useNotificationsContext();
+    const { addNotification } = useNotificationsContext() as any;
     const notifiedPositions = useRef(new Set<string>());
 
     useEffect(() => {

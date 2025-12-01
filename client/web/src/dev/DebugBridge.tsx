@@ -39,7 +39,7 @@ export default function DebugBridge() {
         (await fetchAllMarkets(program)).map((r: any) => ({ pk: r.publicKey.toBase58(), a: r.account })),
       getMarket: async (pk: string) => fetchMarket(program, new PublicKey(pk)),
       placeBet: async (market: string, side: number, lamports: number) =>
-        placeBet(program, { market: new PublicKey(market), payer: publicKey!, sideIndex: side, lamports }),
+        placeBet(program as any, { marketPubkey: market, outcomeIndex: side, stakeLamports: lamports }),
       call: async (name: string, accounts: Record<string, string>, ...args: any[]) => {
         const accs: Record<string, any> = {};
         for (const [k, v] of Object.entries(accounts)) {

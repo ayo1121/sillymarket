@@ -31,7 +31,7 @@ export const Header = () => {
       }
       try {
         const config = await fetchConfig(program);
-        const authority = config?.authority || (config as any)?.authority;
+        const authority = (config as any)?.authority || (config as any)?.authority;
         const authorityPk = authority?.toBase58 ? authority.toBase58() : authority?.toString?.();
         const userPk = wallet.publicKey.toBase58();
         if (isMounted) {

@@ -346,7 +346,9 @@ const Index = () => {
       {shareMarket && (
         <ShareMarketModal
           open={!!shareMarket}
-          onClose={() => setShareMarket(null)}
+          onOpenChange={(open) => {
+            if (!open) setShareMarket(null);
+          }}
           market={shareMarket}
         />
       )}
