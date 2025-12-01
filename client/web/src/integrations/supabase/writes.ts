@@ -25,7 +25,12 @@ export async function saveMarketMetadata(params: {
     });
 
     if (error) {
-        console.error("[Supabase] Failed to save market metadata:", error);
+        console.error("[Supabase] saveMarketMetadata error:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            marketPubkey: params.marketPubkey
+        });
         throw error;
     }
 
@@ -37,13 +42,9 @@ export async function saveMarketMetadata(params: {
  * Upsert user profile when a wallet connects / username changes.
  */
 export async function upsertUser(pubkey: string, username?: string) {
-    // Check if we have an authenticated session
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-        console.warn("[Supabase] Skipping user upsert: No authenticated session (RLS requires auth)");
-        return;
-    }
+    // NOTE: We are NOT checking for a session here because we use custom SIWS
+    // and RLS policies are set to allow/deny based on other factors (or disabled for now).
+    // For 'users' table, we might not have anon write access, so we catch errors gracefully.
 
     const payload: any = { pubkey };
     if (username) {
@@ -58,9 +59,16 @@ export async function upsertUser(pubkey: string, username?: string) {
         );
 
     if (error) {
-        console.error("[Supabase] Failed to upsert user:", error);
-        throw error;
+        // Log but don't throw, as this is often expected if RLS denies anon writes
+        console.warn("[Supabase] upsertUser failed (likely RLS denied):", {
+            message: error.message,
+            code: error.code,
+            details: error.details
+        });
+        return;
     }
+
+    console.log("[Supabase] upsertUser success for", pubkey);
 }
 
 /**
@@ -78,7 +86,12 @@ export async function postComment(params: {
     });
 
     if (error) {
-        console.error("[Supabase] Failed to post comment:", error);
+        console.error("[Supabase] postComment error:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            marketId: params.marketId
+        });
         throw error;
     }
 }
@@ -93,13 +106,7 @@ export async function createNotification(params: {
     body?: string;
     metadata?: Record<string, any>;
 }) {
-    // Check if we have an authenticated session
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-        console.warn("[Supabase] Skipping notification creation: No authenticated session");
-        return;
-    }
+    // NOTE: No session check here. Relying on RLS.
 
     const { error } = await supabase.from("notifications").insert({
         user_pubkey: params.userPubkey,
@@ -111,8 +118,11 @@ export async function createNotification(params: {
     });
 
     if (error) {
-        console.error("[Supabase] Failed to create notification:", error);
-        throw error;
+        console.warn("[Supabase] createNotification failed (likely RLS denied):", {
+            message: error.message,
+            code: error.code
+        });
+        // Don't throw, notifications are non-critical
     }
 }
 

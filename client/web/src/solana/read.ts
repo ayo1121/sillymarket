@@ -1217,6 +1217,23 @@ export async function fetchMarketActivity(
     const walletToUsername = new Map<string, string | null>();
     if (wallets.size > 0) {
       try {
+        const { supabase, isSupabaseConfigured } = await import("../integrations/supabase/client");
+        if (!isSupabaseConfigured()) {
+          console.warn("[read] Supabase not configured – skipping username lookup");
+          return marketPositions.map((p: any) => {
+            const owner = p.account.owner;
+            const wallet = owner?.toBase58 ? owner.toBase58() : owner?.toString() || "";
+            return {
+              wallet,
+              walletShort: shortenWallet(wallet),
+              username: null,
+              displayName: shortenWallet(wallet),
+              outcomeIndex: Number(p.account.outcome_index || 0),
+              amountLamports: BigInt((p.account.amount as any)?.toString?.() || "0"),
+              createdAt: null,
+            } as MarketActivityItem;
+          });
+        }
         const walletArray = Array.from(wallets);
 
         // Query users by pubkey

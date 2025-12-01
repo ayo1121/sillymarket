@@ -9,12 +9,13 @@
   },
   "scripts": {
     "dev": "vite --port 8080 --strictPort",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings=0",
     "lint:security": "eslint src --ext .ts,.tsx --max-warnings=0",
     "preview": "vite preview",
     "test": "vitest",
+    "test:supabase": "vitest run tests/supabase/",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"
   },

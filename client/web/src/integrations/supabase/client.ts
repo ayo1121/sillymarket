@@ -6,8 +6,17 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+export function isSupabaseConfigured(): boolean {
+  return Boolean(
+    SUPABASE_URL &&
+    SUPABASE_PUBLISHABLE_KEY &&
+    SUPABASE_PUBLISHABLE_KEY !== "REPLACE_WITH_SUPABASE_ANON_KEY" &&
+    SUPABASE_URL !== "https://your-project.supabase.co"
+  );
+}
+
 // Validate env vars are present (but allow placeholder for template)
-if (typeof window !== "undefined" && (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY === "REPLACE_WITH_SUPABASE_ANON_KEY")) {
+if (typeof window !== "undefined" && !isSupabaseConfigured()) {
   console.warn("⚠️ Supabase env vars not configured. Image uploads will fail.");
   console.warn("   Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local");
 }

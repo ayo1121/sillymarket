@@ -10,7 +10,7 @@ export async function uploadMarketImage(file: File): Promise<string> {
   // Check if Supabase env vars are configured
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  
+
   if (!supabaseUrl || !supabaseKey || supabaseKey === "REPLACE_WITH_SUPABASE_ANON_KEY") {
     const errorMsg = "Supabase env vars VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY are not configured. Please set them in .env.local";
     console.error(errorMsg);
@@ -38,7 +38,11 @@ export async function uploadMarketImage(file: File): Promise<string> {
 
     if (error || !data) {
       const errorMsg = error?.message || "Failed to upload image to Supabase Storage";
-      console.error("Error uploading market image:", error);
+      console.error("[Supabase] uploadMarketImage error:", {
+        message: error?.message,
+        code: (error as any)?.code,
+        path
+      });
       throw new Error(errorMsg);
     }
 

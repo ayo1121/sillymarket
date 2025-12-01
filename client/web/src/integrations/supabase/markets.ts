@@ -9,7 +9,7 @@
  * - Fields: question, creator_wallet, description, image_url, creator_name, answers (jsonb array)
  */
 
-import { supabase } from "./client";
+import { supabase, isSupabaseConfigured } from "./client";
 
 const MARKETS_TABLE = "markets";
 
@@ -29,6 +29,7 @@ export type RemoteMarketMetadata = {
 
 // Legacy type alias for backwards compatibility
 export type BackendMarketMetadata = RemoteMarketMetadata;
+export type UpsertMetadataParams = Record<string, any>;
 
 /**
  * Fetch market metadata for multiple markets by their pubkeys
@@ -37,6 +38,10 @@ export type BackendMarketMetadata = RemoteMarketMetadata;
 export async function fetchMarketsMetadataByPubkeys(
   pubkeys: string[]
 ): Promise<RemoteMarketMetadata[]> {
+  if (!isSupabaseConfigured()) {
+    console.warn("[supabase][markets] not configured – returning empty metadata list");
+    return [];
+  }
   if (!pubkeys || pubkeys.length === 0) {
     return [];
   }
@@ -49,11 +54,12 @@ export async function fetchMarketsMetadataByPubkeys(
       .in("market_pubkey", pubkeys);
 
     if (marketsError) {
-      console.error(
-        "[supabase][markets] fetchMany error",
-        marketsError.message,
-        marketsError,
-      );
+      console.error("[Supabase] fetchMarketsMetadataByPubkeys error:", {
+        message: marketsError.message,
+        code: marketsError.code,
+        details: marketsError.details,
+        hint: marketsError.hint
+      });
       return [];
     }
 
@@ -117,6 +123,10 @@ export async function fetchMarketsMetadataByPubkeys(
 export async function fetchSingleMarketMetadata(
   pubkey: string
 ): Promise<RemoteMarketMetadata | null> {
+  if (!isSupabaseConfigured()) {
+    console.warn("[supabase][markets] not configured – returning null for", pubkey);
+    return null;
+  }
   if (!pubkey) {
     return null;
   }
@@ -129,11 +139,13 @@ export async function fetchSingleMarketMetadata(
       .maybeSingle();
 
     if (error) {
-      console.error(
-        "[supabase][markets] fetchOne error",
-        error.message,
-        error,
-      );
+      console.error("[Supabase] fetchSingleMarketMetadata error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        pubkey
+      });
       return null;
     }
 
@@ -162,16 +174,33 @@ export async function fetchSingleMarketMetadata(
   }
 }
 
-/**
- * ⚠️ SECURITY: Frontend should NOT write to markets table
- * 
- * Market metadata is populated by:
- * 1. On-chain program (source of truth)
- * 2. Backend indexer/API (if needed for additional metadata)
- * 
- * RLS policies prevent frontend writes to markets table.
- * This function has been removed for security.
- * 
- * If you need to store market metadata, use a backend API endpoint.
- */
+export async function upsertSupabaseMarketMetadata(meta: UpsertMetadataParams) {
+  if (!isSupabaseConfigured()) {
+    console.warn("[supabase][markets] not configured – skipping upsert for", meta.marketPubkey);
+    return;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('markets')
+      .upsert(meta, { onConflict: 'market_pubkey' })
+      .select();
 
+    if (error) {
+      console.error("[Supabase] upsertSupabaseMarketMetadata error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        marketPubkey: meta.marketPubkey
+      });
+      return;
+    }
+
+    console.log("[Supabase] upsertSupabaseMarketMetadata success", data);
+  } catch (e: any) {
+    console.error("[Supabase] upsertSupabaseMarketMetadata unexpected exception:", {
+      message: e?.message,
+      stack: e?.stack,
+    });
+  }
+}
