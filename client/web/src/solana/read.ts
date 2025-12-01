@@ -5,6 +5,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import type { YesnoMarkets } from "../idl/yesno_markets";
 import idl from "../idl/yesno_markets.json";
+import rawIdl from "../idl/yesno_markets.json";
 import { getConfigPda } from "./idlHelpers";
 import { mapRawMarketToUi, type UIMarket, type MarketHistoryPoint, type MarketActivityItem, STATE_ACTIVE, STATE_RESOLVED, WIN_UNSET, WIN_VOID, resolveOutcomeLabelFromMarket } from "./marketMapping";
 import { attachMetadataToMarkets } from "../lib/marketMetadata";
@@ -19,6 +20,38 @@ import type { BetRow } from "../supabase/bets";
 import { supabase } from "../integrations/supabase/client";
 import { getConnection } from "./connection";
 import { withRpcRetry, RetryConfig } from "./rpcRetry";
+
+const idlCopy = JSON.parse(JSON.stringify(rawIdl)) as anchor.Idl;
+
+function normalizeIdl(raw: any): anchor.Idl {
+  const normalized: any = { ...raw };
+
+  if (Array.isArray(normalized.accounts) && Array.isArray(normalized.types)) {
+    const typeMap = new Map<string, any>();
+    for (const t of normalized.types) {
+      if (t && typeof t.name === "string") {
+        typeMap.set(t.name, t);
+      }
+    }
+
+    normalized.accounts = normalized.accounts.map((acc: any) => {
+      if (!acc || acc.type) return acc;
+      const typeDef = typeMap.get(acc.name);
+      if (typeDef && typeDef.type) {
+        return { ...acc, type: typeDef.type };
+      }
+      return { ...acc, type: { defined: acc.name } };
+    });
+  }
+
+  return normalized as anchor.Idl;
+}
+
+const PROGRAM_ID = new PublicKey(
+  ((idlCopy as any).address ??
+    (idlCopy as any).metadata?.address ??
+    import.meta.env.VITE_PROGRAM_ID) as string
+);
 
 /**
  * Type helpers for IDL account types
@@ -1092,7 +1125,12 @@ export function canClaimPosition(args: {
  */
 async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null> {
   try {
-    const connection = getConnection();
+    const endpoint =
+      (import.meta as any).env?.VITE_RPC_URL as string ||
+      "https://devnet.helius-rpc.com/?api-key=837c2c48-6328-44b6-a49f-3a25e0567a96";
+    const connection = new Connection(endpoint, {
+      commitment: "confirmed",
+    });
 
     // Create a dummy wallet for readonly access
     const dummyWallet = {
@@ -1105,7 +1143,24 @@ async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null>
       commitment: "confirmed",
     });
 
-    const program = new anchor.Program(idl as anchor.Idl, provider) as Program<YesnoMarkets>;
+    // Use the same normalized IDL logic as getAnchorProgram
+    const raw = idlCopy as anchor.Idl;
+    const normalizedIdl = normalizeIdl(raw);
+
+    if (!(normalizedIdl as any).address) {
+      (normalizedIdl as any).address = PROGRAM_ID.toBase58();
+    }
+
+    const program = new anchor.Program(
+      normalizedIdl as anchor.Idl,
+      PROGRAM_ID,
+      provider
+    ) as Program<YesnoMarkets>;
+
+    console.log("[read] getReadonlyAnchorProgram initialized", {
+      programId: program.programId.toBase58(),
+      hasAccountNamespace: !!(program as any).account,
+    });
 
     return program;
   } catch (err) {
