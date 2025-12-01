@@ -210,3 +210,75 @@ export async function saveBet(params: {
         console.log("[Supabase] Bet saved successfully (client-side fallback)");
     }
 }
+
+/**
+ * Save market resolution to Supabase (Client-side fallback)
+ */
+export async function saveMarketResolution(params: {
+    signature: string;
+    marketPubkey: string;
+    winnerIndex: number;
+    autoVoid: boolean;
+    resolvedTotalPool?: number | null;
+    resolvedWinPool?: number | null;
+    feesTransferred?: number | null;
+}) {
+    if (!isSupabaseConfigured()) {
+        console.warn("[supabase][writes] Supabase not configured – skipping saveMarketResolution");
+        return;
+    }
+
+    const { error } = await supabase.from("market_resolutions").insert({
+        tx_sig: params.signature,
+        market_pubkey: params.marketPubkey,
+        winner_index: params.winnerIndex,
+        auto_void: params.autoVoid,
+        resolved_total_pool: params.resolvedTotalPool || null,
+        resolved_win_pool: params.resolvedWinPool || null,
+        fees_transferred: params.feesTransferred || null,
+        block_time: new Date().toISOString(),
+    });
+
+    if (error) {
+        if (error.code === "23505") {
+            console.log("[Supabase] Resolution already indexed (duplicate)");
+            return;
+        }
+        console.error("[Supabase] saveMarketResolution failed:", error);
+    } else {
+        console.log("[Supabase] Market resolution saved successfully (client-side fallback)");
+    }
+}
+
+/**
+ * Save winnings claim to Supabase (Client-side fallback)
+ */
+export async function saveClaim(params: {
+    signature: string;
+    marketPubkey: string;
+    userPubkey: string;
+    amountLamports: number;
+}) {
+    if (!isSupabaseConfigured()) {
+        console.warn("[supabase][writes] Supabase not configured – skipping saveClaim");
+        return;
+    }
+
+    const { error } = await supabase.from("claims").insert({
+        tx_sig: params.signature,
+        market_pubkey: params.marketPubkey,
+        user_pubkey: params.userPubkey,
+        amount_lamports: params.amountLamports,
+        block_time: new Date().toISOString(),
+    });
+
+    if (error) {
+        if (error.code === "23505") {
+            console.log("[Supabase] Claim already indexed (duplicate)");
+            return;
+        }
+        console.error("[Supabase] saveClaim failed:", error);
+    } else {
+        console.log("[Supabase] Claim saved successfully (client-side fallback)");
+    }
+}

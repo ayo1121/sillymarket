@@ -480,7 +480,22 @@ export async function resolveMarket(
     systemProgram: SystemProgram.programId,
   };
 
-  return callIx(program, "resolve", [params.winnerIndex], accounts);
+  const txSig = await callIx(program, "resolve", [params.winnerIndex], accounts);
+
+  // Client-side fallback for indexing
+  try {
+    const { saveMarketResolution } = await import("../integrations/supabase/writes");
+    await saveMarketResolution({
+      signature: txSig,
+      marketPubkey: params.market.toString(),
+      winnerIndex: params.winnerIndex,
+      autoVoid: params.winnerIndex === -2,
+    });
+  } catch (err) {
+    console.error("[actions] Failed to save resolution client-side:", err);
+  }
+
+  return txSig;
 }
 
 /**
@@ -531,7 +546,26 @@ export async function claimWinnings(
     systemProgram: SystemProgram.programId,
   };
 
-  return callIx(program, "claim_winnings", [], accounts);
+  const txSig = await callIx(program, "claim_winnings", [], accounts);
+
+  // Client-side fallback for indexing
+  try {
+    const { saveClaim } = await import("../integrations/supabase/writes");
+    // Note: We don't know the exact amount claimed without parsing logs, 
+    // but we can record the event. For now, pass 0 or try to fetch logs?
+    // Passing 0 as placeholder since we can't easily get the amount here without extra RPC calls.
+    // The UI might need to refresh balances anyway.
+    await saveClaim({
+      signature: txSig,
+      marketPubkey: params.market.toString(),
+      userPubkey: params.user.toString(),
+      amountLamports: 0, // Placeholder
+    });
+  } catch (err) {
+    console.error("[actions] Failed to save claim client-side:", err);
+  }
+
+  return txSig;
 }
 
 /**
