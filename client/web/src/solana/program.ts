@@ -265,5 +265,5 @@ export function useAnchorProgram() {
 
   return useMemo(() => {
     return getAnchorProgram(wallet);
-  }, [wallet?.publicKey?.toBase58(), wallet?.signTransaction]);
+  }, [wallet]);
 }

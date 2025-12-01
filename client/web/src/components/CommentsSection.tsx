@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWalletIdentity } from "@/auth/walletIdentity";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { z } from "zod";
 import { API_URL } from "@/lib/config";
 import { shortenWallet } from "@/utils/format";
+import { supabase } from "@/integrations/supabase/client";
 
 type Comment = {
   id: string;
@@ -151,7 +152,6 @@ export const CommentsSection = ({ marketId }: CommentsSectionProps) => {
       // Fallback to Supabase direct write
       try {
         const { postComment } = await import("@/integrations/supabase/writes");
-        const { supabase } = await import("@/integrations/supabase/client");
 
         if (!walletPubkey) {
           throw new Error("Wallet not connected");

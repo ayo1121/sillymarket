@@ -156,7 +156,7 @@ export function useMarketActivity(market?: UIMarket | null) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [marketPubkey, market]);
+  }, [marketPubkey, market, outcomesCount]);
 
   const sortedActivity = useMemo(
     () =>

@@ -133,7 +133,7 @@ const MarketDetails = () => {
     const initialHistory =
       (liveHistory && liveHistory.length > 0 ? liveHistory : market.history) ?? [];
     setProbHistory(initialHistory);
-  }, [market?.pubkey, liveHistory]);
+  }, [market, liveHistory]);
 
   // Append new point whenever probabilities change
   useEffect(() => {
@@ -154,7 +154,7 @@ const MarketDetails = () => {
       };
       return [...prev, nextPoint];
     });
-  }, [market?.pubkey, poolProbabilities, outcomeCount]);
+  }, [market, poolProbabilities, outcomeCount]);
 
   const MAX_VISIBLE_RECENT = 10;
 
@@ -253,7 +253,7 @@ const MarketDetails = () => {
     } catch (err) {
       console.error("[MarketDetails] refreshMarket failed", err);
     }
-  }, [marketId, program, wallet.publicKey]);
+  }, [marketId, program, publicKey, wallet.publicKey]);
 
   // Handler for when a bet is placed - refresh after indexer processes the event
   const handleBetPlaced = useCallback(

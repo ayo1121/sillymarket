@@ -95,6 +95,9 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      crypto: "crypto-browserify",
+      stream: "stream-browserify",
+      vm: path.resolve(__dirname, "./src/polyfills/vm.ts"),
     },
   },
   // SECURITY: Strip console.log and debugger statements in production builds
@@ -109,6 +112,12 @@ export default defineConfig(({ mode }) => ({
 
     // Manual chunk splitting for better caching
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === "INVALID_ANNOTATION" && warning.id?.includes("/node_modules/ox/")) {
+          return;
+        }
+        warn(warning);
+      },
       output: {
         manualChunks: {
           // React vendor chunk
@@ -148,6 +157,8 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom',
       '@solana/web3.js',
       '@tanstack/react-query',
+      'crypto-browserify',
+      'stream-browserify',
     ],
   },
 }));

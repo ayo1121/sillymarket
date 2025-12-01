@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState, useCall
 import { useAnchorProgram } from "../solana/program";
 import type { UIMarket } from "../solana/marketMapping";
 import { WIN_VOID, STATE_RESOLVED, WIN_UNSET } from "../solana/marketMapping";
-import { fetchUserPositions } from "../solana/read";
+import { fetchAllMarkets, fetchUserPositions } from "../solana/read";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 
@@ -153,7 +153,6 @@ export function MarketsProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(true);
       try {
-        const { fetchAllMarkets } = await import("../solana/read");
         const res = await fetchAllMarkets(program);
         setMarkets(res);
         setErr(null);

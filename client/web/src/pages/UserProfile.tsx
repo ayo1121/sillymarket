@@ -235,7 +235,7 @@ export default function UserProfile() {
         staleTime: 60_000, // 1 minute
     });
 
-    const positions = profileData?.positions || [];
+    const positions = useMemo(() => profileData?.positions || [], [profileData?.positions]);
     const marketsMap = profileData?.marketsMap || new Map();
 
     // Pagination state

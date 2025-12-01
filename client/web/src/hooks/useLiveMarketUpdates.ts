@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/integrations/supabase/client";
 import { queryKeys } from "@/lib/queryKeys";
@@ -76,7 +76,7 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
     const fallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Start fallback polling if real-time fails
-    const startFallbackPolling = () => {
+    const startFallbackPolling = useCallback(() => {
         if (fallbackIntervalRef.current) return; // Already polling
 
         // Only log in development
@@ -93,15 +93,15 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
 
         // Poll every 120 seconds (reduced from 60s to minimize RPC load)
         fallbackIntervalRef.current = setInterval(poll, 120 * 1000);
-    };
+    }, [queryClient]);
 
     // Stop fallback polling
-    const stopFallbackPolling = () => {
+    const stopFallbackPolling = useCallback(() => {
         if (fallbackIntervalRef.current) {
             clearInterval(fallbackIntervalRef.current);
             fallbackIntervalRef.current = null;
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (!enabled) return;
@@ -163,7 +163,7 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
             channel.unsubscribe();
             stopFallbackPolling();
         };
-    }, [enabled, queryClient]);
+    }, [enabled, queryClient, startFallbackPolling, stopFallbackPolling]);
 
     // Handle page visibility changes
     useEffect(() => {
@@ -179,7 +179,7 @@ export const useLiveMarketUpdates = (enabled: boolean = true) => {
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [isConnected, enabled]);
+    }, [isConnected, enabled, startFallbackPolling, stopFallbackPolling]);
 
     return { isConnected, error };
 };

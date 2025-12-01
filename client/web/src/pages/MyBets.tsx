@@ -71,7 +71,7 @@ const MyBets = () => {
     } else if (view !== "markets" && viewMode === "markets") {
       setViewMode("bets");
     }
-  }, [searchParams]);
+  }, [searchParams, viewMode]);
 
   // Sync state changes to URL (handles toggle button)
   useEffect(() => {
@@ -90,7 +90,7 @@ const MyBets = () => {
         });
       }
     }
-  }, [viewMode]);
+  }, [viewMode, searchParams, setSearchParams]);
 
   const [marketFilter, setMarketFilter] = useState<"active" | "resolved">("active");
   const [resolving, setResolving] = useState<Map<string, boolean>>(new Map());

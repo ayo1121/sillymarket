@@ -4,6 +4,7 @@ import { web3 } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import type { YesnoMarkets } from "../idl/yesno_markets";
+import idl from "../idl/yesno_markets.json";
 import { getConfigPda } from "./idlHelpers";
 import { mapRawMarketToUi, type UIMarket, type MarketHistoryPoint, type MarketActivityItem, STATE_ACTIVE, STATE_RESOLVED, WIN_UNSET, WIN_VOID, resolveOutcomeLabelFromMarket } from "./marketMapping";
 import { attachMetadataToMarkets } from "../lib/marketMetadata";
@@ -1104,8 +1105,7 @@ async function getReadonlyAnchorProgram(): Promise<Program<YesnoMarkets> | null>
       commitment: "confirmed",
     });
 
-    const rawIdl = await import("../idl/yesno_markets.json");
-    const program = new anchor.Program(rawIdl.default as anchor.Idl, provider) as Program<YesnoMarkets>;
+    const program = new anchor.Program(idl as anchor.Idl, provider) as Program<YesnoMarkets>;
 
     return program;
   } catch (err) {
@@ -1162,7 +1162,6 @@ export async function fetchMarketActivity(
     const walletToUsername = new Map<string, string | null>();
     if (wallets.size > 0) {
       try {
-        const { supabase } = await import("../integrations/supabase/client");
         const walletArray = Array.from(wallets);
 
         // Query users by pubkey

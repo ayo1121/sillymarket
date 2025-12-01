@@ -32,7 +32,18 @@ const patchedRecommendedConfigs = tseslint.configs.recommended.map((cfg) => {
 });
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/dev-dist/**",
+      "**/node_modules/**",
+      "public/sw.js",
+      "public/registerSW.js",
+      "public/workbox-*.js",
+      "**/*.config.js",
+      "**/*.config.ts",
+    ],
+  },
   {
     // Global settings for all files
     languageOptions: {

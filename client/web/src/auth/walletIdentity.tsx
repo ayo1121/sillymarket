@@ -102,5 +102,5 @@ export function WalletIdentityProvider({ children }: { children: React.ReactNode
 
   return <WalletIdentityCtx.Provider value={v}>{children}</WalletIdentityCtx.Provider>;
 }
-// eslint-disable-next-line react-refresh/only-export-components
+
 export function useWalletIdentity() { return useContext(WalletIdentityCtx); }

@@ -115,12 +115,12 @@ const AdminPanel = () => {
       try {
         // Fetch config (may not exist yet)
         try {
-          const configData = await fetchConfig(program);
-          const configAccount = configData.account || configData;
+          const configData = await fetchConfig(program as any);
+          const configAccount = (configData as any).account || configData;
           setConfig(configAccount);
 
           // Check if user is admin
-          const authority = configAccount.authority || configAccount.authority;
+          const authority = (configAccount as any).authority || (configAccount as any).authority;
           if (authority) {
             const authPubkey = authority.toBase58 ? authority.toBase58() : authority.toString();
             const userIsAdmin = authPubkey === publicKey.toBase58();
@@ -141,7 +141,7 @@ const AdminPanel = () => {
 
         // Fetch all markets
         try {
-          const allMarkets = await fetchAllMarkets(program);
+          const allMarkets = await fetchAllMarkets(program as any);
           setMarkets(allMarkets as any[]);
         } catch (marketErr: any) {
           console.error("Error fetching markets:", marketErr);
@@ -167,15 +167,15 @@ const AdminPanel = () => {
 
     try {
       console.log("[AdminPanel] Initializing config...");
-      const sig = await initializeConfig(program as any, publicKey);
+      const sig = await initializeConfig(program as any, wallet.publicKey);
       successToastWithLink("Config initialized!", sig);
 
       // Reload config after initialization
       setConfigLoading(true);
       try {
-        const configData = await fetchConfig(program);
+        const configData = await fetchConfig(program as any);
         if (configData) {
-          const configAccount = configData.account || configData;
+          const configAccount = (configData as any).account || configData;
           setConfig(configAccount);
           setIsAdmin(true);
           console.log("[AdminPanel] Config loaded after initialization");
@@ -212,7 +212,7 @@ const AdminPanel = () => {
       });
       successToastWithLink("Config initialized!", sig);
       // Reload config
-      const configData = await fetchConfig(program);
+      const configData = await fetchConfig(program as any);
       setConfig(configData.account || configData);
       setIsAdmin(true);
     } catch (err: any) {
@@ -235,7 +235,7 @@ const AdminPanel = () => {
       });
       successToastWithLink("Authority updated!", sig);
       // Reload config
-      const configData = await fetchConfig(program);
+      const configData = await fetchConfig(program as any);
       setConfig(configData.account || configData);
     } catch (err: any) {
       console.error("Set authority error:", err);
@@ -293,18 +293,18 @@ const AdminPanel = () => {
     const loadMarket = async () => {
       try {
         const marketPk = new PublicKey(resolveForm.marketAddress);
-        const marketData = await fetchMarket(program, marketPk);
+        const marketData = await fetchMarket(program as any, marketPk);
         setResolveMarketData(marketData);
 
         // Auto-populate platform fee wallet and creator wallet
         if (marketData) {
-          const platformFeeWallet = marketData.rawAccount?.platformFeeWallet || marketData.rawAccount?.platform_fee_wallet || marketData.platformFeeWallet;
-          const creatorWallet = marketData.rawAccount?.creator || marketData.creatorPubkey || marketData.creator;
+          const platformFeeWallet = (marketData as any).rawAccount?.platformFeeWallet || (marketData as any).rawAccount?.platform_fee_wallet || (marketData as any).platformFeeWallet;
+          const creatorWallet = (marketData as any).rawAccount?.creator || (marketData as any).creatorPubkey || (marketData as any).creator;
 
           if (platformFeeWallet && typeof platformFeeWallet !== "string") {
             setResolveForm(prev => ({
               ...prev,
-              platformFeeWallet: platformFeeWallet.toBase58 ? platformFeeWallet.toBase58() : resolveForm.platformFeeWallet,
+              platformFeeWallet: platformFeeWallet.toBase58 ? platformFeeWallet.toBase58() : prev.platformFeeWallet,
             }));
           } else if (platformFeeWallet) {
             setResolveForm(prev => ({
@@ -316,7 +316,7 @@ const AdminPanel = () => {
           if (creatorWallet && typeof creatorWallet !== "string") {
             setResolveForm(prev => ({
               ...prev,
-              creatorWallet: creatorWallet.toBase58 ? creatorWallet.toBase58() : resolveForm.creatorWallet,
+              creatorWallet: creatorWallet.toBase58 ? creatorWallet.toBase58() : prev.creatorWallet,
             }));
           } else if (creatorWallet) {
             setResolveForm(prev => ({
@@ -344,7 +344,7 @@ const AdminPanel = () => {
     const loadPosition = async () => {
       try {
         const userPk = new PublicKey(claimForm.userAddress);
-        const positions = await fetchUserPositions(program, userPk);
+        const positions = await fetchUserPositions(program as any, userPk);
         const marketPk = new PublicKey(claimForm.marketAddress);
         const positionForMarket = positions.find((p: any) => {
           const posMarket = p.account.market;
@@ -414,7 +414,7 @@ const AdminPanel = () => {
       successToastWithLink("Market resolved!", sig);
 
       // Reload market data
-      const marketData = await fetchMarket(program, marketPk);
+      const marketData = await fetchMarket(program as any, marketPk);
       setResolveMarketData(marketData);
     } catch (err: any) {
       console.error("Resolve error:", err);
@@ -532,7 +532,7 @@ const AdminPanel = () => {
 
       // Reload markets
       if (program) {
-        const allMarkets = await fetchAllMarkets(program);
+        const allMarkets = await fetchAllMarkets(program as any);
         setMarkets(allMarkets as any[]);
       }
     } catch (err: any) {
@@ -580,7 +580,7 @@ const AdminPanel = () => {
     let marketData: any = null;
     try {
       const marketPk = new PublicKey(claimForm.marketAddress);
-      marketData = await fetchMarket(program, marketPk, userPk);
+      marketData = await fetchMarket(program as any, marketPk);
     } catch (err) {
       console.error("Error loading market for claim:", err);
       toast.error("Failed to load market data");
@@ -614,7 +614,7 @@ const AdminPanel = () => {
       successToastWithLink("Winnings claimed!", sig);
 
       // Reload position data
-      const positions = await fetchUserPositions(program, userPk);
+      const positions = await fetchUserPositions(program as any, userPk);
       const positionForMarket = positions.find((p: any) => {
         const posMarket = p.account.market;
         const marketPubkey = posMarket?.toBase58 ? posMarket.toBase58() : posMarket?.toString();
@@ -634,7 +634,7 @@ const AdminPanel = () => {
       <div className="min-h-screen bg-background text-foreground">
         <Header />
         <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="win95-window bg-background p-4 text-center border border-[#8a8a8a] dark:border-[#333]">
+          <div className="win95-window bg-background p-4 text-center border border-[#8a8a8a] dark:border-[#333]">
             <p>Loading admin panel...</p>
             {!program && <p className="text-xs text-muted-foreground mt-2">Waiting for program to load...</p>}
             {!publicKey && <p className="text-xs text-muted-foreground mt-2">Waiting for wallet connection...</p>}
@@ -649,7 +649,7 @@ const AdminPanel = () => {
       <div className="min-h-screen bg-background text-foreground">
         <Header />
         <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="win95-window bg-background p-4 text-center border border-[#8a8a8a] dark:border-[#333]">
+          <div className="win95-window bg-background p-4 text-center border border-[#8a8a8a] dark:border-[#333]">
             <p className="text-red-600">⚠️ Connect your wallet to access admin panel</p>
             <div className="mt-4 text-xs text-muted-foreground space-y-1">
               <p>Program loaded: {program ? "✅" : "❌"}</p>
