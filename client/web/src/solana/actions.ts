@@ -110,15 +110,18 @@ type ClientBetInsertArgs = {
  * This function has been disabled for security.
  */
 async function insertBetRowClientSide(args: ClientBetInsertArgs) {
-  // ⚠️ DISABLED: Frontend should not write to bets table
-  // Bets are indexed by Edge Function via Helius webhook
-  console.log("[bets][client] Bet indexing handled by Edge Function", {
-    signature: args.signature,
-    marketPubkey: args.marketPubkey,
-  });
-
-  // Note: The bet will appear in the UI once the Edge Function indexes it
-  // This typically takes 1-3 seconds after transaction confirmation
+  try {
+    const { saveBet } = await import("../integrations/supabase/writes");
+    await saveBet({
+      signature: args.signature,
+      marketPubkey: args.marketPubkey,
+      bettorPubkey: args.bettorPubkey,
+      outcomeIndex: args.outcomeIndex,
+      amountLamports: Number(args.amountLamports),
+    });
+  } catch (err) {
+    console.error("[actions] Failed to save bet client-side:", err);
+  }
 }
 
 

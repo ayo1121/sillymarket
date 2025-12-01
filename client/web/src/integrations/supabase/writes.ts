@@ -167,3 +167,46 @@ export async function trackEvent(params: {
         // Do not throw: analytics failures must not break UX
     }
 }
+
+/**
+ * Save a bet to Supabase (Client-side fallback)
+ * Used when Edge Function indexing is not available/configured.
+ */
+export async function saveBet(params: {
+    signature: string;
+    marketPubkey: string;
+    bettorPubkey: string;
+    outcomeIndex: number;
+    amountLamports: number;
+    poolsAfter?: number[] | null;
+    probsAfter?: number[] | null;
+}) {
+    if (!isSupabaseConfigured()) {
+        console.warn("[supabase][writes] Supabase not configured – skipping saveBet");
+        return;
+    }
+
+    const { error } = await supabase.from("bets").insert({
+        tx_sig: params.signature,
+        market_pubkey: params.marketPubkey,
+        bettor_pubkey: params.bettorPubkey,
+        outcome_index: params.outcomeIndex,
+        amount_lamports: params.amountLamports,
+        amount_sol: params.amountLamports / 1_000_000_000,
+        pools_after: params.poolsAfter || null,
+        probs_after: params.probsAfter || null,
+        block_time: new Date().toISOString(),
+    });
+
+    if (error) {
+        // Ignore duplicate key errors (if Edge Function already indexed it)
+        if (error.code === "23505") {
+            console.log("[Supabase] Bet already indexed (duplicate)");
+            return;
+        }
+        console.error("[Supabase] saveBet failed:", error);
+        // Don't throw, as on-chain bet succeeded
+    } else {
+        console.log("[Supabase] Bet saved successfully (client-side fallback)");
+    }
+}
