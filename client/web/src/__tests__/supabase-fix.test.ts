@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { upsertUser, createNotification } from '../integrations/supabase/writes';
 import { supabase } from '../integrations/supabase/client';
+import * as clientModule from '../integrations/supabase/client';
 
 // Mock Supabase client
 vi.mock('../integrations/supabase/client', () => ({
@@ -13,6 +14,7 @@ vi.mock('../integrations/supabase/client', () => ({
             insert: vi.fn(() => Promise.resolve({ error: null })),
         })),
     },
+    isSupabaseConfigured: vi.fn(),
 }));
 
 describe('Supabase Security Fixes', () => {
@@ -20,20 +22,20 @@ describe('Supabase Security Fixes', () => {
         vi.clearAllMocks();
     });
 
-    it('upsertUser should skip operation if no session exists (preventing 401)', async () => {
-        // Mock no session
-        (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
+    it('upsertUser should skip operation when Supabase is not configured', async () => {
+        // Mock not configured
+        (clientModule.isSupabaseConfigured as any).mockReturnValue(false);
         const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
         await upsertUser('test-pubkey');
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Skipping user upsert'));
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Supabase not configured'));
         expect(supabase.from).not.toHaveBeenCalled();
     });
 
-    it('createNotification should skip operation if no session exists (preventing 401)', async () => {
-        // Mock no session
-        (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
+    it('createNotification should skip operation when Supabase is not configured', async () => {
+        // Mock not configured
+        (clientModule.isSupabaseConfigured as any).mockReturnValue(false);
         const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
         await createNotification({
@@ -42,12 +44,13 @@ describe('Supabase Security Fixes', () => {
             title: 'test',
         });
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Skipping notification creation'));
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Supabase not configured'));
         expect(supabase.from).not.toHaveBeenCalled();
     });
 
-    it('upsertUser should proceed if session exists', async () => {
-        // Mock session exists
+    it('upsertUser should proceed if Supabase is configured', async () => {
+        // Mock configured
+        (clientModule.isSupabaseConfigured as any).mockReturnValue(true);
         (supabase.auth.getSession as any).mockResolvedValue({ data: { session: { user: { id: 'test' } } } });
 
         await upsertUser('test-pubkey');

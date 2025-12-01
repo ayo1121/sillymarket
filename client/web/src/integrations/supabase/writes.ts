@@ -1,4 +1,4 @@
-import { supabase } from "./client";
+import { supabase, isSupabaseConfigured } from "./client";
 
 /**
  * Save market metadata to Supabase after creating on-chain.
@@ -45,6 +45,13 @@ export async function upsertUser(pubkey: string, username?: string) {
     // NOTE: We are NOT checking for a session here because we use custom SIWS
     // and RLS policies are set to allow/deny based on other factors (or disabled for now).
     // For 'users' table, we might not have anon write access, so we catch errors gracefully.
+
+    if (!isSupabaseConfigured()) {
+        console.warn(
+            "[supabase][writes] Supabase not configured – skipping upsertUser"
+        );
+        return;
+    }
 
     const payload: any = { pubkey };
     if (username) {
@@ -107,6 +114,13 @@ export async function createNotification(params: {
     metadata?: Record<string, any>;
 }) {
     // NOTE: No session check here. Relying on RLS.
+
+    if (!isSupabaseConfigured()) {
+        console.warn(
+            "[supabase][writes] Supabase not configured – skipping createNotification"
+        );
+        return;
+    }
 
     const { error } = await supabase.from("notifications").insert({
         user_pubkey: params.userPubkey,

@@ -10,19 +10,29 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-    throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY');
+const hasSupabaseEnv = !!SUPABASE_URL && !!SUPABASE_KEY;
+
+if (!hasSupabaseEnv) {
+    // These are integration tests; they require env vars.
+    console.warn(
+        "[supabase] Skipping supabase-reliability.test.ts because VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set."
+    );
 }
 
 // Create a client with the ANON key
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+// Use placeholders if env is missing (tests will be skipped anyway)
+const supabase = createClient(
+    SUPABASE_URL || 'https://placeholder.supabase.co',
+    SUPABASE_KEY || 'placeholder',
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        }
     }
-});
+);
 
-describe('Supabase Reliability & RLS (Anon Role)', () => {
+(hasSupabaseEnv ? describe : describe.skip)('Supabase Reliability & RLS (Anon Role)', () => {
     const timestamp = Date.now();
     const testMarketPubkey = `test-market-${timestamp}`;
     const testUserPubkey = `test-user-${timestamp}`;
