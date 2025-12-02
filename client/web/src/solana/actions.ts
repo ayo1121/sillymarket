@@ -225,6 +225,9 @@ export async function callIx(
 /**
  * Create a new market - matches Rust create_market
  */
+/**
+ * Create a new market - matches Rust create_market
+ */
 export async function createMarket(
   wallet: WalletContextState,
   params: {
@@ -248,13 +251,24 @@ export async function createMarket(
   // Check offline status
   checkOfflineAndQueue("create_market", params);
 
-  // 2) Prepare arguments
+  // 2) Fetch config to get fee wallet
+  const { fetchConfig } = await import("./read");
+  const config = await fetchConfig(program);
+  if (!config) {
+    throw new Error("[createMarket] Config not initialized. Please ask admin to initialize.");
+  }
+
+  const feeWallet = (config as any).feeWallet || (config as any).fee_wallet;
+  if (!feeWallet) {
+    throw new Error("[createMarket] Fee wallet not found in config");
+  }
+
+  // 3) Prepare arguments
   const questionHash = await hashQuestionAndAnswers(params.question, params.answers);
-  const outcomesCount = params.answers.length;
   const cutoff = new BN(params.cutoffTs);
   const imageUrl = params.imageUrl || "";
 
-  // 3) Derive Market PDA
+  // 4) Derive Market PDA
   const [marketPda] = findMarketPda(
     program.programId,
     wallet.publicKey,
@@ -263,23 +277,27 @@ export async function createMarket(
   );
   const [configPda] = getConfigPda(program.programId);
 
-  // 4) Build transaction
+  // 5) Build transaction
   console.log("[createMarket] Creating market", {
     question: params.question,
     answers: params.answers,
     marketPda: marketPda.toBase58(),
-    cutoff: params.cutoffTs
+    cutoff: params.cutoffTs,
+    feeWallet: feeWallet.toBase58 ? feeWallet.toBase58() : feeWallet
   });
 
+  // IDL Args: cutoff_ts, question_hash, question, answers, image_url
   const builder = (program.methods as any).createMarket?.(
-    Array.from(questionHash), // Anchor expects number[] or Buffer for [u8; 32]
-    outcomesCount,
     cutoff,
+    Array.from(questionHash), // Anchor expects number[] or Buffer for [u8; 32]
+    params.question,
+    params.answers,
     imageUrl
   ) ?? (program.methods as any).create_market?.(
-    Array.from(questionHash),
-    outcomesCount,
     cutoff,
+    Array.from(questionHash),
+    params.question,
+    params.answers,
     imageUrl
   );
 
@@ -294,6 +312,7 @@ export async function createMarket(
         market: marketPda,
         config: configPda,
         creator: wallet.publicKey,
+        platformFeeWallet: feeWallet,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
