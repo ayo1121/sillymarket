@@ -286,8 +286,23 @@ async function createResolutionNotifications(
             .single();
 
         const question = market?.question || 'Unknown Market';
-        const outcomeLabels = market?.outcome_labels || {};
-        const winnerLabel = outcomeLabels[winnerIndex.toString()] || `Outcome ${winnerIndex}`;
+
+        // Extract outcome labels from JSONB - handle both array and object formats
+        let winnerLabel = `Outcome ${winnerIndex + 1}`;
+        if (market?.outcome_labels) {
+            const labels = market.outcome_labels;
+            // Handle array format: ["Yes", "No"]
+            if (Array.isArray(labels) && labels[winnerIndex]) {
+                winnerLabel = String(labels[winnerIndex]);
+            }
+            // Handle object format: {"0": "Yes", "1": "No"}
+            else if (typeof labels === 'object' && !Array.isArray(labels)) {
+                const labelValue = labels[winnerIndex.toString()] || labels[winnerIndex];
+                if (labelValue) {
+                    winnerLabel = String(labelValue);
+                }
+            }
+        }
 
         // 3. Create notifications
         const notifications = bettors.map(bet => {

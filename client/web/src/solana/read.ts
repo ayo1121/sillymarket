@@ -882,10 +882,10 @@ export async function fetchMarketsBatch(
 }
 
 /**
- * Fetch markets created by a specific wallet
+ * Fetch markets created by a specific user
  * 
- * This filters markets by creator (authority) field from on-chain data.
- * Uses fetchAllMarkets internally (already cached via React Query).
+ * Optimized to query Supabase first for market pubkeys, then batch fetch on-chain data.
+ * This avoids calling fetchAllMarkets which can cause performance issues.
  * 
  * @param program - Anchor program instance
  * @param creator - Creator wallet pubkey
@@ -910,14 +910,49 @@ export async function fetchUserMarkets(
       console.log(`[RPC] Fetching markets created by: ${creatorStr}`);
     }
 
-    // Fetch all markets (already optimized with shared connection + caching)
-    const allMarkets = await fetchAllMarkets(program);
+    // Strategy: Query Supabase for market pubkeys by creator, then batch fetch on-chain
+    // This is much faster than fetching all markets and filtering
+    let marketPubkeys: string[] = [];
 
-    // Filter by creator on-chain authority field
+    try {
+      const { data, error } = await (supabase as any)
+        .from('markets')
+        .select('market_pubkey')
+        .eq('creator_pubkey', creatorStr);
+
+      if (!error && data && data.length > 0) {
+        marketPubkeys = data.map((row: any) => row.market_pubkey);
+        if (import.meta.env.DEV) {
+          console.log(`[fetchUserMarkets] Found ${marketPubkeys.length} markets in Supabase`);
+        }
+      }
+    } catch (err) {
+      console.warn('[fetchUserMarkets] Supabase query failed, falling back to on-chain filter', err);
+    }
+
+    // If Supabase returned results, batch fetch those specific markets
+    if (marketPubkeys.length > 0) {
+      const marketsMap = await fetchMarketsBatch(program, marketPubkeys);
+      const markets = Array.from(marketsMap.values());
+
+      if (import.meta.env.DEV) {
+        console.log(`[RPC] Batch fetched ${markets.length} markets for ${creatorStr}`);
+      }
+
+      return markets;
+    }
+
+    // Fallback: If Supabase has no data, fetch all markets and filter
+    // This is slower but ensures we don't miss markets not yet indexed
+    if (import.meta.env.DEV) {
+      console.log('[fetchUserMarkets] No Supabase data, falling back to fetchAllMarkets');
+    }
+
+    const allMarkets = await fetchAllMarkets(program);
     const userMarkets = allMarkets.filter(market => market.creatorPubkey === creatorStr);
 
     if (import.meta.env.DEV) {
-      console.log(`[RPC] Found ${userMarkets.length} markets created by ${creatorStr}`);
+      console.log(`[RPC] Found ${userMarkets.length} markets created by ${creatorStr} (fallback)`);
     }
 
     return userMarkets;

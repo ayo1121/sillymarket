@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useAnchorProgram } from '@/solana/program';
-import { fetchUserPositions, fetchMarketsBatch } from '@/solana/read';
+import { fetchUserPositions, fetchMarketsBatch, fetchMarket } from '@/solana/read';
 import { useQuery } from '@tanstack/react-query';
 import { PublicKey } from '@solana/web3.js';
 import { shortenWallet, formatSol } from '@/utils/format';
@@ -642,23 +642,23 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
 
     // Fetch market data to get question and outcomes
     useEffect(() => {
-        const fetchMarket = async () => {
+        const loadMarket = async () => {
             if (!data.market_pubkey) return;
 
-            // 1. Try fetching on-chain first
+            // 1. Try fetching with centralized fetchMarket (handles on-chain + Supabase merge)
             if (program) {
                 try {
-                    const marketPubkey = new PublicKey(data.market_pubkey);
-                    const marketAccount = await (program as any).account.market.fetch(marketPubkey);
-                    setMarketData(marketAccount);
-                    return;
+                    const uiMarket = await fetchMarket(program, data.market_pubkey);
+                    if (uiMarket) {
+                        setMarketData(uiMarket);
+                        return;
+                    }
                 } catch (error) {
-                    // Ignore error, try fallback
-                    // console.warn('On-chain fetch failed for activity item, trying Supabase fallback');
+                    console.warn('fetchMarket failed for activity item, trying Supabase fallback', error);
                 }
             }
 
-            // 2. Fallback to Supabase metadata
+            // 2. Fallback to Supabase metadata directly (if program not ready or fetchMarket failed)
             try {
                 const { data: meta, error } = await supabase
                     .from('markets')
@@ -680,7 +680,7 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
             }
         };
 
-        fetchMarket();
+        loadMarket();
     }, [program, data.market_pubkey]);
 
     const renderIcon = () => {
@@ -705,7 +705,8 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
 
     const getMarketQuestion = () => {
         if (!marketData) return 'Loading...';
-        return marketData.question || 'Unknown Market';
+        // Support both UIMarket (displayQuestion) and raw Supabase fallback (question)
+        return marketData.displayQuestion || marketData.question || 'Unknown Market';
     };
 
     const renderContent = () => {
