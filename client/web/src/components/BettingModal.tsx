@@ -213,6 +213,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
       const { txSig } = await placeBet(wallet, {
         marketPubkey: market.pubkey,
         outcomeIndex: outcomeIndex,
+        outcomeLabel: market.outcomes[outcomeIndex]?.label,
         stakeLamports,
       });
 

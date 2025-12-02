@@ -177,6 +177,7 @@ export async function saveBet(params: {
     marketPubkey: string;
     bettorPubkey: string;
     outcomeIndex: number;
+    outcomeLabel?: string;
     amountLamports: number;
     poolsAfter?: number[] | null;
     probsAfter?: number[] | null;
@@ -191,6 +192,7 @@ export async function saveBet(params: {
         market_pubkey: params.marketPubkey,
         bettor_pubkey: params.bettorPubkey,
         outcome_index: params.outcomeIndex,
+        outcome_label: params.outcomeLabel || null,
         amount_lamports: params.amountLamports,
         amount_sol: params.amountLamports / 1_000_000_000,
         pools_after: params.poolsAfter || null,
@@ -247,6 +249,96 @@ export async function saveMarketResolution(params: {
         console.error("[Supabase] saveMarketResolution failed:", error);
     } else {
         console.log("[Supabase] Market resolution saved successfully (client-side fallback)");
+
+        // Trigger notifications for bettors
+        // Since we can't use database triggers easily, we do it here client-side
+        // This is a "best effort" - it won't scale to thousands of bettors efficiently 
+        // but works for the current scale.
+        createResolutionNotifications(params.marketPubkey, params.winnerIndex, params.autoVoid);
+    }
+}
+
+/**
+ * Create notifications for all users who bet on a resolved market
+ */
+async function createResolutionNotifications(
+    marketPubkey: string,
+    winnerIndex: number,
+    autoVoid: boolean
+) {
+    try {
+        // 1. Fetch all unique bettors for this market
+        const { data: bettors, error: fetchError } = await supabase
+            .from('bets')
+            .select('bettor_pubkey, outcome_index')
+            .eq('market_pubkey', marketPubkey);
+
+        if (fetchError || !bettors) {
+            console.error("[Supabase] Failed to fetch bettors for notification:", fetchError);
+            return;
+        }
+
+        // 2. Get market question for the message
+        const { data: market } = await supabase
+            .from('markets')
+            .select('question, outcome_labels')
+            .eq('market_pubkey', marketPubkey)
+            .single();
+
+        const question = market?.question || 'Unknown Market';
+        const outcomeLabels = market?.outcome_labels || {};
+        const winnerLabel = outcomeLabels[winnerIndex.toString()] || `Outcome ${winnerIndex}`;
+
+        // 3. Create notifications
+        const notifications = bettors.map(bet => {
+            const didWin = !autoVoid && bet.outcome_index === winnerIndex;
+            const isVoid = autoVoid;
+
+            let title = "Market Resolved";
+            let body = `Market "${question}" has been resolved.`;
+
+            if (isVoid) {
+                body += " It was voided and funds have been refunded.";
+            } else if (didWin) {
+                title = "You Won!";
+                body += ` The winner was "${winnerLabel}". You won this bet!`;
+            } else {
+                body += ` The winner was "${winnerLabel}".`;
+            }
+
+            return {
+                user_pubkey: bet.bettor_pubkey,
+                type: 'market_resolved',
+                title,
+                body,
+                metadata: {
+                    market_pubkey: marketPubkey,
+                    winner_index: winnerIndex,
+                    did_win: didWin,
+                    is_void: isVoid
+                },
+                is_read: false
+            };
+        });
+
+        // Deduplicate by user (one notification per user per market)
+        const uniqueNotifications = Array.from(
+            new Map(notifications.map(n => [n.user_pubkey, n])).values()
+        );
+
+        if (uniqueNotifications.length > 0) {
+            const { error: insertError } = await supabase
+                .from('notifications')
+                .insert(uniqueNotifications);
+
+            if (insertError) {
+                console.error("[Supabase] Failed to insert resolution notifications:", insertError);
+            } else {
+                console.log(`[Supabase] Created ${uniqueNotifications.length} resolution notifications`);
+            }
+        }
+    } catch (err) {
+        console.error("[Supabase] Error creating resolution notifications:", err);
     }
 }
 

@@ -643,14 +643,40 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
     // Fetch market data to get question and outcomes
     useEffect(() => {
         const fetchMarket = async () => {
-            if (!program || !data.market_pubkey) return;
+            if (!data.market_pubkey) return;
 
+            // 1. Try fetching on-chain first
+            if (program) {
+                try {
+                    const marketPubkey = new PublicKey(data.market_pubkey);
+                    const marketAccount = await (program as any).account.market.fetch(marketPubkey);
+                    setMarketData(marketAccount);
+                    return;
+                } catch (error) {
+                    // Ignore error, try fallback
+                    // console.warn('On-chain fetch failed for activity item, trying Supabase fallback');
+                }
+            }
+
+            // 2. Fallback to Supabase metadata
             try {
-                const marketPubkey = new PublicKey(data.market_pubkey);
-                const marketAccount = await (program as any).account.market.fetch(marketPubkey);
-                setMarketData(marketAccount);
-            } catch (error) {
-                console.error('Error fetching market for activity:', error);
+                const { data: meta, error } = await supabase
+                    .from('markets')
+                    .select('question, outcome_labels')
+                    .eq('market_pubkey', data.market_pubkey)
+                    .single();
+
+                if (meta && !error) {
+                    setMarketData({
+                        question: meta.question,
+                        outcomes: meta.outcome_labels ? Object.values(meta.outcome_labels).map((label: any, index: number) => ({
+                            index,
+                            label
+                        })) : []
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching market metadata for activity:', err);
             }
         };
 
@@ -672,6 +698,7 @@ const ActivityItem = ({ activity }: ActivityItemProps) => {
 
     const getOutcomeLabel = (outcomeIndex: number) => {
         if (!marketData || !marketData.outcomes) return `Outcome ${outcomeIndex}`;
+        // Handle both on-chain structure (array of objects) and fallback structure (array of objects)
         const outcome = marketData.outcomes[outcomeIndex];
         return outcome?.label || `Outcome ${outcomeIndex}`;
     };

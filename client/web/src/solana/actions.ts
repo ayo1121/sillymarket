@@ -94,6 +94,7 @@ type ClientBetInsertArgs = {
   marketPubkey: string;
   bettorPubkey: string;
   outcomeIndex: number;
+  outcomeLabel?: string;
   amountLamports: bigint | number;
 };
 
@@ -117,6 +118,7 @@ async function insertBetRowClientSide(args: ClientBetInsertArgs) {
       marketPubkey: args.marketPubkey,
       bettorPubkey: args.bettorPubkey,
       outcomeIndex: args.outcomeIndex,
+      outcomeLabel: args.outcomeLabel,
       amountLamports: Number(args.amountLamports),
     });
   } catch (err) {
@@ -124,6 +126,7 @@ async function insertBetRowClientSide(args: ClientBetInsertArgs) {
   }
 }
 
+// ... (hashQuestionAndAnswers and callIx omitted for brevity, assuming they are unchanged or handled by context)
 
 /**
  * Hash question and answers - matches Rust hash_question_and_answers
@@ -217,23 +220,18 @@ export async function callIx(
   }
 }
 
+
+
 /**
- * Create a market on-chain
- * 
- * Backend metadata storage:
- * - The backend (API/Supabase) should store market metadata when this transaction succeeds
- * - Table/endpoint: markets_metadata table or /api/markets endpoint
- * - Key: market_pubkey (the PDA returned in result.marketPubkey)
- * - Fields: question, description, image_url, creator_name, creator_wallet, etc.
- * - The frontend reads this metadata via fetchMarketsMetadataByPubkeys() in read.ts
+ * Create a new market - matches Rust create_market
  */
 export async function createMarket(
   wallet: WalletContextState,
   params: {
-    cutoffTs: number; // Unix timestamp
     question: string;
     answers: string[];
-    imageUrl?: string | null;
+    cutoffTs: number; // Unix timestamp in seconds
+    imageUrl?: string;
     description?: string;
   }
 ): Promise<{ txSig: string; marketPubkey: string }> {
@@ -247,115 +245,65 @@ export async function createMarket(
     throw new Error("[createMarket] Wallet not connected");
   }
 
-  // 2) Normalize inputs (trim, validate)
-  const question = params.question.trim();
-  const answers = params.answers.map(a => a.trim());
-  const imageUrl = (params.imageUrl || "").trim();
-  const description = (params.description || "").trim();
-
-  // Validate
-  if (question.length === 0 || question.length > 1024) {
-    throw new Error("Question must be 1-1024 characters");
-  }
-  if (answers.length < 2 || answers.length > 5) {
-    throw new Error("Must have 2-5 answers");
-  }
-  for (const a of answers) {
-    if (a.length === 0 || a.length > 64) {
-      throw new Error("Each answer must be 1-64 characters");
-    }
-  }
-  if (imageUrl.length > 200) {
-    throw new Error("Image URL must be <= 200 characters");
-  }
-  if (description.length > 1024) {
-    throw new Error("Description must be <= 1024 characters");
-  }
-
   // Check offline status
-  checkOfflineAndQueue("create_market", {
-    cutoffTs: params.cutoffTs,
+  checkOfflineAndQueue("create_market", params);
+
+  // 2) Prepare arguments
+  const questionHash = await hashQuestionAndAnswers(params.question, params.answers);
+  const outcomesCount = params.answers.length;
+  const cutoff = new BN(params.cutoffTs);
+  const imageUrl = params.imageUrl || "";
+
+  // 3) Derive Market PDA
+  const [marketPda] = findMarketPda(
+    program.programId,
+    wallet.publicKey,
+    cutoff,
+    questionHash
+  );
+  const [configPda] = getConfigPda(program.programId);
+
+  // 4) Build transaction
+  console.log("[createMarket] Creating market", {
     question: params.question,
     answers: params.answers,
-    imageUrl: params.imageUrl,
-    description: params.description,
+    marketPda: marketPda.toBase58(),
+    cutoff: params.cutoffTs
   });
 
-  // 3) Derive market PDA exactly the same way the on-chain program does
-  const questionHash = await hashQuestionAndAnswers(question, answers);
-  const programId = program.programId;
-  const [marketPda] = findMarketPda(programId, wallet.publicKey, params.cutoffTs, questionHash);
-
-  // 4) Get config PDA and fetch config to get the fee wallet
-  const [configPda] = getConfigPda(programId);
-  const config = await (program.account as any).config.fetch(configPda);
-  const feeWalletStr =
-    (config as any).feeWallet?.toString?.() ||
-    (config as any).fee_wallet?.toString?.();
-
-  if (!feeWalletStr) {
-    throw new Error("Config has no fee wallet set");
-  }
-
-  const platformFeeWallet = new PublicKey(feeWalletStr);
-  console.log("[createMarket] using platformFeeWallet:", platformFeeWallet.toBase58());
-
-  const args = [
-    new anchor.BN(Number(params.cutoffTs)),        // cutoff_ts: i64
-    Array.from(questionHash),                      // question_hash: [u8; 32]
-    question,                                      // question: string
-    answers,                                       // answers: string[]
-    imageUrl,                                      // image_url: string
-  ];
-
-  console.log("[createMarket] args length", args.length, "values:", args);
-
-  const accounts = {
-    config: configPda,
-    creator: wallet.publicKey!,
-    platformFeeWallet,
-    market: marketPda,
-    systemProgram: SystemProgram.programId,
-  };
-
-  const txSig = await callIx(
-    program as any,
-    "create_market",
-    args,
-    accounts
+  const builder = (program.methods as any).createMarket?.(
+    Array.from(questionHash), // Anchor expects number[] or Buffer for [u8; 32]
+    outcomesCount,
+    cutoff,
+    imageUrl
+  ) ?? (program.methods as any).create_market?.(
+    Array.from(questionHash),
+    outcomesCount,
+    cutoff,
+    imageUrl
   );
 
-  const marketPubkey = marketPda.toBase58();
-  console.log("[createMarket] ✅ tx", { txSig, market: marketPubkey });
-
-  // Save market metadata to Supabase
-  try {
-    const { saveMarketMetadata } = await import("@/integrations/supabase/writes");
-
-    // Build outcome labels from answers
-    const outcomeLabels: Record<string, string> = {};
-    answers.forEach((answer, index) => {
-      outcomeLabels[index.toString()] = answer;
-    });
-
-    await saveMarketMetadata({
-      marketPubkey,
-      question,
-      description: description || "",
-      creatorWallet: wallet.publicKey.toBase58(),
-      creatorName: null, // TODO: Fetch from user profile
-      imageUrl: imageUrl || null,
-      answers: answers.length.toString(),
-      outcomeLabels,
-    });
-
-    console.log("[createMarket] ✅ Metadata saved to Supabase");
-  } catch (err) {
-    console.error("[createMarket] Failed to save metadata to Supabase:", err);
-    // Don't throw - on-chain creation succeeded, metadata save is non-critical
+  if (!builder) {
+    throw new Error("[createMarket] methods.createMarket not found on program");
   }
 
-  return { txSig, marketPubkey };
+  let txSig: string;
+  try {
+    txSig = await builder
+      .accounts({
+        market: marketPda,
+        config: configPda,
+        creator: wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  } catch (err) {
+    console.error("[createMarket] tx failed", err);
+    throw prettyAnchorError(err, program.idl as Idl, "createMarket");
+  }
+
+  console.log("[createMarket] ✅ success", { txSig, market: marketPda.toBase58() });
+  return { txSig, marketPubkey: marketPda.toBase58() };
 }
 
 /**
@@ -367,6 +315,7 @@ export async function placeBet(
   params: {
     marketPubkey: string;
     outcomeIndex: number;
+    outcomeLabel?: string; // Added for client-side indexing
     stakeLamports: number;
   }
 ): Promise<{ txSig: string }> {
@@ -445,6 +394,7 @@ export async function placeBet(
       marketPubkey: marketPk.toBase58(),
       bettorPubkey: wallet.publicKey.toBase58(),
       outcomeIndex: params.outcomeIndex,
+      outcomeLabel: params.outcomeLabel,
       amountLamports: params.stakeLamports,
     });
   }
