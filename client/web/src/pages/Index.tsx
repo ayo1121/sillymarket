@@ -293,7 +293,7 @@ const Index = () => {
                   variant="outline"
                   size="lg"
                   onClick={() => setVisibleCount(prev => prev + 12)}
-                  className="min-w-[200px] w-full sm:w-auto font-bold border-2 hover:bg-primary/5 h-12 text-base"
+                  className="min-w-[200px] w-full sm:w-auto font-bold border-2 hover:bg-primary/5 h-12 text-base dark:text-white dark:border-white/20 dark:hover:bg-white/10"
                 >
                   Load More Markets
                 </Button>

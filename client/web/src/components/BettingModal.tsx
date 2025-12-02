@@ -410,7 +410,7 @@ export const BettingModal = ({ open, onOpenChange, market, initialAnswerIndex, o
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="h-10 sm:h-12 text-base font-semibold bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] placeholder:text-[#999] dark:placeholder:text-[#8c8c8c] focus:ring-2 focus:ring-[#111] focus:border-[#111]"
+              className="h-10 sm:h-12 text-base font-semibold bg-white dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] placeholder:text-[#999] dark:placeholder:text-[#8c8c8c] focus:ring-2 focus:ring-[#111] focus:border-[#111] dark:text-white"
               step="0.01"
               min="0"
               disabled={isSubmitting}

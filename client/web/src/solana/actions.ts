@@ -560,13 +560,31 @@ export async function claimWinnings(
     systemProgram: SystemProgram.programId,
   };
 
-  // Fetch position before claiming to get the amount
+  // Fetch position and market to calculate payout
   let claimAmount = 0;
   try {
     const positionAccount = await (program as any).account.position.fetch(positionPda);
-    claimAmount = Number(positionAccount.amount?.toString() || 0);
+    const marketAccount = await (program as any).account.market.fetch(params.market);
+
+    const userStake = new BN(positionAccount.amount);
+    const outcomeIndex = positionAccount.outcomeIndex;
+    const totalPool = new BN(marketAccount.totalPool || marketAccount.total_pool);
+    const pools = marketAccount.pools;
+
+    if (pools && pools[outcomeIndex]) {
+      const winningPool = new BN(pools[outcomeIndex]);
+      if (!winningPool.isZero()) {
+        // Calculate payout: (stake / winningPool) * (totalPool - fees)
+        // Deduct 2% platform fee from total pool
+        const fee = totalPool.muln(2).divn(100);
+        const distributablePool = totalPool.sub(fee);
+
+        // Payout = (UserStake * DistributablePool) / WinningPool
+        claimAmount = userStake.mul(distributablePool).div(winningPool).toNumber();
+      }
+    }
   } catch (fetchErr) {
-    console.warn("[claimWinnings] Could not fetch position amount:", fetchErr);
+    console.warn("[claimWinnings] Could not calculate claim amount:", fetchErr);
   }
 
   const txSig = await callIx(program, "claim_winnings", [], accounts);
