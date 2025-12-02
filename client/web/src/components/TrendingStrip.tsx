@@ -70,7 +70,7 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
 
                             <div className="flex items-center justify-between text-[10px] text-[#5f5f5f] dark:text-[#c7c7c7] mt-auto pt-2">
                                 <span className="font-mono font-medium">
-                                    {formatSol(market.volumeLamports / 1_000_000_000, 1)} SOL Vol
+                                    {formatSol(market.volumeLamports / 1_000_000_000, 2)} SOL Vol
                                 </span>
                                 <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-200 text-[#111] dark:text-white" />
                             </div>

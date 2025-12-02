@@ -59,38 +59,21 @@ const MyBets = () => {
   const [claimingAll, setClaimingAll] = useState(false);
 
   // Initialize view mode from URL query param
-  const [viewMode, setViewMode] = useState<"bets" | "markets">(
-    searchParams.get("view") === "markets" ? "markets" : "bets"
-  );
+  const [viewMode, setViewMode] = useState<"bets" | "markets">(() => {
+    return searchParams.get("view") === "markets" ? "markets" : "bets";
+  });
 
-  // Sync URL changes to state (handles mobile nav clicks)
+  // Sync state changes to URL (one-way: state → URL only)
+  // This prevents the infinite loop by only syncing in one direction
   useEffect(() => {
-    const view = searchParams.get("view");
-    if (view === "markets" && viewMode !== "markets") {
-      setViewMode("markets");
-    } else if (view !== "markets" && viewMode === "markets") {
-      setViewMode("bets");
-    }
-  }, [searchParams, viewMode]);
+    const currentView = searchParams.get("view");
 
-  // Sync state changes to URL (handles toggle button)
-  useEffect(() => {
-    if (viewMode === "markets") {
-      if (searchParams.get("view") !== "markets") {
-        setSearchParams(prev => {
-          prev.set("view", "markets");
-          return prev;
-        });
-      }
-    } else {
-      if (searchParams.has("view")) {
-        setSearchParams(prev => {
-          prev.delete("view");
-          return prev;
-        });
-      }
+    if (viewMode === "markets" && currentView !== "markets") {
+      setSearchParams({ view: "markets" }, { replace: true });
+    } else if (viewMode === "bets" && currentView === "markets") {
+      setSearchParams({}, { replace: true });
     }
-  }, [viewMode, searchParams, setSearchParams]);
+  }, [viewMode]); // Only depend on viewMode, not searchParams
 
   const [marketFilter, setMarketFilter] = useState<"active" | "resolved">("active");
   const [resolving, setResolving] = useState<Map<string, boolean>>(new Map());

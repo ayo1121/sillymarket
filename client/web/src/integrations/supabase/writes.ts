@@ -326,6 +326,7 @@ async function createResolutionNotifications(
                 type: 'market_resolved',
                 title,
                 body,
+                action_url: `/market/${marketPubkey}`, // Add navigation URL
                 metadata: {
                     market_pubkey: marketPubkey,
                     winner_index: winnerIndex,
