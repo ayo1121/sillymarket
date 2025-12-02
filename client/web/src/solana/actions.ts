@@ -454,11 +454,40 @@ export async function resolveMarket(
   // Client-side fallback for indexing
   try {
     const { saveMarketResolution } = await import("../integrations/supabase/writes");
+
+    // Fetch market account after resolution to get pool data
+    let resolvedTotalPool: number | null = null;
+    let resolvedWinPool: number | null = null;
+    let feesTransferred: number | null = null;
+
+    try {
+      const marketAccount = await (program as any).account.market.fetch(params.market);
+      const totalPool = marketAccount.totalPool || marketAccount.total_pool || 0;
+      resolvedTotalPool = Number(totalPool.toString());
+
+      // Get winning pool (if not void)
+      if (params.winnerIndex >= 0 && marketAccount.pools) {
+        const pools = marketAccount.pools;
+        if (pools[params.winnerIndex]) {
+          resolvedWinPool = Number(pools[params.winnerIndex].toString());
+        }
+      }
+
+      // Fees are transferred during resolution, so they should be 0 after
+      // We can estimate from the total pool and a 2% fee rate
+      feesTransferred = Math.floor(resolvedTotalPool * 0.02);
+    } catch (fetchErr) {
+      console.warn("[resolveMarket] Could not fetch market data for resolution:", fetchErr);
+    }
+
     await saveMarketResolution({
       signature: txSig,
       marketPubkey: params.market.toString(),
       winnerIndex: params.winnerIndex,
       autoVoid: params.winnerIndex === -2,
+      resolvedTotalPool,
+      resolvedWinPool,
+      feesTransferred,
     });
   } catch (err) {
     console.error("[actions] Failed to save resolution client-side:", err);
@@ -515,20 +544,25 @@ export async function claimWinnings(
     systemProgram: SystemProgram.programId,
   };
 
+  // Fetch position before claiming to get the amount
+  let claimAmount = 0;
+  try {
+    const positionAccount = await (program as any).account.position.fetch(positionPda);
+    claimAmount = Number(positionAccount.amount?.toString() || 0);
+  } catch (fetchErr) {
+    console.warn("[claimWinnings] Could not fetch position amount:", fetchErr);
+  }
+
   const txSig = await callIx(program, "claim_winnings", [], accounts);
 
   // Client-side fallback for indexing
   try {
     const { saveClaim } = await import("../integrations/supabase/writes");
-    // Note: We don't know the exact amount claimed without parsing logs, 
-    // but we can record the event. For now, pass 0 or try to fetch logs?
-    // Passing 0 as placeholder since we can't easily get the amount here without extra RPC calls.
-    // The UI might need to refresh balances anyway.
     await saveClaim({
       signature: txSig,
       marketPubkey: params.market.toString(),
       userPubkey: params.user.toString(),
-      amountLamports: 0, // Placeholder
+      amountLamports: claimAmount,
     });
   } catch (err) {
     console.error("[actions] Failed to save claim client-side:", err);
