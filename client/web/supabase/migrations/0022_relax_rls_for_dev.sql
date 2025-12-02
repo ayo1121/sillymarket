@@ -33,3 +33,25 @@ DROP POLICY IF EXISTS "Enable insert for all users" ON public.claims;
 CREATE POLICY "Enable insert for all users" ON public.claims
 FOR INSERT TO anon, authenticated
 WITH CHECK (true);
+
+-- 6. NOTIFICATIONS
+DROP POLICY IF EXISTS "Enable insert for all users" ON public.notifications;
+CREATE POLICY "Enable insert for all users" ON public.notifications
+FOR INSERT TO anon, authenticated
+WITH CHECK (true);
+
+-- 7. ENABLE DELETE FOR DEV (Optional, but helps with testing)
+DROP POLICY IF EXISTS "Enable delete for all users" ON public.bets;
+CREATE POLICY "Enable delete for all users" ON public.bets FOR DELETE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON public.markets;
+CREATE POLICY "Enable delete for all users" ON public.markets FOR DELETE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON public.market_resolutions;
+CREATE POLICY "Enable delete for all users" ON public.market_resolutions FOR DELETE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON public.claims;
+CREATE POLICY "Enable delete for all users" ON public.claims FOR DELETE TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON public.notifications;
+CREATE POLICY "Enable delete for all users" ON public.notifications FOR DELETE TO anon, authenticated USING (true);
