@@ -322,6 +322,22 @@ export async function createMarket(
   }
 
   console.log("[createMarket] ✅ success", { txSig, market: marketPda.toBase58() });
+
+  // Client-side fallback for market_events indexing
+  try {
+    const { saveMarketEvent } = await import("../integrations/supabase/writes");
+    await saveMarketEvent({
+      signature: txSig,
+      marketPubkey: marketPda.toBase58(),
+      creatorPubkey: wallet.publicKey.toBase58(),
+      cutoffTs: params.cutoffTs,
+      outcomesCount: params.answers.length,
+      questionHash,
+    });
+  } catch (err) {
+    console.error("[createMarket] Failed to save market event client-side:", err);
+  }
+
   return { txSig, marketPubkey: marketPda.toBase58() };
 }
 

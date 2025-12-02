@@ -37,6 +37,45 @@ export async function saveMarketMetadata(params: {
     console.log("[Supabase] Market metadata saved:", params.marketPubkey);
 }
 
+/**
+ * Save market creation event to market_events table (Client-side fallback)
+ */
+export async function saveMarketEvent(params: {
+    signature: string;
+    marketPubkey: string;
+    creatorPubkey: string;
+    cutoffTs: number;
+    outcomesCount: number;
+    questionHash: Uint8Array;
+}) {
+    if (!isSupabaseConfigured()) {
+        console.warn("[supabase][writes] Supabase not configured – skipping saveMarketEvent");
+        return;
+    }
+
+    const { error } = await (supabase as any).from("market_events").insert({
+        tx_sig: params.signature,
+        market_pubkey: params.marketPubkey,
+        creator_pubkey: params.creatorPubkey,
+        cutoff_ts: params.cutoffTs,
+        outcomes_count: params.outcomesCount,
+        question_hash: Array.from(params.questionHash).map(b => b.toString(16).padStart(2, '0')).join(''),
+        block_time: new Date().toISOString(),
+    });
+
+    if (error) {
+        // Ignore duplicate key errors (if Edge Function already indexed it)
+        if (error.code === "23505") {
+            console.log("[Supabase] Market event already indexed (duplicate)");
+            return;
+        }
+        console.error("[Supabase] saveMarketEvent failed:", error);
+        // Don't throw, as on-chain market creation succeeded
+    } else {
+        console.log("[Supabase] Market event saved successfully (client-side fallback)");
+    }
+}
+
 
 /**
  * Upsert user profile when a wallet connects / username changes.
