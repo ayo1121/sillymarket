@@ -80,7 +80,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
                     marketId: n.metadata?.market_id,
                     timestamp: new Date(n.created_at).getTime(),
                     read: n.is_read,
-                    actionUrl: `/market/${n.metadata?.market_id}`,
+                    actionUrl: n.action_url || `/market/${n.metadata?.market_pubkey || n.metadata?.market_id}`,
                 }));
 
                 setNotifications(mapped);
@@ -105,7 +105,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
                 marketId: n.metadata?.market_id,
                 timestamp: new Date(n.created_at).getTime(),
                 read: n.is_read,
-                actionUrl: `/market/${n.metadata?.market_id}`,
+                actionUrl: n.action_url || `/market/${n.metadata?.market_pubkey || n.metadata?.market_id}`,
             }));
 
             // Sort by priority

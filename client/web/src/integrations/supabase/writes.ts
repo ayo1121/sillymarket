@@ -320,7 +320,7 @@ async function createResolutionNotifications(
         // 2. Get market question for the message
         const { data: market } = await supabase
             .from('markets')
-            .select('question, outcome_labels')
+            .select('question, outcome_labels, answers')
             .eq('market_pubkey', marketPubkey)
             .single();
 
@@ -328,6 +328,8 @@ async function createResolutionNotifications(
 
         // Extract outcome labels from JSONB - handle both array and object formats
         let winnerLabel = `Outcome ${winnerIndex + 1}`;
+
+        // Try outcome_labels first (legacy/standard)
         if (market?.outcome_labels) {
             const labels = market.outcome_labels;
             // Handle array format: ["Yes", "No"]
@@ -340,6 +342,21 @@ async function createResolutionNotifications(
                 if (labelValue) {
                     winnerLabel = String(labelValue);
                 }
+            }
+        }
+        // Fallback to answers column (used by app.ts)
+        else if (market?.answers) {
+            try {
+                // answers might be a JSON string or already parsed JSON
+                const answers = typeof market.answers === 'string'
+                    ? JSON.parse(market.answers)
+                    : market.answers;
+
+                if (Array.isArray(answers) && answers[winnerIndex]) {
+                    winnerLabel = String(answers[winnerIndex]);
+                }
+            } catch (e) {
+                console.warn("[Supabase] Failed to parse answers for notification:", e);
             }
         }
 
