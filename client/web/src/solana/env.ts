@@ -1,21 +1,26 @@
 // src/solana/env.ts
-// Public Solana devnet RPC as safe fallback (no API key required)
-const DEFAULT_DEVNET_RPC = "https://api.devnet.solana.com";
+import { RPC_URL as CONFIG_RPC, PROGRAM_ID as CONFIG_PID, COMMITMENT as CONFIG_COMMITMENT, PRIORITY_MICROLAMPORTS as CONFIG_PRIORITY } from "@/lib/config";
 
 /**
- * Get the RPC URL to use for Solana connections.
- * Priority:
- * 1. VITE_RPC_URL environment variable (if set)
- * 2. Default public devnet RPC (no API key)
+ * @deprecated Use `RPC_URL` from `@/lib/config` instead.
  */
-export const RPC_URL =
-  (import.meta as any).env?.VITE_RPC_URL || DEFAULT_DEVNET_RPC;
+export const RPC_URL = CONFIG_RPC;
+
+/**
+ * @deprecated Use `PROGRAM_ID` from `@/lib/config` instead.
+ */
+export const PROGRAM_ID = CONFIG_PID || (undefined as unknown as string);
+
+/**
+ * @deprecated Use `COMMITMENT` from `@/lib/config` instead.
+ */
+export const COMMITMENT = CONFIG_COMMITMENT;
+
+/**
+ * @deprecated Use `PRIORITY_MICROLAMPORTS` from `@/lib/config` instead.
+ */
+export const PRIORITY_MICROLAMPORTS = CONFIG_PRIORITY;
 
 if (typeof window !== "undefined") {
-  console.log("[yesno] Using Solana RPC endpoint:", RPC_URL);
+  console.debug("[env.ts] This module is deprecated. Please import from @/lib/config instead.");
 }
-export const PROGRAM_ID =
-  (import.meta as any).env?.VITE_PROGRAM_ID || (undefined as unknown as string);
-export const COMMITMENT =
-  ((import.meta as any).env?.VITE_COMMITMENT as "processed"|"confirmed"|"finalized") || "confirmed";
-export const PRIORITY_MICROLAMPORTS = Number((import.meta as any).env?.VITE_PRIORITY_MICROLAMPORTS || 0);
