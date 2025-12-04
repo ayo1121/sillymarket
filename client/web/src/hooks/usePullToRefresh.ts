@@ -44,20 +44,23 @@ export const usePullToRefresh = (
         const currentY = e.touches[0].clientY;
         const distance = currentY - touchStartY.current;
 
-        // Only track downward pulls when at the top
-        if (distance > 0 && containerRef.current.scrollTop === 0) {
-            // Apply resistance to the pull (diminishing returns)
-            const resistanceFactor = 0.5;
-            const adjustedDistance = distance * resistanceFactor;
-            setPullDistance(Math.min(adjustedDistance, threshold * 1.5));
-
-            // Prevent default scrolling when pulling
-            if (distance > 10) {
-                e.preventDefault();
-            }
-        } else {
+        // If we scrolled down (distance < 0) or container is not at top anymore, cancel
+        if (containerRef.current.scrollTop > 0 || distance < 0) {
             setIsPulling(false);
             setPullDistance(0);
+            return;
+        }
+
+        // Only treat as pull if distance > 40
+        if (distance > 40) {
+            const resistanceFactor = 0.5;
+            const adjustedDistance = (distance - 40) * resistanceFactor;
+            setPullDistance(Math.min(adjustedDistance, threshold * 1.5));
+
+            // Prevent default scrolling only when we are sure it's a pull
+            if (e.cancelable) {
+                e.preventDefault();
+            }
         }
     }, [isPulling, threshold]);
 

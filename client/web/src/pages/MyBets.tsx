@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logPageView, logClick } from "@/lib/analytics";
 import type { BetRow } from "@/supabase/bets";
 import { MarketStatusBadge } from "@/components/common/MarketStatusBadge";
+import { WalletNotConnected } from "@/components/WalletNotConnected";
 
 interface BetView {
   id: string;
@@ -638,12 +639,10 @@ const MyBets = () => {
             {loading ? (
               <BetCardSkeletonList count={5} />
             ) : !program || !publicKey ? (
-              <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
-                <div className="text-6xl mb-4 opacity-20">:(</div>
-                <div className="text-muted-foreground dark:text-gray-400">
-                  {!publicKey ? "Connect your wallet to see your bets" : "Program is loading..."}
-                </div>
-              </div>
+              <WalletNotConnected
+                title="My Bets"
+                message="Connect your wallet to see your betting history."
+              />
             ) : filteredBets.length === 0 ? (
               <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
                 <div className="text-6xl mb-4 opacity-20">:(</div>
@@ -787,12 +786,10 @@ const MyBets = () => {
           {myMarketsLoading ? (
             <MarketCardSkeletonGrid count={6} />
           ) : !program || !publicKey ? (
-            <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
-              <div className="text-6xl mb-4 opacity-20">:(</div>
-              <div className="text-muted-foreground dark:text-gray-400">
-                {!publicKey ? "Connect your wallet to see your markets" : "Program is loading..."}
-              </div>
-            </div>
+            <WalletNotConnected
+              title="My Markets"
+              message="Connect your wallet to see your created markets."
+            />
           ) : filteredMyMarkets.length === 0 ? (
             <div className="bg-[#f5f5f5] dark:bg-[#1a1a1a] border border-[#d3d3d3] dark:border-[#333] rounded shadow-sm p-12 text-center">
               <div className="text-6xl mb-4 opacity-20">:(</div>
