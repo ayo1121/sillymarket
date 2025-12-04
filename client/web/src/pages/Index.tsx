@@ -196,7 +196,7 @@ const Index = () => {
                   the silliest outcome is always the most likely
                 </p>
                 <p className="text-[10px] sm:text-[11px] font-mono text-[#5f5f5f] dark:text-[#c7c7c7] uppercase tracking-wider font-semibold">
-                  {markets.length} markets · {formatSol(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000, 1)} SOL total volume
+                  {markets.length} markets · {formatSol(markets.reduce((acc, m) => acc + (m.volumeLamports || 0), 0) / 1_000_000_000, 2)} SOL total volume
                 </p>
               </div>
               {/* Section Bar - Wider & Stronger Green */}
