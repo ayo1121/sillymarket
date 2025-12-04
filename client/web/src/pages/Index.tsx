@@ -8,7 +8,7 @@ import { MarketCard } from "@/components/MarketCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MarketSearch } from "@/components/MarketSearch";
-import { Search, Filter, Plus, ExternalLink, Loader2, Info } from "lucide-react";
+import { Search, Filter, Plus, ExternalLink, Loader2, Info, Twitter } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { UIMarket } from "@/solana/marketMapping";
 import { BettingModal } from "@/components/BettingModal";
@@ -330,6 +330,18 @@ const Index = () => {
         <Info className="w-4 h-4" />
         Terms
       </button>
+
+      {/* Floating Twitter button */}
+      <a
+        href="https://x.com/sillymarketfun"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-16 right-4 z-50 flex items-center gap-2 rounded-full bg-[#e0e0e0] dark:bg-[#2a2a2a] border border-[#8a8a8a] dark:border-[#3a3a3a] shadow-[2px_2px_0px_0px_#000] px-3 py-2 text-xs font-bold text-[#111] dark:text-white hover:bg-white dark:hover:bg-[#3a3a3a] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000]"
+        aria-label="Follow us on Twitter"
+      >
+        <Twitter className="w-4 h-4" />
+        Twitter
+      </a>
 
       {/* Modals */}
       {betState && (
