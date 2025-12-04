@@ -15,5 +15,5 @@ export const getTxExplorerUrl = (signature: string) => {
   else if (cluster === "testnet") suffix = "?cluster=testnet";
   else if (cluster === "custom") suffix = "?cluster=custom&customUrl=" + encodeURIComponent(RPC_URL);
 
-  return `https://explorer.solana.com/tx/${signature}${suffix}`;
+  return `https://solscan.io/tx/${signature}${suffix}`;
 };
