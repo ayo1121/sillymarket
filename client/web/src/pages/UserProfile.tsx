@@ -271,6 +271,107 @@ export default function UserProfile() {
         staleTime: 60_000,
     });
 
+    // Fetch Supabase-based stats for historical win rate and realized PNL
+    const { data: supabaseStats } = useQuery({
+        queryKey: ['userSupabaseStats', wallet],
+        queryFn: async () => {
+            if (!wallet) return null;
+
+            try {
+                // Fetch all bets by this wallet
+                const { data: bets, error: betsError } = await supabase
+                    .from('bets')
+                    .select('market_pubkey, outcome_index, amount_lamports')
+                    .eq('bettor_pubkey', wallet);
+
+                if (betsError) {
+                    console.error('[UserProfile] Error fetching bets:', betsError);
+                    return null;
+                }
+
+                if (!bets || bets.length === 0) {
+                    return {
+                        resolvedCount: 0,
+                        wonCount: 0,
+                        winRate: 0,
+                        realizedPnL: 0,
+                    };
+                }
+
+                // Extract unique market pubkeys
+                const marketPubkeys = [...new Set(bets.map(b => b.market_pubkey))];
+
+                // Fetch resolutions for these markets
+                const { data: resolutions, error: resError } = await supabase
+                    .from('market_resolutions')
+                    .select('market_pubkey, winner_index, auto_void')
+                    .in('market_pubkey', marketPubkeys);
+
+                if (resError) {
+                    console.error('[UserProfile] Error fetching resolutions:', resError);
+                }
+
+                // Fetch all claims for this wallet
+                const { data: claims, error: claimsError } = await supabase
+                    .from('claims')
+                    .select('amount_lamports')
+                    .eq('user_pubkey', wallet);
+
+                if (claimsError) {
+                    console.error('[UserProfile] Error fetching claims:', claimsError);
+                }
+
+                // Build resolutions map
+                const resolutionsMap = new Map(
+                    (resolutions || []).map(r => [r.market_pubkey, r])
+                );
+
+                // Calculate stats
+                let resolvedCountNonVoid = 0;
+                let wonCount = 0;
+                let totalStakedOnResolved = 0;
+
+                bets.forEach(bet => {
+                    const resolution = resolutionsMap.get(bet.market_pubkey);
+                    if (resolution) {
+                        totalStakedOnResolved += Number(bet.amount_lamports || 0);
+
+                        if (!resolution.auto_void) {
+                            resolvedCountNonVoid++;
+
+                            if (bet.outcome_index === resolution.winner_index) {
+                                wonCount++;
+                            }
+                        }
+                    }
+                });
+
+                const totalClaimed = (claims || []).reduce(
+                    (sum, c) => sum + Number(c.amount_lamports || 0),
+                    0
+                );
+
+                const winRate = resolvedCountNonVoid > 0
+                    ? (wonCount / resolvedCountNonVoid) * 100
+                    : 0;
+
+                const realizedPnL = (totalClaimed - totalStakedOnResolved) / LAMPORTS_PER_SOL;
+
+                return {
+                    resolvedCount: resolvedCountNonVoid,
+                    wonCount,
+                    winRate,
+                    realizedPnL,
+                };
+            } catch (error) {
+                console.error('[UserProfile] Error computing Supabase stats:', error);
+                return null;
+            }
+        },
+        enabled: !!wallet,
+        staleTime: 60_000,
+    });
+
     // Fetch comprehensive activity feed (bets, creations, resolutions, claims)
     const { data: activityData, isLoading: activityLoading } = useQuery({
         queryKey: ['userActivity', wallet],
@@ -367,25 +468,12 @@ export default function UserProfile() {
 
     // Calculate enhanced stats from positions
     const stats = useMemo(() => {
-        if (positions.length === 0) {
-            return {
-                totalMarkets: 0,
-                totalVolume: 0,
-                realizedPnL: 0,
-                openExposure: 0,
-                winRate: 0,
-                resolvedCount: 0,
-                wonCount: 0,
-                lostCount: 0,
-                activeCount: 0,
-            };
-        }
-
+        // Position-based calculations (for volume, exposure, active count)
         let totalStaked = 0;
         let totalWinnings = 0;
         let openExposure = 0;
-        let resolvedCount = 0;
-        let wonCount = 0;
+        let resolvedCountFromPositions = 0;
+        let wonCountFromPositions = 0;
         let activeCount = 0;
 
         positions.forEach((position: any) => {
@@ -393,10 +481,10 @@ export default function UserProfile() {
             totalStaked += stake;
 
             if (position.isResolved) {
-                resolvedCount++;
+                resolvedCountFromPositions++;
 
                 if (position.didWin) {
-                    wonCount++;
+                    wonCountFromPositions++;
                     totalWinnings += position.payoutLamports || 0;
                 } else if (position.isVoid) {
                     // Voided markets return stake
@@ -410,17 +498,24 @@ export default function UserProfile() {
             }
         });
 
-        const lostCount = resolvedCount - wonCount;
-        const realizedPnL = totalWinnings - (totalStaked - openExposure);
-        const winRate = resolvedCount > 0 ? (wonCount / resolvedCount) * 100 : 0;
+        const realizedPnLFromPositions = totalWinnings - (totalStaked - openExposure);
+        const winRateFromPositions = resolvedCountFromPositions > 0 ? (wonCountFromPositions / resolvedCountFromPositions) * 100 : 0;
 
         // Convert lamports to SOL
         const LAMPORTS_PER_SOL = 1_000_000_000;
 
+        // Use Supabase stats for win rate and realized PNL if available, otherwise fall back to positions
+        const sup = supabaseStats;
+        const winRate = sup?.winRate ?? winRateFromPositions;
+        const realizedPnL = sup?.realizedPnL ?? (realizedPnLFromPositions / LAMPORTS_PER_SOL);
+        const resolvedCount = sup?.resolvedCount ?? resolvedCountFromPositions;
+        const wonCount = sup?.wonCount ?? wonCountFromPositions;
+        const lostCount = resolvedCount - wonCount;
+
         return {
             totalMarkets: positions.length,
             totalVolume: totalStaked / LAMPORTS_PER_SOL,
-            realizedPnL: realizedPnL / LAMPORTS_PER_SOL,
+            realizedPnL,
             openExposure: openExposure / LAMPORTS_PER_SOL,
             winRate,
             resolvedCount,
@@ -428,7 +523,7 @@ export default function UserProfile() {
             lostCount,
             activeCount,
         };
-    }, [positions]);
+    }, [positions, supabaseStats]);
 
     return (
         <>
