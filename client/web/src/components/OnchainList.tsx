@@ -1,6 +1,7 @@
 import React from "react";
 import { useMarketsCtx } from "@/hooks/marketsContext";
 import { formatVolume, formatProbability, shortenWallet } from "@/utils/format";
+import { filterHiddenMarkets } from "@/constants/hiddenMarkets";
 
 export default function OnchainList() {
   const { markets, loading, error } = useMarketsCtx();
@@ -11,7 +12,7 @@ export default function OnchainList() {
   if (!markets?.length) return <div className="p-4 opacity-70">no on-chain markets</div>;
   return (
     <div className="grid gap-4 p-4">
-      {markets.map((market) => {
+      {filterHiddenMarkets(markets).map((market) => {
         return (
           <div key={market.pubkey} className="border border-neutral-300 bg-white p-3 rounded-md">
             <div className="text-xs opacity-60">{shortenWallet(market.pubkey)}</div>

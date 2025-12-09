@@ -28,6 +28,7 @@ import BN from "bn.js";
 import lightbulbIcon from "@/assets/lightbulb-icon.png";
 import { showErrorToast } from "@/lib/errorHandling";
 import { getTxExplorerUrl } from "@/utils/solanaExplorer";
+import { filterHiddenMarkets } from "@/constants/hiddenMarkets";
 
 const solFromLamports = (lamports: number | BN): number => {
   const num = typeof lamports === "object" ? lamports.toNumber() : lamports;
@@ -1078,7 +1079,7 @@ const AdminPanel = () => {
                 {markets.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No markets found</p>
                 ) : (
-                  markets.map((m: any) => {
+                  filterHiddenMarkets(markets).map((m: any) => {
                     const market = m.account || m;
                     const marketPk = m.publicKey?.toBase58() || m.publicKey;
                     return (

@@ -3,6 +3,7 @@ import { Search, X, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UIMarket } from '@/solana/marketMapping';
 import { cn } from '@/lib/utils';
+import { filterHiddenMarkets } from '@/constants/hiddenMarkets';
 
 interface MarketSearchProps {
     markets: UIMarket[];
@@ -30,7 +31,7 @@ export const MarketSearch: React.FC<MarketSearchProps> = ({
             // Check if input looks like a Solana address (base58, 32-44 chars)
             const isSolanaAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value.trim());
 
-            const matches = markets.filter(m => {
+            const matches = filterHiddenMarkets(markets).filter(m => {
                 // Search by market question
                 if (m.displayQuestion.toLowerCase().includes(lowerValue)) {
                     return true;

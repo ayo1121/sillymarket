@@ -24,6 +24,7 @@ import { useLiveMarketUpdates } from "@/hooks/useLiveMarketUpdates";
 import { queryKeys } from "@/lib/queryKeys";
 import { formatSol } from "@/utils/format";
 import { logPageView } from "@/lib/analytics";
+import { filterHiddenMarkets } from "@/constants/hiddenMarkets";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -101,7 +102,7 @@ const Index = () => {
   );
 
   // Filter and sort markets
-  const filteredAndSortedMarkets = markets.filter(market => {
+  const filteredAndSortedMarkets = filterHiddenMarkets(markets).filter(market => {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();

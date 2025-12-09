@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getTxExplorerUrl } from '@/utils/solanaExplorer';
 import { logPageView, logClick } from '@/lib/analytics';
 import { fetchAllMarkets } from '@/solana/read';
+import { filterHiddenMarkets } from '@/constants/hiddenMarkets';
 
 // Helper to format lamports to SOL with proper decimals
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -260,8 +261,8 @@ export default function UserProfile() {
             if (!program || !wallet) return [];
             try {
                 const allMarkets = await fetchAllMarkets(program as any, publicKey ?? null);
-                // Filter markets created by this wallet
-                return allMarkets.filter(m => m.creatorPubkey === wallet);
+                // Filter markets created by this wallet (excluding hidden markets)
+                return filterHiddenMarkets(allMarkets.filter(m => m.creatorPubkey === wallet));
             } catch (error) {
                 console.error('Error fetching created markets:', error);
                 return [];

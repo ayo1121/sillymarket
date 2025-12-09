@@ -27,6 +27,7 @@ import { logPageView, logClick } from "@/lib/analytics";
 import type { BetRow } from "@/supabase/bets";
 import { MarketStatusBadge } from "@/components/common/MarketStatusBadge";
 import { WalletNotConnected } from "@/components/WalletNotConnected";
+import { filterHiddenMarkets } from "@/constants/hiddenMarkets";
 
 interface BetView {
   id: string;
@@ -413,7 +414,7 @@ const MyBets = () => {
 
   // Filter created markets by status (active/resolved)
   const filteredMyMarkets = useMemo(() => {
-    return myMarkets
+    return filterHiddenMarkets(myMarkets)
       .filter(market => {
         const isResolved = market.state === "resolved" || market.isResolved;
         if (marketFilter === "active") {

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, TrendingUp, Flame } from 'lucide-react';
 import { formatSol } from '@/utils/format';
 import { logClick } from '@/lib/analytics';
+import { filterHiddenMarkets } from '@/constants/hiddenMarkets';
 
 interface TrendingStripProps {
     markets?: UIMarket[];
@@ -16,7 +17,7 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
 
     // Use top 5 markets by volume (sorted by parent)
     // No fallback mock data - show empty state if no markets
-    const displayMarkets = markets.slice(0, 5);
+    const displayMarkets = filterHiddenMarkets(markets).slice(0, 5);
 
     return (
         <div className={cn("w-full", className)}>
