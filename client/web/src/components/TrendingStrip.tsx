@@ -41,12 +41,12 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
                             className={cn(
                                 "w-72 sm:w-80 bg-[#e5e5e5] dark:bg-[#1f1f1f] p-3 cursor-pointer transition-all duration-200 relative group flex-shrink-0",
                                 "border border-[#8b8b8b] dark:border-[#3a3a3a] rounded-[4px] shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-white dark:hover:bg-[#262626]",
-                                "flex flex-col justify-between h-[120px]",
+                                "flex flex-col min-h-[120px] h-auto",
                                 "border-l-[4px]",
                                 i === 0 ? "border-l-[#ff8a2a]" : "border-l-[#15a349]"
                             )}
                         >
-                            <div className="flex justify-between items-start mb-1">
+                            <div className="flex justify-between items-start mb-1 flex-shrink-0">
                                 <div className="flex items-center gap-1.5">
                                     <div className={cn(
                                         "text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border",
@@ -64,7 +64,7 @@ export const TrendingStrip: React.FC<TrendingStripProps> = ({ markets = [], clas
                                 )}
                             </div>
 
-                            <h4 className="font-bold text-sm leading-tight line-clamp-2 pr-2 text-[#111] dark:text-white group-hover:text-black dark:group-hover:text-white transition-colors">
+                            <h4 className="font-bold text-sm pr-2 text-[#111] dark:text-white group-hover:text-black dark:group-hover:text-white transition-colors flex-grow" style={{ lineHeight: '1.3', whiteSpace: 'normal', overflow: 'visible', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                 {market.displayQuestion}
                             </h4>
 
