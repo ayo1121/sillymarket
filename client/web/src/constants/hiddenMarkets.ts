@@ -6,6 +6,7 @@
  */
 export const HIDDEN_MARKETS: string[] = [
     "bMubjp8yppcJVw7NmgmGSCEm9Mer9fZRyVWC36LzssV",
+    "HWzMHkrsecDz4eYTGrnVzUStXvyuGZ1reufSwSkgi8i3",
 ];
 
 /**
