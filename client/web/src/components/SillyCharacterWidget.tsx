@@ -141,7 +141,7 @@ function SillyCharacterWidgetInner() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-[#15a349] to-[#0d7a35] text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
+                    className="fixed bottom-28 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-[#15a349] to-[#0d7a35] text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
                     aria-label="Open Silly Character chat"
                 >
                     <MessageCircle className="w-6 h-6" />
@@ -150,7 +150,7 @@ function SillyCharacterWidgetInner() {
 
             {/* Chat Modal */}
             {isOpen && (
-                <div className="fixed bottom-20 right-4 z-50 w-80 sm:w-96 h-[28rem] bg-white dark:bg-[#1f1f1f] rounded-lg shadow-2xl border-2 border-[#8b8b8b] dark:border-[#3a3a3a] flex flex-col overflow-hidden">
+                <div className="fixed bottom-28 right-4 z-50 w-80 sm:w-96 h-[28rem] bg-white dark:bg-[#1f1f1f] rounded-lg shadow-2xl border-2 border-[#8b8b8b] dark:border-[#3a3a3a] flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#15a349] to-[#0d7a35] text-white">
                         <div className="flex items-center gap-2">
@@ -176,8 +176,8 @@ function SillyCharacterWidgetInner() {
                             >
                                 <div
                                     className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${message.role === 'user'
-                                            ? 'bg-[#15a349] text-white rounded-br-none'
-                                            : 'bg-white dark:bg-[#2a2a2a] text-gray-800 dark:text-gray-200 rounded-bl-none border border-[#ddd] dark:border-[#3a3a3a]'
+                                        ? 'bg-[#15a349] text-white rounded-br-none'
+                                        : 'bg-white dark:bg-[#2a2a2a] text-gray-800 dark:text-gray-200 rounded-bl-none border border-[#ddd] dark:border-[#3a3a3a]'
                                         }`}
                                 >
                                     {message.content}

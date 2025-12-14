@@ -396,9 +396,9 @@ export default function ConnectWalletAndUsername({ className, claimableCount = 0
   return (
     <div className="relative" ref={menuRef}>
       <Button
-        variant="default"
+        variant="ghost"
         onClick={onPrimaryClick}
-        className={`font-black flex items-center gap-2 text-sm sm:text-base relative text-white ${className || ""}`}
+        className={`font-black flex items-center gap-2 text-sm sm:text-base relative text-white bg-gradient-to-r from-[#15a349] to-[#0d7a35] hover:from-[#12903f] hover:to-[#0a6a2d] border border-[#0d7a35] shadow-sm ${className || ""}`}
         disabled={connecting}
         aria-busy={connecting}
       >
