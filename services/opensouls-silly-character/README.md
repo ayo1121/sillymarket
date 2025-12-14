@@ -1,97 +1,80 @@
-# Silly Character - OpenSouls AI Helper
+# Silly Character Soul Service
 
-This service provides an AI-powered chat mascot for SillyMarket using the OpenSouls framework.
+AI-powered chat mascot for SillyMarket using OpenAI's GPT-3.5-turbo.
 
-## Prerequisites
-
-- **Bun** runtime (https://bun.sh)
-- **OpenAI API key** (https://platform.openai.com/api-keys) - Required for the LLM
-
-## Setup
-
-### 1. Install Dependencies
+## Quick Start (Local Development)
 
 ```bash
-cd services/opensouls-silly-character
+# Install Bun if not already installed
+curl -fsSL https://bun.sh/install | bash
+
+# Install dependencies
 bun install
-```
 
-### 2. Set Environment Variables
+# Create .env file
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY and SOUL_ENGINE_TOKEN
 
-Create a `.env` file:
-```bash
-# Required: Your OpenAI API key
-OPENAI_API_KEY=sk-your-key-here
-
-# Required: Shared secret for authenticating requests from the main backend
-SOUL_ENGINE_TOKEN=your-secret-token
-
-# Optional: Port (default 4310)
-PORT=4310
-```
-
-### 3. Run the Soul (Development)
-
-In one terminal, start the soul engine:
-```bash
-cd souls/silly-character
-bunx soul-engine dev
-```
-
-In another terminal, start the HTTP wrapper:
-```bash
+# Run development server
 bun run dev
 ```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No | Server port (default: 4310, Railway sets automatically) |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for LLM calls |
+| `SOUL_ENGINE_TOKEN` | Yes | Shared secret for authenticating requests from backend |
 
 ## API Endpoints
 
 ### Health Check
 ```bash
 curl http://localhost:4310/health
-# Response: { "ok": true }
+# Response: { "ok": true, "configured": true }
 ```
 
 ### Chat
 ```bash
 curl -X POST http://localhost:4310/chat \
-  -H "Authorization: Bearer your-secret-token" \
+  -H "Authorization: Bearer YOUR_SOUL_ENGINE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message": "How do I create a market?"}'
 
-# Response: { "sessionId": "...", "reply": "hey! to create a market..." }
+# Response: { "sessionId": "session-...", "reply": "hey! to create a market..." }
 ```
 
-## LLM API Costs
+## Railway Deployment
 
-OpenSouls uses OpenAI's API. Approximate costs (as of 2024):
-- **GPT-3.5-turbo**: ~$0.002 per 1K tokens
-- **GPT-4**: ~$0.01-0.03 per 1K tokens
-
-A typical chat message is ~100-500 tokens, so costs are minimal for moderate usage.
-
-## File Structure
-
+### Build Command
 ```
-services/opensouls-silly-character/
-├── server.ts              # HTTP wrapper server
-├── package.json           # Service dependencies
-├── README.md              # This file
-└── souls/
-    └── silly-character/
-        ├── package.json   # Soul dependencies
-        └── soul/
-            ├── initialProcess.ts           # Main mental process
-            ├── cognitiveSteps/
-            │   └── externalDialog.ts       # Dialog generation
-            └── staticMemories/
-                └── core.md                 # Personality & guardrails
+bun install
 ```
 
-## Production Deployment
+### Start Command
+```
+bun run start
+```
 
-For production, you'll need to:
-1. Deploy the soul to OpenSouls Cloud (or self-host soul-engine-cloud)
-2. Set `local: false` in server.ts
-3. Use a proper organization slug and API token
+### Environment Variables (set in Railway dashboard)
+- `OPENAI_API_KEY` - Your OpenAI API key
+- `SOUL_ENGINE_TOKEN` - Same token you use in the backend
 
-See OpenSouls documentation for cloud deployment options.
+Railway automatically sets `PORT`.
+
+## Cost Estimates
+
+OpenAI GPT-3.5-turbo pricing (as of 2024):
+- Input: $0.0005 / 1K tokens
+- Output: $0.0015 / 1K tokens
+
+A typical chat message is ~100-300 tokens, so costs are very low:
+- ~$0.0001 - $0.0005 per message
+- ~$1 per 2,000-10,000 messages
+
+## Security Notes
+
+- Never expose `OPENAI_API_KEY` to the frontend
+- `SOUL_ENGINE_TOKEN` should be a strong random string
+- The service only accepts authenticated requests (except `/health`)

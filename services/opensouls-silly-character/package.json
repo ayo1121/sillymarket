@@ -1,16 +1,12 @@
 {
     "name": "opensouls-silly-character",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "type": "module",
     "private": true,
-    "description": "OpenSouls-powered Silly Character service for SillyMarket",
+    "description": "Silly Character AI chat service for SillyMarket",
     "scripts": {
-        "dev": "bun run server.ts",
-        "start": "bun run server.ts",
-        "soul:dev": "cd souls/silly-character && bunx soul-engine dev"
-    },
-    "dependencies": {
-        "@opensouls/soul": "^0.1.69"
+        "dev": "bun run --watch server.ts",
+        "start": "bun run server.ts"
     },
     "devDependencies": {
         "bun-types": "^1.1.0",
