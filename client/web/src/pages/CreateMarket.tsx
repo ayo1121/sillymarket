@@ -34,6 +34,9 @@ const CreateMarket = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Pump.fun cutoff mode
+  const [cutoffMode, setCutoffMode] = useState<'time' | 'pumpfun_stream_end' | 'manual'>('time');
+  const [pumpfunMint, setPumpfunMint] = useState("");
 
   // Log only when program state changes (not on every render)
   useEffect(() => {
@@ -178,6 +181,8 @@ const CreateMarket = () => {
             imageUrl: finalImageUrl || undefined,
             answers,
             description: description.trim() || undefined,
+            cutoffMode,
+            pumpfunMint: cutoffMode === 'pumpfun_stream_end' ? pumpfunMint.trim() : undefined,
           }),
         });
 
@@ -397,80 +402,139 @@ const CreateMarket = () => {
                 )}
               </div>
 
-              {/* Duration Selection */}
+              {/* Cutoff Mode Selection */}
               <div className="space-y-4">
                 <label className="block text-sm font-black uppercase tracking-wide text-[#555] dark:text-[#c7c7c7]">
-                  Market Duration
+                  Betting Cutoff Mode
                 </label>
 
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    { label: "1 Hour", value: 60 },
-                    { label: "12 Hours", value: 720 },
-                    { label: "24 Hours", value: 1440 },
-                    { label: "48 Hours", value: 2880 },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        setDurationType("preset");
-                        setDurationMinutes(option.value);
-                      }}
-                      className={`p-3 rounded border-2 font-bold text-sm transition-all ${durationType === "preset" && durationMinutes === option.value
-                        ? "bg-[#111] text-white border-[#111] dark:bg-white dark:text-black dark:border-white shadow-md transform -translate-y-0.5"
-                        : "bg-white dark:bg-[#2a2a2a] text-[#555] dark:text-[#c7c7c7] border-[#d3d3d3] dark:border-[#444] hover:border-[#999] dark:hover:border-[#666]"
-                        }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCutoffMode('time')}
+                    className={`p-3 rounded border-2 font-bold text-sm transition-all ${cutoffMode === 'time'
+                      ? "bg-[#111] text-white border-[#111] dark:bg-white dark:text-black dark:border-white shadow-md transform -translate-y-0.5"
+                      : "bg-white dark:bg-[#2a2a2a] text-[#555] dark:text-[#c7c7c7] border-[#d3d3d3] dark:border-[#444] hover:border-[#999] dark:hover:border-[#666]"
+                      }`}
+                  >
+                    ⏱️ Time-based
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCutoffMode('pumpfun_stream_end')}
+                    className={`p-3 rounded border-2 font-bold text-sm transition-all ${cutoffMode === 'pumpfun_stream_end'
+                      ? "bg-[#111] text-white border-[#111] dark:bg-white dark:text-black dark:border-white shadow-md transform -translate-y-0.5"
+                      : "bg-white dark:bg-[#2a2a2a] text-[#555] dark:text-[#c7c7c7] border-[#d3d3d3] dark:border-[#444] hover:border-[#999] dark:hover:border-[#666]"
+                      }`}
+                  >
+                    🎥 Pump.fun Stream End
+                  </button>
                 </div>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#e0e0e0] dark:border-[#333]"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white dark:bg-[#1f1f1f] px-2 text-[#999]">Or Custom Duration</span>
-                  </div>
-                </div>
+                <p className="text-xs text-[#888]">
+                  {cutoffMode === 'time' && "Betting closes at the specified time."}
+                  {cutoffMode === 'pumpfun_stream_end' && "Betting closes when the Pump.fun livestream ends."}
+                </p>
 
-                <div className="flex items-center gap-4 bg-[#fafafa] dark:bg-[#1a1a1a] p-4 rounded border border-[#e0e0e0] dark:border-[#333]">
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold uppercase text-[#999] mb-1.5">
-                      Duration (Minutes)
+                {cutoffMode === 'pumpfun_stream_end' && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold uppercase text-[#999]">
+                      Pump.fun Token Mint Address
                     </label>
                     <Input
-                      type="number"
-                      min="5"
-                      max="2880"
-                      value={durationMinutes}
-                      onChange={(e) => {
-                        setDurationType("custom");
-                        let val = parseInt(e.target.value) || 0;
-                        if (val > 2880) val = 2880;
-                        setDurationMinutes(val);
-                      }}
-                      className={`h-11 font-mono font-bold text-lg ${durationType === "custom"
-                        ? "border-[#111] dark:border-white bg-white dark:bg-[#2a2a2a]"
-                        : "border-[#d3d3d3] dark:border-[#333] bg-transparent text-[#999]"
-                        }`}
+                      value={pumpfunMint}
+                      onChange={(e) => setPumpfunMint(e.target.value)}
+                      placeholder="e.g. 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+                      className="h-11 font-mono text-sm bg-[#fafafa] dark:bg-[#1a1a1a] border-2 border-[#d3d3d3] dark:border-[#333] focus:border-[#111] dark:focus:border-white"
                     />
+                    <p className="text-xs text-[#888]">
+                      Enter the token mint address from Pump.fun. Betting will automatically close when the stream ends.
+                    </p>
                   </div>
-                  <div className="flex flex-col justify-end pb-2">
-                    <div className="text-xs font-bold text-[#555] dark:text-[#c7c7c7]">
-                      Ends: {new Date(Date.now() + durationMinutes * 60000).toLocaleString()}
+                )}
+              </div>
+
+              {/* Duration Selection - only show for time-based mode */}
+              {cutoffMode === 'time' && (
+                <div className="space-y-4">
+                  <label className="block text-sm font-black uppercase tracking-wide text-[#555] dark:text-[#c7c7c7]">
+                    Market Duration
+                  </label>
+
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      { label: "1 Hour", value: 60 },
+                      { label: "12 Hours", value: 720 },
+                      { label: "24 Hours", value: 1440 },
+                      { label: "48 Hours", value: 2880 },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setDurationType("preset");
+                          setDurationMinutes(option.value);
+                        }}
+                        className={`p-3 rounded border-2 font-bold text-sm transition-all ${durationType === "preset" && durationMinutes === option.value
+                          ? "bg-[#111] text-white border-[#111] dark:bg-white dark:text-black dark:border-white shadow-md transform -translate-y-0.5"
+                          : "bg-white dark:bg-[#2a2a2a] text-[#555] dark:text-[#c7c7c7] border-[#d3d3d3] dark:border-[#444] hover:border-[#999] dark:hover:border-[#666]"
+                          }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-[#e0e0e0] dark:border-[#333]"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white dark:bg-[#1f1f1f] px-2 text-[#999]">Or Custom Duration</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-[#fafafa] dark:bg-[#1a1a1a] p-4 rounded border border-[#e0e0e0] dark:border-[#333]">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold uppercase text-[#999] mb-1.5">
+                        Duration (Minutes)
+                      </label>
+                      <Input
+                        type="number"
+                        min="5"
+                        max="2880"
+                        value={durationMinutes}
+                        onChange={(e) => {
+                          setDurationType("custom");
+                          let val = parseInt(e.target.value) || 0;
+                          if (val > 2880) val = 2880;
+                          setDurationMinutes(val);
+                        }}
+                        className={`h-11 font-mono font-bold text-lg ${durationType === "custom"
+                          ? "border-[#111] dark:border-white bg-white dark:bg-[#2a2a2a]"
+                          : "border-[#d3d3d3] dark:border-[#333] bg-transparent text-[#999]"
+                          }`}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-end pb-2">
+                      <div className="text-xs font-bold text-[#555] dark:text-[#c7c7c7]">
+                        Ends: {new Date(Date.now() + durationMinutes * 60000).toLocaleString()}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Submit Button */}
               <div className="pt-6 border-t-2 border-[#f0f0f0] dark:border-[#333]">
                 <Button
                   type="submit"
-                  disabled={submitting || !question.trim() || durationMinutes < 5}
+                  disabled={
+                    submitting ||
+                    !question.trim() ||
+                    (cutoffMode === 'time' && durationMinutes < 5) ||
+                    (cutoffMode === 'pumpfun_stream_end' && !pumpfunMint.trim())
+                  }
                   className="w-full h-14 text-lg font-black uppercase tracking-wider shadow-[4px_4px_0_#000] hover:translate-y-[2px] hover:shadow-[2px_2px_0_#000] active:translate-y-[4px] active:shadow-none transition-all border-2 border-black dark:border-white bg-[#15a349] hover:bg-[#128a3e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
                 >
                   {submitting ? (

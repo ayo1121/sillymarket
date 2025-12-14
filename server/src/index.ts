@@ -1,4 +1,5 @@
 import app, { migrate, cleanupExpiredNonces, DATABASE_URL } from "./app.js";
+import { startPumpfunCutoffWorker } from "./pumpfunCutoffWorker.js";
 
 const PORT = Number(process.env.PORT || 8787);
 const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:8080";
@@ -19,6 +20,12 @@ migrate().then(() => {
     // Run every hour
     setInterval(cleanupExpiredNonces, 60 * 60 * 1000);
     console.log("✅ Nonce cleanup job: started (runs hourly)");
+
+    // ✅ Start Pump.fun cutoff worker (monitors livestream status)
+    if (DATABASE_URL && !DATABASE_URL.includes("REPLACE_WITH")) {
+      startPumpfunCutoffWorker();
+      console.log("✅ Pump.fun cutoff worker: started");
+    }
   });
 }).catch((e: any) => {
   console.error("\n❌ Migration failed:", e.message);

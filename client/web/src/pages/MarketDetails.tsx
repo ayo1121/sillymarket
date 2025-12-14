@@ -364,6 +364,12 @@ const MarketDetails = () => {
     Boolean((market as any)?.isVoid) ||
     Boolean((market as any)?.rawAccount?.isVoid) ||
     baseStatus.toString().toLowerCase?.() === "void";
+
+  // Pump.fun cutoff support: check if market is cut off
+  const supabaseStatus = (market as any)?.supabaseStatus ?? (market as any)?.backendStatus ?? "";
+  const isCutoff = supabaseStatus === "cutoff" || baseStatus.toString().toLowerCase?.() === "cutoff";
+  const cutoffMode = (market as any)?.cutoffMode ?? (market as any)?.cutoff_mode ?? "time";
+  const bettingClosed = market?.state !== "open" || isCutoff;
   const winnerIndex =
     typeof (market as any)?.rawAccount?.winningIndex === "number"
       ? (market as any)?.rawAccount?.winningIndex
@@ -600,6 +606,18 @@ const MarketDetails = () => {
                   Place Your Bet
                 </h2>
 
+                {/* Pump.fun cutoff banner */}
+                {isCutoff && cutoffMode === "pumpfun_stream_end" && (
+                  <div className="bg-[#fef3c7] dark:bg-[#422006] border border-[#f59e0b] rounded p-3 mb-4 text-sm text-[#92400e] dark:text-[#fcd34d]">
+                    <span className="font-bold">🎥 Betting closed</span> – Pump.fun stream ended
+                  </div>
+                )}
+                {isCutoff && cutoffMode !== "pumpfun_stream_end" && (
+                  <div className="bg-[#f5f5f5] dark:bg-[#1f1f1f] border border-[#d3d3d3] dark:border-[#333] rounded p-3 mb-4 text-sm text-[#555] dark:text-[#c7c7c7]">
+                    <span className="font-bold">⏱️ Betting closed</span> – Market cutoff reached
+                  </div>
+                )}
+
                 {outcomesWithProb.length === 0 ? (
                   <div className="text-center text-muted-foreground text-sm py-8">No outcomes</div>
                 ) : (
@@ -620,7 +638,7 @@ const MarketDetails = () => {
                             odds={o.odds}
                             color={getOutcomeColor(o.index)}
                             series={outcomeSeries}
-                            disabled={market.state !== "open"}
+                            disabled={bettingClosed}
                             onClick={() => handleBetClick(o.index)}
                           />
                         </div>

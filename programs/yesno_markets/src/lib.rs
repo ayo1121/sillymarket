@@ -139,6 +139,12 @@ pub struct MarketSettledDustRouted {
     pub to: Pubkey,
 }
 
+#[event]
+pub struct BetsOpenChanged {
+    pub market: Pubkey,
+    pub bets_open: bool,
+}
+
 // -----------------------------------------------------------------------------
 // Accounts
 // -----------------------------------------------------------------------------
@@ -166,6 +172,8 @@ pub struct Market {
     pub outcomes_count: u8,                 // 1
     pub winning_index: i8,                  // 1
     pub bump: u8,                           // 1
+    pub bets_open: bool,                    // 1  (NEW: allows closing bets before cutoff_ts)
+    pub _pad_bets: [u8; 7],                 // 7  (padding for alignment)
     pub pools: [u64; MAX_ANSWERS],          // 40 (gross)
     pub total_pool: u64,                    // 8  (gross)
     pub resolved_total_pool: u64,           // 8  (claimable after fees if non-VOID)
@@ -180,10 +188,12 @@ pub struct Market {
     pub image_url: String,                  // 4 + IMAGE_MAX
 }
 impl Market {
+    // NOTE: Layout changed - added bets_open (1) + padding (7) = 8 bytes
+    // Markets created before this change are incompatible.
     pub const LEN_FIXED: usize =
-        32 + 32 + 8 + 8 + 1 + 1 + 1 + 1 + 40 + 8 + 8 + 8 + 8 + 32 + 8 + 8 + 20 + 4 + 8; // 236
-    pub const LEN: usize = Self::LEN_FIXED + 4 + IMAGE_MAX; // 236 + 204 = 440
-    pub const SPACE: usize = DISCRIMINATOR + Self::LEN; // 8 + 440 = 448
+        32 + 32 + 8 + 8 + 1 + 1 + 1 + 1 + 1 + 7 + 40 + 8 + 8 + 8 + 8 + 32 + 8 + 8 + 20 + 4 + 8; // 244
+    pub const LEN: usize = Self::LEN_FIXED + 4 + IMAGE_MAX; // 244 + 204 = 448
+    pub const SPACE: usize = DISCRIMINATOR + Self::LEN; // 8 + 448 = 456
 }
 
 #[account]
@@ -371,6 +381,8 @@ pub mod yesno_markets {
         m.pos_counts = [0u32; MAX_ANSWERS];
         m.win_unclaimed = 0;
         m.fees_accrued_total = 0;
+        m.bets_open = true;  // NEW: bets are open when market is created
+        m._pad_bets = [0u8; 7];
         m.image_url = image_url;
 
         emit!(MarketCreated {
@@ -393,7 +405,8 @@ pub mod yesno_markets {
         let now = Clock::get()?.unix_timestamp;
         let m = &mut ctx.accounts.market;
         require!(m.state == STATE_ACTIVE, ErrorCode::InvalidState);
-        require!(now < m.cutoff_ts, ErrorCode::BettingClosed);
+        require!(m.bets_open, ErrorCode::BettingClosed);  // NEW: check on-chain flag
+        require!(now < m.cutoff_ts, ErrorCode::BettingClosed);  // existing time-based check
 
         require!(amount_lamports >= m.min_bet_snapshot, ErrorCode::BadParam);
         require!(amount_lamports <= m.max_bet_snapshot, ErrorCode::BadParam);
@@ -857,6 +870,29 @@ pub mod yesno_markets {
         // Intentional no-op: constraints perform close and return rent after claim.
         Ok(())
     }
+
+    /// Toggle bets_open flag on a market. Only callable by market creator or config authority.
+    /// Used by backend to close betting when Pump.fun stream ends.
+    pub fn set_bets_open(ctx: Context<SetBetsOpen>, bets_open: bool) -> Result<()> {
+        let market = &mut ctx.accounts.market;
+        
+        // Only market creator or config authority can change bets_open
+        let is_creator = ctx.accounts.authority.key() == market.creator;
+        let is_admin = ctx.accounts.authority.key() == ctx.accounts.config.authority;
+        require!(is_creator || is_admin, ErrorCode::Unauthorized);
+        
+        // Only allow changes if market is still active (not resolved)
+        require!(market.state == STATE_ACTIVE, ErrorCode::InvalidState);
+        
+        market.bets_open = bets_open;
+        
+        emit!(BetsOpenChanged {
+            market: market.key(),
+            bets_open,
+        });
+        
+        Ok(())
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1004,6 +1040,21 @@ pub struct ClosePosition<'info> {
         constraint = position.claimed @ ErrorCode::NotClaimed,
     )]
     pub position: Account<'info, Position>,
+}
+
+/// Context for set_bets_open instruction
+/// Allows market creator or config authority to toggle betting on/off
+#[derive(Accounts)]
+pub struct SetBetsOpen<'info> {
+    #[account(
+        seeds = [CONFIG_SEED],
+        bump,
+    )]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub market: Account<'info, Market>,
+    /// Signer - must be market creator or config authority
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]

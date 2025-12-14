@@ -521,11 +521,66 @@
           "writable": true
         },
         {
+          "name": "platform_fee_wallet",
+          "writable": true
+        },
+        {
+          "name": "creator_wallet",
+          "writable": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
+    },
+    {
+      "name": "set_bets_open",
+      "discriminator": [
+        135,
+        174,
+        129,
+        198,
+        25,
+        28,
+        117,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "bets_open",
+          "type": "bool"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -581,6 +636,19 @@
         206,
         32,
         0
+      ]
+    },
+    {
+      "name": "BetsOpenChanged",
+      "discriminator": [
+        44,
+        183,
+        88,
+        11,
+        176,
+        240,
+        112,
+        193
       ]
     },
     {
@@ -741,6 +809,22 @@
       }
     },
     {
+      "name": "BetsOpenChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "bets_open",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
       "name": "Config",
       "type": {
         "kind": "struct",
@@ -845,6 +929,19 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "bets_open",
+            "type": "bool"
+          },
+          {
+            "name": "_pad_bets",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
           },
           {
             "name": "pools",

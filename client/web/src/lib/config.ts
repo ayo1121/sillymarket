@@ -74,6 +74,12 @@ export const REQUIRE_WALLET = import.meta.env.VITE_REQUIRE_WALLET === "1";
 const IS_DEV = import.meta.env.DEV;
 export const DEBUG_DOCK = IS_DEV && import.meta.env.VITE_DEBUG_DOCK === "1";
 
+/**
+ * Whether to enable the Silly Character AI chat widget
+ * Requires the soul service to be running for full functionality
+ */
+export const ENABLE_SILLY_CHARACTER = import.meta.env.VITE_ENABLE_SILLY_CHARACTER === "true";
+
 // ============================================================================
 // Validation
 // ============================================================================
@@ -139,6 +145,7 @@ export const config = {
     // Features
     REQUIRE_WALLET,
     DEBUG_DOCK,
+    ENABLE_SILLY_CHARACTER,
 
     // Validation
     validate: validateConfig,

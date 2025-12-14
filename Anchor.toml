@@ -1,14 +1,24 @@
-# Devnet is the default cluster for development.
-# Localnet is still available for local testing.
+# Production Anchor configuration for yesno_markets
+# Updated for Pump.fun cutoff feature deployment
+
 [programs.localnet]
 yesno_markets = "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb"
 
 [programs.devnet]
 yesno_markets = "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb"
 
+[programs.mainnet]
+yesno_markets = "8gBJBtEkyN95vd9bXTRKxyAaoLiTkogFmecEfQCSNJgb"
+
 [provider]
-cluster = "Localnet"
-wallet  = "/home/ayo/.config/solana/deployer.json"
+cluster = "mainnet"
+wallet = "/home/ayo/.config/solana/deployer.json"
+
+[clusters]
+localnet = "http://127.0.0.1:8899"
+devnet = "https://api.devnet.solana.com"
+testnet = "https://api.testnet.solana.com"
+mainnet = "https://api.mainnet-beta.solana.com"
 
 [toolchain]
 anchor_version = "0.29.0"

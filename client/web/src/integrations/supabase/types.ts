@@ -240,31 +240,40 @@ export type Database = {
           answers: string
           creator_name: string | null
           creator_wallet: string
+          cutoff_mode: string
           description: string
           image_url: string | null
           market_pubkey: string
           outcome_labels: Json | null
+          pumpfun_mint: string | null
           question: string
+          status: string
         }
         Insert: {
           answers: string
           creator_name?: string | null
           creator_wallet: string
+          cutoff_mode?: string
           description: string
           image_url?: string | null
           market_pubkey: string
           outcome_labels?: Json | null
+          pumpfun_mint?: string | null
           question: string
+          status?: string
         }
         Update: {
           answers?: string
           creator_name?: string | null
           creator_wallet?: string
+          cutoff_mode?: string
           description?: string
           image_url?: string | null
           market_pubkey?: string
           outcome_labels?: Json | null
+          pumpfun_mint?: string | null
           question?: string
+          status?: string
         }
         Relationships: []
       }

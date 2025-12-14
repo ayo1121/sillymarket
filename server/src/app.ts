@@ -657,6 +657,9 @@ app.post("/markets/metadata", marketMetadataLimiter, async (req, res) => {
         imageUrl: z.string().max(1000).optional(),
         answers: z.array(z.string().max(200)).min(2).max(10),
         description: z.string().max(2000).optional(),
+        // Pump.fun cutoff fields
+        cutoffMode: z.enum(['time', 'pumpfun_stream_end', 'manual']).default('time'),
+        pumpfunMint: z.string().max(44).optional().nullable(),
     });
 
     const parsed = schema.safeParse(req.body);
@@ -664,23 +667,30 @@ app.post("/markets/metadata", marketMetadataLimiter, async (req, res) => {
         return res.status(400).json({ error: "Invalid market metadata", details: parsed.error.errors });
     }
 
-    const { marketPubkey, question, creatorWallet, creatorName, imageUrl, answers, description } = parsed.data;
+    const { marketPubkey, question, creatorWallet, creatorName, imageUrl, answers, description, cutoffMode, pumpfunMint } = parsed.data;
 
     // Verify creator wallet matches authenticated user
     if (creatorWallet !== user.pubkey) {
         return res.status(403).json({ error: "Creator wallet must match authenticated user" });
     }
 
+    // Validate pumpfun_mint is provided when cutoff mode is pumpfun_stream_end
+    if (cutoffMode === 'pumpfun_stream_end' && !pumpfunMint) {
+        return res.status(400).json({ error: "pumpfunMint is required when cutoffMode is 'pumpfun_stream_end'" });
+    }
+
     try {
         await pool.query(
-            `INSERT INTO markets (market_pubkey, question, creator_wallet, creator_name, image_url, answers, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO markets (market_pubkey, question, creator_wallet, creator_name, image_url, answers, description, cutoff_mode, pumpfun_mint, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open')
        ON CONFLICT (market_pubkey) DO UPDATE
        SET question = EXCLUDED.question,
            creator_name = EXCLUDED.creator_name,
            image_url = EXCLUDED.image_url,
            answers = EXCLUDED.answers,
-           description = EXCLUDED.description`,
+           description = EXCLUDED.description,
+           cutoff_mode = EXCLUDED.cutoff_mode,
+           pumpfun_mint = EXCLUDED.pumpfun_mint`,
             [
                 marketPubkey,
                 question,
@@ -688,7 +698,9 @@ app.post("/markets/metadata", marketMetadataLimiter, async (req, res) => {
                 creatorName || null,
                 imageUrl || null,
                 JSON.stringify(answers),
-                description || null
+                description || null,
+                cutoffMode,
+                pumpfunMint || null
             ]
         );
 
@@ -784,6 +796,46 @@ app.post("/notifications/mark-read", notificationLimiter, async (req, res) => {
     }
 });
 
+// =====================================================================
+// SILLY CHARACTER (Optional AI Helper)
+// =====================================================================
+
+import * as sillyCharacterClient from "./services/sillyCharacterClient.js";
+
+const sillyCharacterLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 30, // 30 requests per 5 minutes per IP
+    message: { error: "Too many messages, please slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.post("/api/silly-character/chat", sillyCharacterLimiter, async (req, res) => {
+    // Validate request body
+    const schema = z.object({
+        sessionId: z.string().max(100).optional(),
+        userId: z.string().max(100).optional(),
+        message: z.string().min(1).max(1000),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request" });
+    }
+
+    const { sessionId, userId, message } = parsed.data;
+
+    // Call the soul service (fail-safe - always returns a response)
+    const response = await sillyCharacterClient.chat({
+        sessionId,
+        userId,
+        message,
+    });
+
+    res.json(response);
+});
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 export default app;
+

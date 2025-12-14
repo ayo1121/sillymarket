@@ -15,6 +15,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { PendingTransactions } from '@/components/PendingTransactions';
 import { MarketCardSkeletonGrid } from '@/components/skeletons/MarketCardSkeleton';
 import { MarketDetailsSkeleton } from '@/components/skeletons/MarketDetailsSkeleton';
+import { SillyCharacterWidget } from '@/components/SillyCharacterWidget';
 
 // Lazy load pages for code splitting
 const Index = lazy(() => import('./pages/Index'));
@@ -142,6 +143,7 @@ const App = () => (
               </Routes>
             </Suspense>
             <BottomNav />
+            <SillyCharacterWidget />
           </BrowserRouter>
           <AppContent />
           <Analytics />
